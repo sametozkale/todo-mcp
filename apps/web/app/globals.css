@@ -1,0 +1,254 @@
+/* HeroUI v3: import order matters — Tailwind first, then HeroUI design system */
+@import "tailwindcss";
+@import "@heroui/styles";
+
+/*
+ * Typography
+ * - Default: Inter (body, descriptions, labels, forms, buttons, most HeroUI components)
+ * - Open Runde: semantic headings + HeroUI “title / heading” slots + slot="title"
+ */
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-title: var(--font-open-runde);
+
+  /* HeroUI separators / dividers — single tone across default, secondary, tertiary */
+  --color-separator: #f7f7f7;
+  --color-separator-secondary: #f7f7f7;
+  --color-separator-tertiary: #f7f7f7;
+}
+
+/* Align primitive --separator with theme tokens (used by var(--separator) in HeroUI CSS) */
+/* Flowdo field kit: no elevation on inputs; light border #f4f4f4; primary #00b5e9 */
+@layer base {
+  :root,
+  .light,
+  .default,
+  [data-theme="light"],
+  [data-theme="default"] {
+    --separator: #f7f7f7;
+    --field-border-width: 1px;
+    --field-border: #f4f4f4;
+    --field-shadow: none;
+    --accent: #00b5e9;
+    --accent-foreground: #ffffff;
+    --focus: #00b5e9;
+  }
+
+  .dark,
+  [data-theme="dark"] {
+    --separator: #f7f7f7;
+    --field-border-width: 1px;
+    --field-border: var(--border);
+    --field-shadow: none;
+    --accent: #00b5e9;
+    --accent-foreground: #ffffff;
+    --focus: #00b5e9;
+  }
+}
+
+body {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ---------- Open Runde: headings / title ---------- */
+
+/* Semantic headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+[role="heading"] {
+  font-family: var(--font-title), var(--font-sans), sans-serif;
+}
+
+/*
+ * HeroUI v3 (@heroui/react): title/heading slots marked with data-slot
+ * (e.g. card-title, toast-title, alert-title, modal-heading, calendar-heading, …)
+ */
+[data-slot$="-title"],
+[data-slot$="-heading"],
+[data-slot="fieldset-legend"] {
+  font-family: var(--font-title), var(--font-sans), sans-serif;
+}
+
+/*
+ * React Aria compositions: slot="title" on Modal/Drawer/Toast/Popover headings
+ * (PopoverHeading has no data-slot; ToastTitle etc. are covered here)
+ */
+[slot="title"] {
+  font-family: var(--font-title), var(--font-sans), sans-serif;
+}
+
+/* Manual use (e.g. div acting as a heading) */
+.font-title {
+  font-family: var(--font-title), var(--font-sans), sans-serif;
+}
+
+/* ---------- Inter: controls (order avoids overriding heading text) ---------- */
+
+button,
+[role="button"],
+input,
+textarea,
+select {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* HeroUI: text above inputs (Label + fieldset legend) — 1px smaller than default */
+.label {
+  font-size: calc(var(--text-sm, 0.875rem) - 1px);
+}
+
+.fieldset__legend {
+  font-size: calc(var(--text-base, 1rem) - 1px);
+}
+
+/* Secondary buttons: neutral label color (HeroUI default uses accent for --button-fg) */
+.button--secondary {
+  --button-fg: rgba(50, 50, 50, 1);
+}
+
+/* HeroUI buttons: 12px corner radius (default is rounded-3xl; unlayered so it wins over HeroUI) */
+.button {
+  border-radius: 12px;
+}
+
+/*
+ * Text inputs: fixed heights + single-line vertical centering
+ * (line-height matches inner box after 1px borders; py-0 so text sits centered)
+ */
+@layer components {
+  .input[data-slot="input"] {
+    @apply h-9 min-h-9 sm:h-10 sm:min-h-10;
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: calc(2.25rem - 2px);
+  }
+
+  @media (min-width: 640px) {
+    .input[data-slot="input"] {
+      line-height: calc(2.5rem - 2px);
+    }
+  }
+
+  .input-group:not(:has([data-slot="input-group-textarea"])) {
+    @apply min-h-9 h-9 sm:min-h-10 sm:h-10;
+  }
+
+  .input-group:not(:has([data-slot="input-group-textarea"])) .input-group__input {
+    height: 100%;
+    min-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: calc(2.25rem - 2px);
+  }
+
+  @media (min-width: 640px) {
+    .input-group:not(:has([data-slot="input-group-textarea"])) .input-group__input {
+      line-height: calc(2.5rem - 2px);
+    }
+  }
+
+  /*
+   * Anchored menus only (e.g. avatar Dropdown). Does not target Select/ComboBox
+   * (those use .select__popover + list-box, not .dropdown__popover).
+   */
+  .dropdown__popover {
+    border-radius: 12px;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-width: 1px;
+    border-style: solid;
+    border-color: #f7f7f7;
+    padding: 0;
+    background-color: #ffffff;
+    color: #405175;
+    box-shadow: 0px 1px 4px 0px rgba(34, 34, 34, 0.05);
+  }
+
+  .dropdown__popover [data-slot="popover-overlay-arrow"] {
+    fill: var(--accent);
+  }
+
+  .dropdown__popover [data-slot="dropdown-menu"] {
+    border-radius: 16px;
+    padding: 4px;
+  }
+
+  .dropdown__popover .dropdown__menu {
+    border-radius: 16px;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    gap: 2px;
+    padding: 4px;
+  }
+
+  .dropdown__popover .menu-item {
+    min-height: unset;
+    height: auto;
+    border-radius: 8px;
+    padding: 8px 12px;
+    line-height: normal;
+    font-size: 13px;
+    font-weight: 400;
+    color: #405175;
+  }
+
+  @media (hover: hover) {
+    .dropdown__popover .menu-item:hover,
+    .dropdown__popover .menu-item[data-hovered="true"] {
+      background-color: #f7f7f7;
+    }
+  }
+
+  .dropdown__popover .menu-item[data-focus-visible="true"] {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent), 0 0 0 4px rgba(255, 255, 255, 0.55);
+  }
+
+  /* Today list: custom checkbox 20×20, 8px corner radius */
+  .todo-checkbox-squircle {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    border: 1.5px solid #d0d0d0;
+    background-color: #fff;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: border-color 0.15s ease;
+  }
+
+  @media (hover: hover) {
+    .todo-checkbox-squircle:hover:not(:disabled) {
+      border-color: #b0b0b0;
+    }
+  }
+
+  .todo-checkbox-squircle:checked {
+    border-color: var(--accent);
+    background-color: var(--accent);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M2.5 6l2.5 2.5L9.5 3.5'/%3E%3C/svg%3E");
+    background-size: 12px 12px;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .todo-checkbox-squircle:focus-visible {
+    outline: 2px solid var(--focus, var(--accent));
+    outline-offset: 2px;
+  }
+
+  .todo-checkbox-squircle:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}

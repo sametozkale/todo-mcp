@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 24" fill="none" role="img" aria-label="To Do MCP">
+  <rect width="20" height="20" x="0" y="2" rx="4" fill="#00b5e9" fill-opacity="0.12"/>
+  <path
+    d="M5 12.5 L8.5 16 L15 8"
+    stroke="#00b5e9"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <text
+    x="28"
+    y="17"
+    fill="#111827"
+    font-family="ui-sans-serif, system-ui, sans-serif"
+    font-size="14"
+    font-weight="600"
+  >
+    To Do MCP
+  </text>
+</svg>

@@ -1,0 +1,12 @@
+{
+  "name": "@flowdo/utils",
+  "private": true,
+  "version": "0.1.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "echo \"No lint config yet\"",
+    "test": "echo \"No tests yet\""
+  }
+}
