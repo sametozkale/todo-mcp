@@ -7,7 +7,9 @@ export async function updateSession(request: NextRequest) {
     path === "/" ||
     path.startsWith("/login") ||
     path.startsWith("/signup") ||
-    path.startsWith("/auth/callback");
+    path.startsWith("/auth/callback") ||
+    // MCP endpoint uses API key auth (not Supabase session cookies).
+    path.startsWith("/api/mcp");
 
   // Public routes should never be blocked by middleware/auth provider issues.
   // If Supabase is temporarily unavailable/misconfigured, we still want the login page to render.

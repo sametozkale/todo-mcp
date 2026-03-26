@@ -1,6 +1,6 @@
-# FlowDo
+# Yalp
 
-FlowDo is a minimalist AI-assisted todo app built with a Turborepo monorepo, Electron, and a Supabase backend. It also exposes an MCP server so AI coding tools can create and manage todos directly.
+Yalp is a minimalist AI-assisted todo app built with a Turborepo monorepo, Electron, and a Supabase backend. It also exposes an MCP server so AI coding tools can create and manage todos directly.
 
 The web app (`apps/web`) uses **Next.js 15**, **Tailwind CSS v4**, and **[HeroUI v3](https://www.heroui.com/docs/react/getting-started/quick-start)** (`@heroui/react`, `@heroui/styles`).
 

@@ -127,6 +127,13 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                   >
                     Profile
                   </Dropdown.Item>
+                  <Dropdown.Item
+                    onAction={() => {
+                      router.push("/mcp");
+                    }}
+                  >
+                    MCP Connections
+                  </Dropdown.Item>
                 <Dropdown.Item onAction={handleLogout}>
                     Log out
                   </Dropdown.Item>

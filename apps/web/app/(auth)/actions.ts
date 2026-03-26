@@ -12,7 +12,7 @@ async function getRequestOrigin(): Promise<string> {
   if (host) {
     return `${protocol}://${host}`;
   }
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
+  return process.env.NEXT_PUBLIC_SITE_URL ?? "https://yalp.ai";
 }
 
 export type AuthActionState = {

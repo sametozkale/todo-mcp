@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = {
-  title: "Log in — Flowdo",
-  description: "Sign in to your Flowdo account.",
+  title: "Log in — Yalp",
+  description: "Sign in to your Yalp account.",
 };
 
 export default async function LoginPage({

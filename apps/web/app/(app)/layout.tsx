@@ -72,7 +72,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         lists={listRows ?? []}
         counts={{ all: allCount, byListId }}
       >
-        <div className="flex flex-1 flex-col px-4 pb-8 pt-2 sm:px-6">{children}</div>
+        <div className="flex flex-1 flex-col px-4 pb-24 pt-2 sm:px-6">{children}</div>
       </ListsProvider>
     </div>
   );

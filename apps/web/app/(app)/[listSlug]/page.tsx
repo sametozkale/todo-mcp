@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { title: "List — Flowdo" };
+    return { title: "List — Yalp" };
   }
   const { data: list } = await supabase
     .from("lists")
@@ -26,10 +26,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .maybeSingle();
 
   if (!list) {
-    return { title: "List — Flowdo" };
+    return { title: "List — Yalp" };
   }
   return {
-    title: `${list.title} — Flowdo`,
+    title: `${list.title} — Yalp`,
     description: `Tasks in ${list.title}.`,
   };
 }
@@ -77,7 +77,7 @@ export default async function UserListPage({ params }: Props) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 pb-32 pt-4 sm:pt-6">
+    <main className="mx-auto w-full max-w-2xl px-4 pt-4 sm:pt-6">
       <h1 className="sr-only">{list.title}</h1>
       <TodayClient
         initialTodos={todos ?? []}

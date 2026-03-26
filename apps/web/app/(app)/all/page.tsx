@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { TodayClient } from "../today/today-client";
 
 export const metadata: Metadata = {
-  title: "All — Flowdo",
+  title: "All — Yalp",
   description: "All your tasks.",
 };
 
@@ -38,7 +38,7 @@ export default async function AllPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 pb-32 pt-4 sm:pt-6">
+    <main className="mx-auto w-full max-w-2xl px-4 pt-4 sm:pt-6">
       <h1 className="sr-only">All</h1>
       <TodayClient
         initialTodos={todos ?? []}

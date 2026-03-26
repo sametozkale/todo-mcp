@@ -4,8 +4,8 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Flowdo",
-  description: "Flowdo — todo app",
+  title: "Yalp",
+  description: "Yalp — todo app",
 };
 
 export default function RootLayout({

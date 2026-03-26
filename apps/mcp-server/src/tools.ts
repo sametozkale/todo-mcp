@@ -1,4 +1,35 @@
-import type { CreateTodoInput, TodoSummary, List } from '@flowdo/types';
+type TodoSummary = {
+  id: string;
+  user_id: string;
+  list_id: string | null;
+  title: string;
+  description: string | null;
+  is_completed: boolean | null;
+  position: number | null;
+  source: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  completed_at: string | null;
+};
+
+type List = {
+  id: string;
+  user_id: string;
+  title: string;
+  slug: string;
+  position: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type CreateTodoInput = {
+  title: string;
+  description?: string;
+  listId?: string | null;
+  listSlug?: string;
+  listTitle?: string;
+  listRef?: string;
+};
 
 /** Tool shape used with McpServer.registerTool */
 export type FlowdoMcpTool = {
@@ -6,17 +37,32 @@ export type FlowdoMcpTool = {
   inputSchema: Record<string, unknown>;
   handler: (args: any) => Promise<unknown>;
 };
-import { supabase } from './supabase.js';
 
-async function getUserIdFromApiKey(apiKey: string): Promise<string | null> {
-  const keyHash = apiKey; // For MVP, treat provided key as already-hashed or opaque.
-  const { data, error } = await supabase
-    .from('api_keys')
-    .select('user_id')
-    .eq('key_hash', keyHash)
-    .maybeSingle();
-  if (error || !data) return null;
-  return data.user_id;
+function getBaseUrl(): string {
+  return (
+    process.env.FLOWDO_API_BASE_URL ||
+    process.env.FLOWDO_BASE_URL ||
+    'https://yalp.ai'
+  ).replace(/\/+$/, '');
+}
+
+async function callFlowdoApi<T>(
+  tool: string,
+  payload: Record<string, unknown>
+): Promise<T> {
+  const baseUrl = getBaseUrl();
+  const res = await fetch(`${baseUrl}/api/mcp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tool, ...payload })
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Yalp MCP API error (${res.status}): ${text || res.statusText}`);
+  }
+
+  return (await res.json()) as T;
 }
 
 export const tools: Record<string, FlowdoMcpTool> = {
@@ -26,27 +72,33 @@ export const tools: Record<string, FlowdoMcpTool> = {
       type: 'object',
       properties: {
         apiKey: { type: 'string' },
-        listId: { type: ['string', 'null'], nullable: true }
+        listId: { type: ['string', 'null'], nullable: true },
+        listSlug: { type: 'string' },
+        listTitle: { type: 'string' },
+        listRef: { type: 'string' }
       },
       required: ['apiKey']
     },
-    handler: async ({ apiKey, listId }: { apiKey: string; listId?: string | null }) => {
-      const userId = await getUserIdFromApiKey(apiKey);
-      if (!userId) {
-        throw new Error('Invalid API key');
-      }
-      const query = supabase
-        .from('todos')
-        .select('*')
-        .eq('user_id', userId)
-        .order('position');
-      const { data, error } = listId
-        ? await query.eq('list_id', listId)
-        : await query.is('list_id', null);
-      if (error) {
-        throw error;
-      }
-      return (data ?? []) as TodoSummary[];
+    handler: async ({
+      apiKey,
+      listId,
+      listSlug,
+      listTitle,
+      listRef
+    }: {
+      apiKey: string;
+      listId?: string | null;
+      listSlug?: string;
+      listTitle?: string;
+      listRef?: string;
+    }) => {
+      return await callFlowdoApi<TodoSummary[]>('list_todos', {
+        apiKey,
+        listId: listId ?? null,
+        listSlug,
+        listTitle,
+        listRef
+      });
     }
   },
   create_todo: {
@@ -57,7 +109,10 @@ export const tools: Record<string, FlowdoMcpTool> = {
         apiKey: { type: 'string' },
         title: { type: 'string' },
         description: { type: 'string' },
-        listId: { type: ['string', 'null'], nullable: true }
+        listId: { type: ['string', 'null'], nullable: true },
+        listSlug: { type: 'string' },
+        listTitle: { type: 'string' },
+        listRef: { type: 'string' }
       },
       required: ['apiKey', 'title']
     },
@@ -65,27 +120,20 @@ export const tools: Record<string, FlowdoMcpTool> = {
       apiKey,
       title,
       description,
-      listId
+      listId,
+      listSlug,
+      listTitle,
+      listRef
     }: CreateTodoInput & { apiKey: string }) => {
-      const userId = await getUserIdFromApiKey(apiKey);
-      if (!userId) {
-        throw new Error('Invalid API key');
-      }
-      const { data, error } = await supabase
-        .from('todos')
-        .insert({
-          user_id: userId,
-          title,
-          description: description ?? null,
-          list_id: listId ?? null,
-          source: 'mcp'
-        })
-        .select('*')
-        .single();
-      if (error) {
-        throw error;
-      }
-      return data as TodoSummary;
+      return await callFlowdoApi<TodoSummary>('create_todo', {
+        apiKey,
+        title,
+        description: description ?? null,
+        listId: listId ?? null,
+        listSlug,
+        listTitle,
+        listRef
+      });
     }
   },
   update_todo: {
@@ -108,28 +156,7 @@ export const tools: Record<string, FlowdoMcpTool> = {
       description?: string;
       is_completed?: boolean;
     }) => {
-      const userId = await getUserIdFromApiKey(input.apiKey);
-      if (!userId) {
-        throw new Error('Invalid API key');
-      }
-      const updates: Record<string, unknown> = {};
-      if (input.title !== undefined) updates.title = input.title;
-      if (input.description !== undefined) updates.description = input.description;
-      if (input.is_completed !== undefined) {
-        updates.is_completed = input.is_completed;
-        updates.completed_at = input.is_completed ? new Date().toISOString() : null;
-      }
-      const { data, error } = await supabase
-        .from('todos')
-        .update(updates)
-        .eq('id', input.id)
-        .eq('user_id', userId)
-        .select('*')
-        .single();
-      if (error) {
-        throw error;
-      }
-      return data as TodoSummary;
+      return await callFlowdoApi<TodoSummary>('update_todo', input);
     }
   },
   delete_todo: {
@@ -143,19 +170,7 @@ export const tools: Record<string, FlowdoMcpTool> = {
       required: ['apiKey', 'id']
     },
     handler: async ({ apiKey, id }: { apiKey: string; id: string }) => {
-      const userId = await getUserIdFromApiKey(apiKey);
-      if (!userId) {
-        throw new Error('Invalid API key');
-      }
-      const { error } = await supabase
-        .from('todos')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', userId);
-      if (error) {
-        throw error;
-      }
-      return { success: true };
+      return await callFlowdoApi<{ success: true }>('delete_todo', { apiKey, id });
     }
   },
   list_lists: {
@@ -168,19 +183,7 @@ export const tools: Record<string, FlowdoMcpTool> = {
       required: ['apiKey']
     },
     handler: async ({ apiKey }: { apiKey: string }) => {
-      const userId = await getUserIdFromApiKey(apiKey);
-      if (!userId) {
-        throw new Error('Invalid API key');
-      }
-      const { data, error } = await supabase
-        .from('lists')
-        .select('*')
-        .eq('user_id', userId)
-        .order('position');
-      if (error) {
-        throw error;
-      }
-      return (data ?? []) as List[];
+      return await callFlowdoApi<List[]>('list_lists', { apiKey });
     }
   },
   create_list: {
@@ -194,19 +197,31 @@ export const tools: Record<string, FlowdoMcpTool> = {
       required: ['apiKey', 'title']
     },
     handler: async ({ apiKey, title }: { apiKey: string; title: string }) => {
-      const userId = await getUserIdFromApiKey(apiKey);
-      if (!userId) {
-        throw new Error('Invalid API key');
-      }
-      const { data, error } = await supabase
-        .from('lists')
-        .insert({ user_id: userId, title })
-        .select('*')
-        .single();
-      if (error) {
-        throw error;
-      }
-      return data as List;
+      return await callFlowdoApi<List>('create_list', { apiKey, title });
+    }
+  },
+  resolve_list: {
+    description:
+      'Resolve a list by listSlug, listTitle, or listRef. Defaults to Today. Can create the list if missing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        apiKey: { type: 'string' },
+        listSlug: { type: 'string' },
+        listTitle: { type: 'string' },
+        listRef: { type: 'string' },
+        createIfMissing: { type: 'boolean' }
+      },
+      required: ['apiKey']
+    },
+    handler: async (input: {
+      apiKey: string;
+      listSlug?: string;
+      listTitle?: string;
+      listRef?: string;
+      createIfMissing?: boolean;
+    }) => {
+      return await callFlowdoApi<List>('resolve_list', input);
     }
   }
 };

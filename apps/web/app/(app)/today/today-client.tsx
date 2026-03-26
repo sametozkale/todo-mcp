@@ -21,6 +21,27 @@ import {
   SlidersHorizontalIcon,
 } from "@hugeicons/core-free-icons";
 import {
+  closestCenter,
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   Button,
   Dropdown,
   Input,
@@ -35,11 +56,9 @@ import {
   useOptimistic,
   useRef,
   useState,
-  startTransition,
   useMemo,
   useTransition,
 } from "react";
-import { Reorder } from "framer-motion";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -135,14 +154,10 @@ export function TodayClient({
   const { lists, counts } = useListsShell();
   const formRef = useRef<HTMLFormElement>(null);
   const composerInputRef = useRef<HTMLInputElement>(null);
-  const hoveredTodoIdRef = useRef<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(true);
   const [uiOrderIds, setUiOrderIds] = useState<string[] | null>(null);
-  const [isDraggingTodo, setIsDraggingTodo] = useState(false);
   const [draggingTodoId, setDraggingTodoId] = useState<string | null>(null);
-  const reorderListRef = useRef<HTMLUListElement | null>(null);
-  const [dropIndicatorTop, setDropIndicatorTop] = useState<number | null>(null);
   const [optimisticTodos, addOptimistic] = useOptimistic(
     initialTodos,
     applyTodoOptimistic,
@@ -166,6 +181,8 @@ export function TodayClient({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [listDeleteInlineError, setListDeleteInlineError] = useState<string | null>(null);
+  const [reorderError, setReorderError] = useState<string | null>(null);
+  const preDragOrderRef = useRef<string[] | null>(null);
 
   function scheduleRefresh() {
     queueMicrotask(() => router.refresh());
@@ -213,12 +230,15 @@ export function TodayClient({
 
   function TodoRowMeasured({
     todo,
-    wrapper,
-    wrapperProps,
+    sortable,
   }: {
     todo: TodoRow;
-    wrapper: React.ElementType;
-    wrapperProps?: Record<string, unknown>;
+    sortable?: Pick<
+      ReturnType<typeof useSortable>,
+      "setNodeRef" | "setActivatorNodeRef" | "attributes" | "listeners"
+    > & {
+      style: React.CSSProperties;
+    };
   }) {
     const titleRef = useRef<HTMLSpanElement>(null);
     const checkboxRef = useRef<HTMLInputElement>(null);
@@ -252,21 +272,11 @@ export function TodayClient({
     }, [todo.title, todo.is_completed]);
 
     const rowClass = [
-      "group flex items-center gap-3 rounded-[16px] px-3 transition-colors duration-150 ease-out hover:bg-[#f4f4f4]",
-      isMultiline ? "py-2.5" : "py-1.5",
+      "group flex gap-3 rounded-[16px] px-3 transition-colors duration-150 ease-out hover:bg-[#f4f4f4]",
+      isMultiline ? "items-start py-2.5" : "items-center py-1.5",
     ].join(" ");
 
-    const Wrapper = wrapper as React.ElementType;
-    const providedOnMouseEnter = (wrapperProps as
-      | { onMouseEnter?: (e: React.MouseEvent) => void }
-      | undefined)?.onMouseEnter;
-    const providedOnMouseLeave = (wrapperProps as
-      | { onMouseLeave?: (e: React.MouseEvent) => void }
-      | undefined)?.onMouseLeave;
-
     const handleMouseEnter = (e: React.MouseEvent) => {
-      providedOnMouseEnter?.(e);
-
       const rowEl = e.currentTarget as HTMLElement;
       const rowRect = rowEl.getBoundingClientRect();
       const checkboxEl = checkboxRef.current;
@@ -316,25 +326,27 @@ export function TodayClient({
       // #endregion
     };
 
-    const handleMouseLeave = (e: React.MouseEvent) => {
-      providedOnMouseLeave?.(e);
-    };
     return (
-      <Wrapper
-        {...wrapperProps}
-        className={[
-          rowClass,
-          (wrapperProps?.["className"] as string | undefined) ?? "",
-        ].join(" ").trim()}
+      <li
+        ref={sortable?.setNodeRef}
+        className={rowClass}
+        style={sortable?.style}
         onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
+        data-todo-row="1"
+        data-todo-id={todo.id}
+        onClick={(e) => {
+          const el = e.target as HTMLElement;
+          if (el.closest('input[type="checkbox"]')) return;
+          if (el.closest("button")) return;
+          setSelectedTodoId(todo.id);
+        }}
       >
         <input
           type="checkbox"
           className={[
             "todo-checkbox-squircle",
-            // Multiline ise checkbox'u ilk satır hizasına yaklaştırmak için container'ın üstüne al.
-            isMultiline ? "self-start" : "self-center",
+            // Multiline satırlarda checkbox daima ilk metin satırına hizalansın.
+            isMultiline ? "self-start mt-[2px]" : "self-center",
           ].join(" ")}
           ref={checkboxRef}
           checked={!!todo.is_completed}
@@ -372,6 +384,20 @@ export function TodayClient({
             isMultiline ? "self-start -mt-1" : "",
           ].join(" ").trim()}
         >
+          {sortable ? (
+            <button
+              type="button"
+              ref={sortable.setActivatorNodeRef}
+              {...sortable.attributes}
+              {...(sortable.listeners ?? {})}
+              className="min-h-7 min-w-7 cursor-grab rounded-[8px] p-0 text-muted hover:text-foreground active:cursor-grabbing"
+              aria-label={`Reorder ${todo.title}`}
+            >
+              <span aria-hidden className="text-[14px] leading-none">
+                ⋮⋮
+              </span>
+            </button>
+          ) : null}
           <span className="p-0.5 text-muted" aria-hidden="true">
             <HugeiconsIcon icon={File01Icon} size={15} strokeWidth={1.75} />
           </span>
@@ -393,7 +419,7 @@ export function TodayClient({
             <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={1.75} />
           </Button>
         </span>
-      </Wrapper>
+      </li>
     );
   }
 
@@ -411,59 +437,6 @@ export function TodayClient({
       : visibleTodos;
 
   useEffect(() => {
-    if (!isDraggingTodo) return;
-
-    const computeIndicator = (clientY: number) => {
-      const listEl = reorderListRef.current;
-      if (!listEl) return;
-
-      // Only consider non-dragged rows when computing insertion position.
-      const rowEls = Array.from(
-        listEl.querySelectorAll<HTMLElement>("[data-todo-row='1']"),
-      ).filter((el) => el.dataset.todoId !== draggingTodoId);
-
-      if (rowEls.length === 0) {
-        setDropIndicatorTop(null);
-        return;
-      }
-
-      const listRect = listEl.getBoundingClientRect();
-      const mids = rowEls.map((el) => {
-        const r = el.getBoundingClientRect();
-        return { el, top: r.top, bottom: r.bottom, mid: r.top + r.height / 2 };
-      });
-
-      let insertIndex = mids.findIndex((m) => clientY < m.mid);
-      if (insertIndex === -1) insertIndex = mids.length;
-
-      const topPx =
-        insertIndex === 0
-          ? mids[0]!.top - listRect.top
-          : mids[insertIndex - 1]!.bottom - listRect.top;
-
-      // Clamp to list bounds to avoid jitter on overscroll.
-      const clamped = Math.max(0, Math.min(topPx, listRect.height));
-      setDropIndicatorTop(clamped);
-    };
-
-    const onPointerMove = (e: PointerEvent) => {
-      computeIndicator(e.clientY);
-    };
-
-    const onScroll = () => {
-      // Recompute from last known pointer position if possible.
-      // If we can't, we keep the current line until next move.
-    };
-
-    window.addEventListener("pointermove", onPointerMove, { passive: true });
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("scroll", onScroll);
-    };
-  }, [isDraggingTodo, draggingTodoId]);
-
-  useEffect(() => {
     if (!uiOrderIds) return;
     if (uiOrderIds.length !== visibleIds.length) {
       setUiOrderIds(null);
@@ -478,9 +451,8 @@ export function TodayClient({
     }
   }, [uiOrderIds, visibleIds.length, visibleIdSet]);
 
-  function persistReorderIfPossible() {
-    const orderedIds = latestOrderRef.current;
-    if (!orderedIds || orderedIds.length === 0) return;
+  async function persistReorderIfPossible(orderedIds: string[], rollbackOrder: string[]) {
+    if (orderedIds.length === 0) return;
     // #region debug-log:persistReorderIfPossible
     fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
       method: "POST",
@@ -520,14 +492,18 @@ export function TodayClient({
       }
     }
 
-    startTodoTransition(async () => {
+    try {
       if (composerListId) {
         await reorderTodosAction(composerListId, mergedIds);
       } else if (pathname === "/all") {
         await reorderAllTodosAction(mergedIds);
       }
       scheduleRefresh();
-    });
+    } catch {
+      setUiOrderIds(rollbackOrder);
+      latestOrderRef.current = rollbackOrder;
+      setReorderError("Could not save the new order. Restored previous order.");
+    }
   }
 
   function listHref(slug: string) {
@@ -621,6 +597,79 @@ export function TodayClient({
       }
       scheduleRefresh();
     });
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const draggedTodo = draggingTodoId
+    ? orderedVisibleTodos.find((todo) => todo.id === draggingTodoId) ?? null
+    : null;
+
+  function handleDragStart(event: DragStartEvent) {
+    const currentOrder = uiOrderIds ?? visibleIds;
+    preDragOrderRef.current = currentOrder;
+    setReorderError(null);
+    setDraggingTodoId(String(event.active.id));
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setDraggingTodoId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const previousOrder = preDragOrderRef.current ?? (uiOrderIds ?? visibleIds);
+    const currentOrder = uiOrderIds ?? visibleIds;
+    const oldIndex = currentOrder.indexOf(String(active.id));
+    const newIndex = currentOrder.indexOf(String(over.id));
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const nextOrder = arrayMove(currentOrder, oldIndex, newIndex);
+    latestOrderRef.current = nextOrder;
+    setUiOrderIds(nextOrder);
+    startTodoTransition(async () => {
+      await persistReorderIfPossible(nextOrder, previousOrder);
+    });
+  }
+
+  function handleDragCancel() {
+    setDraggingTodoId(null);
+    if (preDragOrderRef.current) {
+      setUiOrderIds(preDragOrderRef.current);
+      latestOrderRef.current = preDragOrderRef.current;
+    }
+  }
+
+  function SortableTodoItem({ todo }: { todo: TodoRow }) {
+    const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+      useSortable({ id: todo.id });
+
+    return (
+      <TodoRowMeasured
+        todo={todo}
+        sortable={{
+          setNodeRef,
+          setActivatorNodeRef,
+          attributes,
+          listeners,
+          style: {
+            transform: CSS.Transform.toString(transform),
+            transition,
+            zIndex: isDragging ? 20 : undefined,
+            opacity: isDragging ? 0.85 : 1,
+          },
+        }}
+      />
+    );
   }
 
   return (
@@ -867,6 +916,11 @@ export function TodayClient({
               {addError}
             </p>
           ) : null}
+          {reorderError ? (
+            <p className="mt-2 text-sm text-[color:var(--color-danger)]" role="alert">
+              {reorderError}
+            </p>
+          ) : null}
         </form>
       </div>
 
@@ -878,120 +932,55 @@ export function TodayClient({
             <li className="py-8 pl-6 text-center text-[13px] text-muted">No tasks yet.</li>
           </ul>
         ) : canReorder ? (
-          <Reorder.Group
-            as="ul"
-            axis="y"
-            ref={reorderListRef}
-            className="relative flex flex-col"
-            values={uiOrderIds ?? visibleIds}
-            onReorder={(orderedIds) => {
-              latestOrderRef.current = orderedIds;
-              // #region debug-log:reorder-onReorder
-              fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-Debug-Session-Id": "e410d4",
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            modifiers={[restrictToVerticalAxis]}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+            accessibility={{
+              screenReaderInstructions: {
+                draggable:
+                  "Use the drag handle. Press space to pick up, arrow keys to move, and space again to drop.",
+              },
+              announcements: {
+                onDragStart({ active }) {
+                  return `Picked up task ${String(active.id)}.`;
                 },
-                body: JSON.stringify({
-                  sessionId: "e410d4",
-                  runId: "pre-fix-reorder-1",
-                  hypothesisId: "H1-optimistic-outside-transition",
-                  location: "today-client.tsx:Reorder.Group:onReorder",
-                  message: "Reorder onReorder fired (before optimistic update)",
-                  data: {
-                    orderedIdsLength: orderedIds.length,
-                    showCompleted,
-                    composerListIdPresent: Boolean(composerListId),
-                    composerListId: composerListId ?? null,
-                  },
-                  timestamp: Date.now(),
-                }),
-              }).catch(() => {});
-              // #endregion
-              startTransition(() => {
-                setUiOrderIds(orderedIds);
-              });
+                onDragOver({ active, over }) {
+                  if (!over) return `Task ${String(active.id)} is over a drop zone.`;
+                  return `Task ${String(active.id)} is over ${String(over.id)}.`;
+                },
+                onDragEnd({ active, over }) {
+                  if (!over) return `Task ${String(active.id)} was dropped.`;
+                  return `Task ${String(active.id)} moved before ${String(over.id)}.`;
+                },
+                onDragCancel({ active }) {
+                  return `Drag cancelled for ${String(active.id)}.`;
+                },
+              },
             }}
           >
-            <div
-              aria-hidden
-              className={[
-                "pointer-events-none absolute left-2 right-2 z-10",
-                "transition-all duration-150 ease-in-out",
-                dropIndicatorTop === null ? "opacity-0" : "opacity-100",
-              ].join(" ")}
-              style={dropIndicatorTop === null ? undefined : { top: dropIndicatorTop }}
-            >
-              <div className="border-t-2 border-dashed border-primary/40" />
-              <div className="mt-1 h-3 rounded-md bg-primary/10 opacity-70" />
-            </div>
-            {orderedVisibleTodos.map((todo) => (
-              <TodoRowMeasured
-                key={todo.id}
-                todo={todo}
-                wrapper={Reorder.Item}
-                wrapperProps={{
-                  as: "li",
-                  value: todo.id,
-                  "data-todo-row": "1",
-                  "data-todo-id": todo.id,
-                  layout: true,
-                  whileDrag: {
-                    scale: 1.02,
-                    opacity: 0.85,
-                    boxShadow: "0 18px 40px rgba(0,0,0,0.14)",
-                  },
-                  transition: { type: "spring", stiffness: 700, damping: 55 },
-                  dragTransition: { bounceStiffness: 700, bounceDamping: 60 },
-                  onDragStart: () => {
-                    setIsDraggingTodo(true);
-                    setDraggingTodoId(todo.id);
-                  },
-                  onMouseEnter: () => {
-                    hoveredTodoIdRef.current = todo.id;
-                  },
-                  onMouseLeave: () => {
-                    hoveredTodoIdRef.current = null;
-                  },
-                  onClick: (e: React.MouseEvent) => {
-                    const el = e.target as HTMLElement;
-                    if (el.closest('input[type="checkbox"]')) return;
-                    if (el.closest("button")) return;
-                    setSelectedTodoId(todo.id);
-                  },
-                  onDragEnd: () => {
-                    setIsDraggingTodo(false);
-                    setDraggingTodoId(null);
-                    setDropIndicatorTop(null);
-                    persistReorderIfPossible();
-                  },
-                }}
-              />
-            ))}
-          </Reorder.Group>
+            <SortableContext items={uiOrderIds ?? visibleIds} strategy={verticalListSortingStrategy}>
+              <ul className="relative flex flex-col">
+                {orderedVisibleTodos.map((todo) => (
+                  <SortableTodoItem key={todo.id} todo={todo} />
+                ))}
+              </ul>
+            </SortableContext>
+            <DragOverlay>
+              {draggedTodo ? (
+                <div className="rounded-[12px] border border-[#e4e4e4] bg-white px-3 py-2 text-[13px] text-foreground shadow-[0_12px_30px_rgba(0,0,0,0.15)]">
+                  {draggedTodo.title}
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         ) : (
           <ul className="flex flex-col">
             {visibleTodos.map((todo) => (
-              <TodoRowMeasured
-                key={todo.id}
-                todo={todo}
-                wrapper="li"
-                wrapperProps={{
-                  onMouseEnter: () => {
-                    hoveredTodoIdRef.current = todo.id;
-                  },
-                  onMouseLeave: () => {
-                    hoveredTodoIdRef.current = null;
-                  },
-                  onClick: (e: React.MouseEvent) => {
-                    const el = e.target as HTMLElement;
-                    if (el.closest('input[type="checkbox"]')) return;
-                    if (el.closest("button")) return;
-                    setSelectedTodoId(todo.id);
-                  },
-                }}
-              />
+              <TodoRowMeasured key={todo.id} todo={todo} />
             ))}
           </ul>
         )}

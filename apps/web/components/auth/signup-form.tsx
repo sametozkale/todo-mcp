@@ -52,7 +52,7 @@ export function SignupForm() {
           <form action={formAction} className="flex flex-col gap-6" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <h1 className="font-title text-xl font-semibold text-foreground">Create account</h1>
-              <p className="text-sm text-muted">Get started with Flowdo in a few quick fields.</p>
+              <p className="text-sm text-muted">Get started with Yalp in a few quick fields.</p>
             </div>
             {state?.success && (
               <p className="text-sm text-muted" role="status">
