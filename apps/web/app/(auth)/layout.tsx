@@ -3,6 +3,8 @@ import { PRODUCT_HOME } from "@/lib/routes";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
+const SHOULD_DEBUG_INGEST = process.env.NODE_ENV !== "production" && process.env.DEBUG_INGEST === "true";
+
 export default async function AuthLayout({ children }: { children: ReactNode }) {
   let user: { id: string } | null = null;
   try {
@@ -12,6 +14,33 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
       user = res.data.user as { id: string } | null;
     } catch (err) {
       // #region debug auth layout getUser error
+      if (SHOULD_DEBUG_INGEST) {
+        await fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "f7ebea",
+          },
+          body: JSON.stringify({
+            sessionId: "f7ebea",
+            runId: "login-error",
+            hypothesisId: "H8-auth-layout-getUser-error",
+            location: "apps/web/app/(auth)/layout.tsx",
+            message: "supabase.auth.getUser failed in auth layout",
+            data: {
+              errorName: err instanceof Error ? err.name : typeof err,
+              errorMessage: err instanceof Error ? err.message : String(err),
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+      }
+      user = null;
+      // #endregion
+    }
+  } catch (err) {
+    // #region debug auth layout createClient error
+    if (SHOULD_DEBUG_INGEST) {
       await fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
         method: "POST",
         headers: {
@@ -21,9 +50,9 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
         body: JSON.stringify({
           sessionId: "f7ebea",
           runId: "login-error",
-          hypothesisId: "H8-auth-layout-getUser-error",
+          hypothesisId: "H9-auth-layout-createClient-error",
           location: "apps/web/app/(auth)/layout.tsx",
-          message: "supabase.auth.getUser failed in auth layout",
+          message: "createClient() failed in auth layout",
           data: {
             errorName: err instanceof Error ? err.name : typeof err,
             errorMessage: err instanceof Error ? err.message : String(err),
@@ -31,30 +60,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
           timestamp: Date.now(),
         }),
       }).catch(() => {});
-      user = null;
-      // #endregion
     }
-  } catch (err) {
-    // #region debug auth layout createClient error
-    await fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "f7ebea",
-      },
-      body: JSON.stringify({
-        sessionId: "f7ebea",
-        runId: "login-error",
-        hypothesisId: "H9-auth-layout-createClient-error",
-        location: "apps/web/app/(auth)/layout.tsx",
-        message: "createClient() failed in auth layout",
-        data: {
-          errorName: err instanceof Error ? err.name : typeof err,
-          errorMessage: err instanceof Error ? err.message : String(err),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
     user = null;
     // #endregion
   }

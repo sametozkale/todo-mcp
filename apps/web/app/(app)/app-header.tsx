@@ -122,8 +122,11 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                   <Avatar.Fallback>{initials}</Avatar.Fallback>
                 </Avatar>
               </Dropdown.Trigger>
-            <Dropdown.Popover placement="bottom end">
-                <Dropdown.Menu className="w-[180px]">
+            <Dropdown.Popover
+              placement="bottom end"
+              style={{ width: "max-content", minWidth: "0px" }}
+            >
+                <Dropdown.Menu className="w-fit max-w-max min-w-0">
                   <Dropdown.Item
                     onAction={() => profileModal.open()}
                   >

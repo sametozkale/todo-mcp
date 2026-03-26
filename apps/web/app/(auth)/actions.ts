@@ -5,6 +5,8 @@ import { PRODUCT_HOME } from "@/lib/routes";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+const SHOULD_DEBUG_INGEST = process.env.NODE_ENV !== "production" && process.env.DEBUG_INGEST === "true";
+
 async function getRequestOrigin(): Promise<string> {
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
@@ -48,22 +50,24 @@ export async function loginAction(
       ? nextRaw
       : PRODUCT_HOME;
   // #region debug login action next
-  await fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Debug-Session-Id": "f7ebea",
-    },
-    body: JSON.stringify({
-      sessionId: "f7ebea",
-      runId: "pre-fix",
-      hypothesisId: "H3-loginAction-next",
-      location: "apps/web/app/(auth)/actions.ts",
-      message: "Login action selecting next redirect",
-      data: { nextRaw, next },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
+  if (SHOULD_DEBUG_INGEST) {
+    await fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "f7ebea",
+      },
+      body: JSON.stringify({
+        sessionId: "f7ebea",
+        runId: "pre-fix",
+        hypothesisId: "H3-loginAction-next",
+        location: "apps/web/app/(auth)/actions.ts",
+        message: "Login action selecting next redirect",
+        data: { nextRaw, next },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }
   // #endregion
   redirect(next);
 }

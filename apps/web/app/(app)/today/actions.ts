@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidateAppShell } from "@/lib/revalidate-todo-pages";
+import { revalidateAppShell, revalidateTodoListPaths } from "@/lib/revalidate-todo-pages";
 
 export type AddTodoState = { error?: string; success?: boolean } | null;
 
@@ -110,7 +110,7 @@ export async function reorderTodosAction(listId: string, orderedTodoIds: string[
 
   const { data: listRow, error: listErr } = await supabase
     .from("lists")
-    .select("id")
+    .select("id, slug")
     .eq("id", listId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -140,7 +140,13 @@ export async function reorderTodosAction(listId: string, orderedTodoIds: string[
     return { error: firstError.message };
   }
 
-  revalidateAppShell();
+  // Ensure the specific list page is revalidated too, not just the shared shell.
+  // This prevents stale ordering when a user navigates away and returns.
+  if (listRow?.slug) {
+    revalidateTodoListPaths([listRow.slug]);
+  } else {
+    revalidateAppShell();
+  }
   return { success: true as const };
 }
 

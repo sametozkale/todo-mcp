@@ -16,10 +16,10 @@ import { useListsShell } from "@/app/(app)/lists-shell";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Delete02Icon,
-  File01Icon,
   PlusSignIcon,
   SlidersHorizontalIcon,
 } from "@hugeicons/core-free-icons";
+import { GripVertical } from "lucide-react";
 import {
   closestCenter,
   DndContext,
@@ -47,6 +47,7 @@ import {
   Input,
   Label,
   Modal,
+  toast,
   TextField,
   useOverlayState,
 } from "@heroui/react";
@@ -61,6 +62,9 @@ import {
 } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+
+const SHOULD_DEBUG_INGEST =
+  process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEBUG_INGEST === "true";
 
 type TodoRow = {
   id: string;
@@ -183,10 +187,21 @@ export function TodayClient({
   const [listDeleteInlineError, setListDeleteInlineError] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState<string | null>(null);
   const preDragOrderRef = useRef<string[] | null>(null);
+  const reorderPersistInFlightRef = useRef(false);
+  const reorderPersistQueuedRef = useRef<{
+    orderedIds: string[];
+    rollbackOrder: string[];
+  } | null>(null);
 
   function scheduleRefresh() {
     queueMicrotask(() => router.refresh());
   }
+
+  useEffect(() => {
+    if (!reorderError) return;
+    toast.danger(reorderError, { timeout: 4000 });
+    setReorderError(null);
+  }, [reorderError]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -238,6 +253,7 @@ export function TodayClient({
       "setNodeRef" | "setActivatorNodeRef" | "attributes" | "listeners"
     > & {
       style: React.CSSProperties;
+      isDragging?: boolean;
     };
   }) {
     const titleRef = useRef<HTMLSpanElement>(null);
@@ -271,67 +287,17 @@ export function TodayClient({
       return () => ro.disconnect();
     }, [todo.title, todo.is_completed]);
 
-    const rowClass = [
-      "group flex gap-3 rounded-[16px] px-3 transition-colors duration-150 ease-out hover:bg-[#f4f4f4]",
+    const rowInnerClass = [
+      "flex min-w-0 flex-1 gap-3 rounded-[16px] px-3 transition-colors duration-150 ease-out",
+      "group-hover:bg-[#f4f4f4]",
       isMultiline ? "items-start py-2.5" : "items-center py-1.5",
     ].join(" ");
-
-    const handleMouseEnter = (e: React.MouseEvent) => {
-      const rowEl = e.currentTarget as HTMLElement;
-      const rowRect = rowEl.getBoundingClientRect();
-      const checkboxEl = checkboxRef.current;
-      const titleEl = titleRef.current;
-      const actionsEl = actionsRef.current;
-
-      if (!checkboxEl || !titleEl || !actionsEl) return;
-
-      const checkboxRect = checkboxEl.getBoundingClientRect();
-      const titleRect = titleEl.getBoundingClientRect();
-      const actionsRect = actionsEl.getBoundingClientRect();
-
-      const style = window.getComputedStyle(titleEl);
-      const lineHeight = Number.parseFloat(style.lineHeight);
-      const titleHeight = titleRect.height;
-
-      // #region debug-log:hover-rects
-      fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "e410d4",
-        },
-        body: JSON.stringify({
-          sessionId: "e410d4",
-          runId: "pre-fix-hover-1",
-          hypothesisId: "H3-hover-alignment",
-          location: "today-client.tsx:TodoRowMeasured:handleMouseEnter",
-          message: "Hover measurement rects + multiline state",
-          data: {
-            showCompleted,
-            composerListIdPresent: Boolean(composerListId),
-            todoId: todo.id,
-            rowTop: rowRect.top,
-            checkboxTop: checkboxRect.top,
-            titleTop: titleRect.top,
-            actionsTop: actionsRect.top,
-            deltaCheckboxTop: checkboxRect.top - rowRect.top,
-            deltaActionsTop: actionsRect.top - rowRect.top,
-            lineHeight,
-            titleHeight,
-            isMultiline,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
-    };
 
     return (
       <li
         ref={sortable?.setNodeRef}
-        className={rowClass}
+        className="group relative w-full list-none"
         style={sortable?.style}
-        onMouseEnter={handleMouseEnter}
         data-todo-row="1"
         data-todo-id={todo.id}
         onClick={(e) => {
@@ -341,49 +307,7 @@ export function TodayClient({
           setSelectedTodoId(todo.id);
         }}
       >
-        <input
-          type="checkbox"
-          className={[
-            "todo-checkbox-squircle",
-            // Multiline satırlarda checkbox daima ilk metin satırına hizalansın.
-            isMultiline ? "self-start mt-[2px]" : "self-center",
-          ].join(" ")}
-          ref={checkboxRef}
-          checked={!!todo.is_completed}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-            const checked = e.target.checked;
-            startTodoTransition(async () => {
-              addOptimistic({ type: "toggle", id: todo.id, completed: checked });
-              await toggleTodoAction(todo.id, checked);
-              scheduleRefresh();
-            });
-          }}
-          aria-label={
-            todo.is_completed
-              ? `Mark incomplete: ${todo.title}`
-              : `Mark complete: ${todo.title}`
-          }
-        />
-
-        <span
-          ref={titleRef}
-          className={
-            todo.is_completed
-              ? "min-w-0 flex-1 text-[14px] leading-5 text-muted line-through"
-              : "min-w-0 flex-1 text-[14px] leading-5 text-foreground"
-          }
-        >
-          {todo.title}
-        </span>
-
-        <span
-          ref={actionsRef}
-          className={[
-            "flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100",
-            // Multiline satırda checkbox ilk satıra hizalanınca aksiyonları da aynı hatta çek.
-            isMultiline ? "self-start -mt-1" : "",
-          ].join(" ").trim()}
-        >
+        <div className="relative flex min-w-0 flex-1">
           {sortable ? (
             <button
               type="button"
@@ -391,35 +315,90 @@ export function TodayClient({
               {...sortable.attributes}
               {...(sortable.listeners ?? {})}
               aria-describedby={undefined}
-              className="min-h-7 min-w-7 cursor-grab rounded-[8px] p-0 text-muted hover:text-foreground active:cursor-grabbing"
+              className={[
+                "absolute z-10 inline-flex min-h-9 min-w-9 cursor-grab items-center justify-center rounded-[8px] p-0 text-muted/70 transition-opacity duration-150 ease-out",
+                "left-0 -translate-x-[calc(100%-2px)]",
+                isMultiline ? "top-[10px] translate-y-0" : "top-1/2 -translate-y-1/2",
+                sortable.isDragging
+                  ? "opacity-100"
+                  : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:pointer-events-auto focus-visible:opacity-100",
+                "hover:text-foreground/80 active:cursor-grabbing",
+              ].join(" ")}
               aria-label={`Reorder ${todo.title}`}
             >
-              <span aria-hidden className="text-[14px] leading-none">
-                ⋮⋮
-              </span>
+              <GripVertical size={16} strokeWidth={2} className="text-current" />
             </button>
           ) : null}
-          <span className="p-0.5 text-muted" aria-hidden="true">
-            <HugeiconsIcon icon={File01Icon} size={15} strokeWidth={1.75} />
-          </span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="min-h-7 min-w-7 p-0 text-muted hover:text-foreground"
-            aria-label={`Delete ${todo.title}`}
-            onPress={() => {
-              startTodoTransition(async () => {
-                addOptimistic({ type: "delete", id: todo.id });
-                await deleteTodoAction(todo.id);
-                scheduleRefresh();
-              });
-            }}
-            isDisabled={isTodoPending}
-          >
-            <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={1.75} />
-          </Button>
-        </span>
+
+          <div className={rowInnerClass}>
+            <span
+              className={[
+                "flex shrink-0",
+                isMultiline ? "items-start" : "items-center",
+              ].join(" ")}
+            >
+              <input
+                type="checkbox"
+                className={[
+                  "todo-checkbox-squircle",
+                  isMultiline ? "self-start mt-[2px]" : "self-center",
+                ].join(" ")}
+                ref={checkboxRef}
+                checked={!!todo.is_completed}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const checked = e.target.checked;
+                  startTodoTransition(async () => {
+                    addOptimistic({ type: "toggle", id: todo.id, completed: checked });
+                    await toggleTodoAction(todo.id, checked);
+                    scheduleRefresh();
+                  });
+                }}
+                aria-label={
+                  todo.is_completed
+                    ? `Mark incomplete: ${todo.title}`
+                    : `Mark complete: ${todo.title}`
+                }
+              />
+            </span>
+
+            <span
+              ref={titleRef}
+              className={
+                todo.is_completed
+                  ? "min-w-0 flex-1 text-[14px] leading-5 text-muted line-through"
+                  : "min-w-0 flex-1 text-[14px] leading-5 text-foreground"
+              }
+            >
+              {todo.title}
+            </span>
+
+            <span
+              ref={actionsRef}
+              className={[
+                "flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100",
+                isMultiline ? "self-start -mt-1" : "",
+              ].join(" ").trim()}
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="min-h-7 min-w-7 p-0 text-muted hover:text-foreground"
+                aria-label={`Delete ${todo.title}`}
+                onPress={() => {
+                  startTodoTransition(async () => {
+                    addOptimistic({ type: "delete", id: todo.id });
+                    await deleteTodoAction(todo.id);
+                    scheduleRefresh();
+                  });
+                }}
+                isDisabled={isTodoPending}
+              >
+                <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={1.75} />
+              </Button>
+            </span>
+          </div>
+        </div>
       </li>
     );
   }
@@ -455,27 +434,29 @@ export function TodayClient({
   async function persistReorderIfPossible(orderedIds: string[], rollbackOrder: string[]) {
     if (orderedIds.length === 0) return;
     // #region debug-log:persistReorderIfPossible
-    fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "e410d4",
-      },
-      body: JSON.stringify({
-        sessionId: "e410d4",
-        runId: "pre-fix-reorder-1",
-        hypothesisId: "H3-persist-reorder",
-        location: "today-client.tsx:persistReorderIfPossible",
-        message: "Persisting reorder to server action",
-        data: {
-          composerListId,
-          orderedIdsLength: orderedIds.length,
-          orderedIdsFirst: orderedIds[0] ?? null,
-          orderedIdsLast: orderedIds[orderedIds.length - 1] ?? null,
+    if (SHOULD_DEBUG_INGEST) {
+      fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "e410d4",
         },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
+        body: JSON.stringify({
+          sessionId: "e410d4",
+          runId: "pre-fix-reorder-1",
+          hypothesisId: "H3-persist-reorder",
+          location: "today-client.tsx:persistReorderIfPossible",
+          message: "Persisting reorder to server action",
+          data: {
+            composerListId,
+            orderedIdsLength: orderedIds.length,
+            orderedIdsFirst: orderedIds[0] ?? null,
+            orderedIdsLast: orderedIds[orderedIds.length - 1] ?? null,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
     // #endregion
     // Merge: if completed are hidden, only the visible subset was reordered.
     // Preserve the relative placement of hidden items by reusing the subset slots.
@@ -501,9 +482,29 @@ export function TodayClient({
       }
       scheduleRefresh();
     } catch {
-      setUiOrderIds(rollbackOrder);
-      latestOrderRef.current = rollbackOrder;
+      // If another drag happened while this request was in-flight, keep the UI at the latest
+      // queued order instead of reverting to a stale rollback.
+      const latestQueuedOrdered = reorderPersistQueuedRef.current?.orderedIds;
+      const latestDesired = latestQueuedOrdered ?? rollbackOrder;
+      setUiOrderIds(latestDesired);
+      latestOrderRef.current = latestDesired;
       setReorderError("Could not save the new order. Restored previous order.");
+    }
+  }
+
+  async function reorderPersistWorker() {
+    if (reorderPersistInFlightRef.current) return;
+    reorderPersistInFlightRef.current = true;
+    try {
+      // Keep consuming the latest queued job until no more drag events happen.
+      while (reorderPersistQueuedRef.current) {
+        const job = reorderPersistQueuedRef.current;
+        reorderPersistQueuedRef.current = null;
+        if (!job) continue;
+        await persistReorderIfPossible(job.orderedIds, job.rollbackOrder);
+      }
+    } finally {
+      reorderPersistInFlightRef.current = false;
     }
   }
 
@@ -637,9 +638,11 @@ export function TodayClient({
     const nextOrder = arrayMove(currentOrder, oldIndex, newIndex);
     latestOrderRef.current = nextOrder;
     setUiOrderIds(nextOrder);
-    startTodoTransition(async () => {
-      await persistReorderIfPossible(nextOrder, previousOrder);
-    });
+    // Serialize reorder persistence so the DB always ends up with the latest drop order.
+    reorderPersistQueuedRef.current = { orderedIds: nextOrder, rollbackOrder: previousOrder };
+    if (!reorderPersistInFlightRef.current) {
+      void reorderPersistWorker();
+    }
   }
 
   function handleDragCancel() {
@@ -662,6 +665,7 @@ export function TodayClient({
           setActivatorNodeRef,
           attributes,
           listeners,
+          isDragging,
           style: {
             transform: CSS.Transform.toString(transform),
             transition,
@@ -737,8 +741,14 @@ export function TodayClient({
               Display
             </span>
           </Dropdown.Trigger>
-          <Dropdown.Popover placement="bottom end">
-            <Dropdown.Menu aria-label="Display options" className="w-[180px]">
+          <Dropdown.Popover
+            placement="bottom end"
+            style={{ width: "max-content", minWidth: "0px" }}
+          >
+            <Dropdown.Menu
+              aria-label="Display options"
+              className="w-fit max-w-max min-w-0"
+            >
               <Dropdown.Item
                 onAction={() => setShowCompleted((v) => !v)}
                 textValue={showCompleted ? "Hide completed tasks" : "Show completed tasks"}
@@ -780,8 +790,11 @@ export function TodayClient({
           >
             <span aria-hidden />
           </Dropdown.Trigger>
-          <Dropdown.Popover placement="bottom start">
-            <Dropdown.Menu className="w-[180px]">
+          <Dropdown.Popover
+            placement="bottom start"
+            style={{ width: "max-content", minWidth: "0px" }}
+          >
+            <Dropdown.Menu className="w-fit max-w-max min-w-0">
               <Dropdown.Item onAction={() => openDeleteFlow(contextMenu.listId, contextMenu.slug)}>
                 <div className="flex items-center gap-[8px]">
                   <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={1.75} />
@@ -912,11 +925,6 @@ export function TodayClient({
               {addError}
             </p>
           ) : null}
-          {reorderError ? (
-            <p className="mt-2 text-sm text-[color:var(--color-danger)]" role="alert">
-              {reorderError}
-            </p>
-          ) : null}
         </form>
       </div>
 
@@ -959,7 +967,7 @@ export function TodayClient({
             }}
           >
             <SortableContext items={uiOrderIds ?? visibleIds} strategy={verticalListSortingStrategy}>
-              <ul className="relative flex flex-col">
+              <ul className="relative flex flex-col overflow-visible">
                 {orderedVisibleTodos.map((todo) => (
                   <SortableTodoItem key={todo.id} todo={todo} />
                 ))}
@@ -981,6 +989,6 @@ export function TodayClient({
           </ul>
         )}
       </section>
-    </div>
+      </div>
   );
 }

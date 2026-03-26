@@ -6,7 +6,7 @@ import { tools } from './tools.js';
 async function main() {
   const server = new McpServer(
     {
-      name: 'flowdo-mcp',
+      name: 'yalp-mcp',
       version: '0.1.0'
     },
     {
@@ -39,6 +39,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('FlowDo MCP server failed to start', err);
+  console.error('Yalp MCP server failed to start', err);
   process.exit(1);
 });

@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
+const SHOULD_DEBUG_INGEST = process.env.NODE_ENV !== "production" && process.env.DEBUG_INGEST === "true";
+
 export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublicRoute =
@@ -46,25 +48,27 @@ export async function updateSession(request: NextRequest) {
     user = authUser;
   } catch (err) {
     // #region debug middleware getUser error
-    await fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "f7ebea",
-      },
-      body: JSON.stringify({
-        sessionId: "f7ebea",
-        runId: "login-error",
-        hypothesisId: "H5-middleware-getUser-error",
-        location: "apps/web/lib/supabase/middleware.ts",
-        message: "supabase.auth.getUser failed in middleware",
-        data: {
-          errorName: err instanceof Error ? err.name : typeof err,
-          errorMessage: err instanceof Error ? err.message : String(err),
+    if (SHOULD_DEBUG_INGEST) {
+      await fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "f7ebea",
         },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
+        body: JSON.stringify({
+          sessionId: "f7ebea",
+          runId: "login-error",
+          hypothesisId: "H5-middleware-getUser-error",
+          location: "apps/web/lib/supabase/middleware.ts",
+          message: "supabase.auth.getUser failed in middleware",
+          data: {
+            errorName: err instanceof Error ? err.name : typeof err,
+            errorMessage: err instanceof Error ? err.message : String(err),
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
 
     user = null;
     // #endregion
@@ -72,43 +76,47 @@ export async function updateSession(request: NextRequest) {
 
   // #region debug middleware user state
   if (path === "/today" || path === "/login") {
-    await fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "f7ebea",
-      },
-      body: JSON.stringify({
-        sessionId: "f7ebea",
-        runId: "login-debug-user-state",
-        hypothesisId: "H6-middleware-user-state",
-        location: "apps/web/lib/supabase/middleware.ts",
-        message: "Middleware resolved user state",
-        data: { path, isPublicRoute, userPresent: Boolean(user) },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
+    if (SHOULD_DEBUG_INGEST) {
+      await fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "f7ebea",
+        },
+        body: JSON.stringify({
+          sessionId: "f7ebea",
+          runId: "login-debug-user-state",
+          hypothesisId: "H6-middleware-user-state",
+          location: "apps/web/lib/supabase/middleware.ts",
+          message: "Middleware resolved user state",
+          data: { path, isPublicRoute, userPresent: Boolean(user) },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
   }
   // #endregion
 
   if (!user && !isPublicRoute) {
     // #region debug middleware redirect next
-    await fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "f7ebea",
-      },
-      body: JSON.stringify({
-        sessionId: "f7ebea",
-        runId: "pre-fix",
-        hypothesisId: "H2-middleware-redirect-next",
-        location: "apps/web/lib/supabase/middleware.ts",
-        message: "Unauthenticated redirect from middleware (protected route)",
-        data: { path, isProtectedRoute: true, loginNext: path },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
+    if (SHOULD_DEBUG_INGEST) {
+      await fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "f7ebea",
+        },
+        body: JSON.stringify({
+          sessionId: "f7ebea",
+          runId: "pre-fix",
+          hypothesisId: "H2-middleware-redirect-next",
+          location: "apps/web/lib/supabase/middleware.ts",
+          message: "Unauthenticated redirect from middleware (protected route)",
+          data: { path, isProtectedRoute: true, loginNext: path },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
     // #endregion
 
     const url = request.nextUrl.clone();

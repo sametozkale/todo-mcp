@@ -4,6 +4,7 @@ import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button, Input, Label, TextField } from "@heroui/react";
 import { useMemo, useState, useTransition } from "react";
+import { Copy as CopyIcon, Info as InfoIcon } from "lucide-react";
 import type { ApiKeyRow, CreateApiKeyResult } from "./actions";
 import { createApiKeyAction, revokeApiKeyAction } from "./actions";
 
@@ -23,6 +24,8 @@ type PlatformCardProps = {
   description: string;
   status: "connected" | "not_connected" | "error";
   ctaLabel: string;
+  ctaIcon?: React.ReactNode;
+  infoTooltip?: string;
   onCta: () => void;
   disabled?: boolean;
   helper?: React.ReactNode;
@@ -56,6 +59,8 @@ function PlatformCard({
   description,
   status,
   ctaLabel,
+  ctaIcon,
+  infoTooltip,
   onCta,
   disabled,
   helper,
@@ -73,7 +78,23 @@ function PlatformCard({
       </div>
       <p className="mb-3 text-xs text-muted">{description}</p>
       <Button variant={status === "connected" ? "secondary" : "primary"} onPress={onCta} isDisabled={disabled}>
-        {ctaLabel}
+        <span className="inline-flex items-center gap-2">
+          {ctaIcon ? (
+            <span className="inline-flex items-center" aria-hidden="true">
+              {ctaIcon}
+            </span>
+          ) : null}
+          {ctaLabel}
+          {infoTooltip && status !== "connected" ? (
+            <span
+              className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#e6e6e6] bg-white/60 text-muted/70 hover:text-foreground/80"
+              title={infoTooltip}
+              aria-label={infoTooltip}
+            >
+              <InfoIcon size={14} strokeWidth={2} className="text-current" aria-hidden="true" />
+            </span>
+          ) : null}
+        </span>
       </Button>
       {helper ? <div className="mt-2 text-xs text-muted">{helper}</div> : null}
     </div>
@@ -105,8 +126,8 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
           command: "npx",
           args: ["-y", "@yalp/mcp-server"],
           env: {
-            FLOWDO_API_KEY: newKey,
-            FLOWDO_API_BASE_URL: baseUrl,
+            YALP_API_KEY: newKey,
+            YALP_API_BASE_URL: baseUrl,
           },
         },
       },
@@ -185,8 +206,10 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
               />
             </summary>
             <p className="mt-2 text-xs text-muted">
-              MCP is a standard protocol that lets AI tools securely call app capabilities. Once connected, your AI
-              client can create and manage todos through Yalp tools.
+              MCP (Model Context Protocol) is a standard protocol that lets AI clients securely call external app
+              capabilities as tools. Once you connect this Yalp MCP server with your API key, your client can
+              list, create, update, and delete your todos and lists through Yalp—so you don’t have to manually
+              wire endpoints or keys for each app.
             </p>
           </details>
         </div>
@@ -298,12 +321,13 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
               description="Use Desktop config file and paste MCP JSON."
               status={connectionStatus.claudeDesktop}
               ctaLabel="Copy Claude Config"
+              ctaIcon={<CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />}
               disabled={!cursorConfig}
               onCta={() => {
                 copy(universalConfig);
                 setConnectionStatus((prev) => ({ ...prev, claudeDesktop: "connected" }));
               }}
-              helper={claudeDesktopConfigPath}
+              infoTooltip={claudeDesktopConfigPath}
             />
             <PlatformCard
               title="Claude Web"
@@ -318,11 +342,12 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
               description="Use remote MCP endpoint with authorization flow."
               status={connectionStatus.claudeWeb}
               ctaLabel="Copy MCP URL"
+              ctaIcon={<CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />}
               onCta={() => {
                 copy(mcpRemoteUrl);
                 setConnectionStatus((prev) => ({ ...prev, claudeWeb: "connected" }));
               }}
-              helper={mcpRemoteUrl}
+              infoTooltip={mcpRemoteUrl}
             />
             <PlatformCard
               title="Windsurf"
@@ -337,6 +362,7 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
               description="Install via Windsurf MCP settings with JSON config."
               status={connectionStatus.windsurf}
               ctaLabel="Copy Config"
+              ctaIcon={<CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />}
               disabled={!cursorConfig}
               onCta={() => {
                 copy(universalConfig);
@@ -356,6 +382,7 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
               description="Paste config to MCP extension or settings.json."
               status={connectionStatus.vscode}
               ctaLabel="Copy VS Code Config"
+              ctaIcon={<CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />}
               disabled={!cursorConfig}
               onCta={() => {
                 copy(universalConfig);
@@ -368,6 +395,7 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
               description="Universal JSON config for any MCP-compatible client."
               status={connectionStatus.manual}
               ctaLabel="Copy Universal Config"
+              ctaIcon={<CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />}
               disabled={!cursorConfig}
               onCta={() => {
                 copy(universalConfig);
@@ -385,7 +413,10 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
                 <p className="mt-1 break-all font-mono text-xs text-muted">{newKey}</p>
               </div>
               <Button variant="secondary" onPress={() => copy(newKey)}>
-                Copy key
+                <span className="inline-flex items-center gap-2">
+                  <CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />
+                  Copy key
+                </span>
               </Button>
             </div>
 
@@ -402,7 +433,10 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
           <div className="flex items-center justify-between gap-3 rounded-[14px] border border-[#ebebeb] bg-white px-3 py-2">
             <code className="overflow-auto text-xs text-foreground">{syncCommand}</code>
             <Button variant="secondary" onPress={() => copy(syncCommand)}>
-              Copy
+              <span className="inline-flex items-center gap-2">
+                <CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />
+                Copy
+              </span>
             </Button>
           </div>
           <p className="mt-2 text-xs text-muted">

@@ -6,6 +6,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Yalp",
   description: "Yalp — todo app",
+  icons: {
+    icon: [{ url: "/to-do-mcp-logo.png", type: "image/png" }],
+    apple: [{ url: "/to-do-mcp-logo.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({

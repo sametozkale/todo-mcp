@@ -40,10 +40,16 @@ export type FlowdoMcpTool = {
 
 function getBaseUrl(): string {
   return (
+    process.env.YALP_API_BASE_URL ||
+    process.env.YALP_BASE_URL ||
     process.env.FLOWDO_API_BASE_URL ||
     process.env.FLOWDO_BASE_URL ||
     'https://yalp.ai'
   ).replace(/\/+$/, '');
+}
+
+function getApiKey(provided?: string): string {
+  return (provided ?? process.env.YALP_API_KEY ?? process.env.FLOWDO_API_KEY ?? '').trim();
 }
 
 async function callFlowdoApi<T>(
@@ -77,7 +83,6 @@ export const tools: Record<string, FlowdoMcpTool> = {
         listTitle: { type: 'string' },
         listRef: { type: 'string' }
       },
-      required: ['apiKey']
     },
     handler: async ({
       apiKey,
@@ -86,14 +91,16 @@ export const tools: Record<string, FlowdoMcpTool> = {
       listTitle,
       listRef
     }: {
-      apiKey: string;
+      apiKey?: string;
       listId?: string | null;
       listSlug?: string;
       listTitle?: string;
       listRef?: string;
     }) => {
+      const resolvedApiKey = getApiKey(apiKey);
+      if (!resolvedApiKey) throw new Error('Missing apiKey.');
       return await callFlowdoApi<TodoSummary[]>('list_todos', {
-        apiKey,
+        apiKey: resolvedApiKey,
         listId: listId ?? null,
         listSlug,
         listTitle,
@@ -114,7 +121,7 @@ export const tools: Record<string, FlowdoMcpTool> = {
         listTitle: { type: 'string' },
         listRef: { type: 'string' }
       },
-      required: ['apiKey', 'title']
+      required: ['title']
     },
     handler: async ({
       apiKey,
@@ -124,9 +131,11 @@ export const tools: Record<string, FlowdoMcpTool> = {
       listSlug,
       listTitle,
       listRef
-    }: CreateTodoInput & { apiKey: string }) => {
+    }: CreateTodoInput & { apiKey?: string }) => {
+      const resolvedApiKey = getApiKey(apiKey);
+      if (!resolvedApiKey) throw new Error('Missing apiKey.');
       return await callFlowdoApi<TodoSummary>('create_todo', {
-        apiKey,
+        apiKey: resolvedApiKey,
         title,
         description: description ?? null,
         listId: listId ?? null,
@@ -147,16 +156,21 @@ export const tools: Record<string, FlowdoMcpTool> = {
         description: { type: 'string' },
         is_completed: { type: 'boolean' }
       },
-      required: ['apiKey', 'id']
+      required: ['id']
     },
     handler: async (input: {
-      apiKey: string;
+      apiKey?: string;
       id: string;
       title?: string;
       description?: string;
       is_completed?: boolean;
     }) => {
-      return await callFlowdoApi<TodoSummary>('update_todo', input);
+      const resolvedApiKey = getApiKey(input.apiKey);
+      if (!resolvedApiKey) throw new Error('Missing apiKey.');
+      return await callFlowdoApi<TodoSummary>('update_todo', {
+        ...input,
+        apiKey: resolvedApiKey
+      });
     }
   },
   delete_todo: {
@@ -167,10 +181,12 @@ export const tools: Record<string, FlowdoMcpTool> = {
         apiKey: { type: 'string' },
         id: { type: 'string' }
       },
-      required: ['apiKey', 'id']
+      required: ['id']
     },
-    handler: async ({ apiKey, id }: { apiKey: string; id: string }) => {
-      return await callFlowdoApi<{ success: true }>('delete_todo', { apiKey, id });
+    handler: async ({ apiKey, id }: { apiKey?: string; id: string }) => {
+      const resolvedApiKey = getApiKey(apiKey);
+      if (!resolvedApiKey) throw new Error('Missing apiKey.');
+      return await callFlowdoApi<{ success: true }>('delete_todo', { apiKey: resolvedApiKey, id });
     }
   },
   list_lists: {
@@ -180,10 +196,11 @@ export const tools: Record<string, FlowdoMcpTool> = {
       properties: {
         apiKey: { type: 'string' }
       },
-      required: ['apiKey']
     },
-    handler: async ({ apiKey }: { apiKey: string }) => {
-      return await callFlowdoApi<List[]>('list_lists', { apiKey });
+    handler: async ({ apiKey }: { apiKey?: string }) => {
+      const resolvedApiKey = getApiKey(apiKey);
+      if (!resolvedApiKey) throw new Error('Missing apiKey.');
+      return await callFlowdoApi<List[]>('list_lists', { apiKey: resolvedApiKey });
     }
   },
   create_list: {
@@ -194,10 +211,12 @@ export const tools: Record<string, FlowdoMcpTool> = {
         apiKey: { type: 'string' },
         title: { type: 'string' }
       },
-      required: ['apiKey', 'title']
+      required: ['title']
     },
-    handler: async ({ apiKey, title }: { apiKey: string; title: string }) => {
-      return await callFlowdoApi<List>('create_list', { apiKey, title });
+    handler: async ({ apiKey, title }: { apiKey?: string; title: string }) => {
+      const resolvedApiKey = getApiKey(apiKey);
+      if (!resolvedApiKey) throw new Error('Missing apiKey.');
+      return await callFlowdoApi<List>('create_list', { apiKey: resolvedApiKey, title });
     }
   },
   resolve_list: {
@@ -211,17 +230,18 @@ export const tools: Record<string, FlowdoMcpTool> = {
         listTitle: { type: 'string' },
         listRef: { type: 'string' },
         createIfMissing: { type: 'boolean' }
-      },
-      required: ['apiKey']
+      }
     },
     handler: async (input: {
-      apiKey: string;
+      apiKey?: string;
       listSlug?: string;
       listTitle?: string;
       listRef?: string;
       createIfMissing?: boolean;
     }) => {
-      return await callFlowdoApi<List>('resolve_list', input);
+      const resolvedApiKey = getApiKey(input.apiKey);
+      if (!resolvedApiKey) throw new Error('Missing apiKey.');
+      return await callFlowdoApi<List>('resolve_list', { ...input, apiKey: resolvedApiKey });
     }
   }
 };

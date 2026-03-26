@@ -1,11 +1,11 @@
 {
-  "name": "@flowdo/mcp-server",
+  "name": "@yalp/mcp-server",
   "version": "0.1.0",
   "private": false,
   "type": "module",
   "main": "dist/server.js",
   "bin": {
-    "flowdo-mcp": "dist/server.js"
+    "yalp-mcp": "dist/server.js"
   },
   "files": [
     "dist",
