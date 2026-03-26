@@ -48,6 +48,8 @@
 
 body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  background-color: #fafafa;
+  color: #111827;
 }
 
 /* ---------- Open Runde: headings / title ---------- */

@@ -390,6 +390,7 @@ export function TodayClient({
               ref={sortable.setActivatorNodeRef}
               {...sortable.attributes}
               {...(sortable.listeners ?? {})}
+              aria-describedby={undefined}
               className="min-h-7 min-w-7 cursor-grab rounded-[8px] p-0 text-muted hover:text-foreground active:cursor-grabbing"
               aria-label={`Reorder ${todo.title}`}
             >
@@ -689,7 +690,7 @@ export function TodayClient({
             className={filterChipClass("/all")}
             aria-current={pathname === "/all" ? "page" : undefined}
           >
-            All <span className="text-muted/70">•</span> {counts.all}
+            All <span className="mx-[2px] text-muted/70">•</span> {counts.all}
           </Link>
           {lists.map((list) => (
             <div
@@ -711,7 +712,7 @@ export function TodayClient({
                 className={filterChipClass(listHref(list.slug))}
                 aria-current={isTabActiveForList(list.slug) ? "page" : undefined}
               >
-                {list.title} <span className="text-muted/70">•</span> {counts.byListId[list.id] ?? 0}
+                {list.title} <span className="mx-[2px] text-muted/70">•</span> {counts.byListId[list.id] ?? 0}
               </Link>
             </div>
           ))}
@@ -737,17 +738,12 @@ export function TodayClient({
             </span>
           </Dropdown.Trigger>
           <Dropdown.Popover placement="bottom end">
-            <Dropdown.Menu aria-label="Display options">
+            <Dropdown.Menu aria-label="Display options" className="w-[180px]">
               <Dropdown.Item
                 onAction={() => setShowCompleted((v) => !v)}
                 textValue={showCompleted ? "Hide completed tasks" : "Show completed tasks"}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <span>{showCompleted ? "Hide completed tasks" : "Show completed tasks"}</span>
-                  <span className="text-xs text-muted">
-                    {showCompleted ? "Shown" : "Hidden"}
-                  </span>
-                </div>
+                {showCompleted ? "Hide completed tasks" : "Show completed tasks"}
               </Dropdown.Item>
               <Dropdown.Item
                 onAction={markAllIncomplete}
@@ -785,7 +781,7 @@ export function TodayClient({
             <span aria-hidden />
           </Dropdown.Trigger>
           <Dropdown.Popover placement="bottom start">
-            <Dropdown.Menu>
+            <Dropdown.Menu className="w-[180px]">
               <Dropdown.Item onAction={() => openDeleteFlow(contextMenu.listId, contextMenu.slug)}>
                 <div className="flex items-center gap-[8px]">
                   <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={1.75} />

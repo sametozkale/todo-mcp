@@ -1,5 +1,7 @@
 "use client";
 
+import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { Button, Input, Label, TextField } from "@heroui/react";
 import { useMemo, useState, useTransition } from "react";
 import type { ApiKeyRow, CreateApiKeyResult } from "./actions";
@@ -172,8 +174,16 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
           <p className="text-sm text-muted">
             Add your MCP server to Cursor, Claude, Windsurf, VS Code and more with a single click.
           </p>
-          <details className="rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
-            <summary className="cursor-pointer text-sm font-medium text-foreground">What is MCP?</summary>
+          <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
+            <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
+              <span>What is MCP?</span>
+              <HugeiconsIcon
+                icon={ArrowDown01Icon}
+                size={16}
+                strokeWidth={1.75}
+                className="text-muted transition-transform duration-200 group-open:rotate-180"
+              />
+            </summary>
             <p className="mt-2 text-xs text-muted">
               MCP is a standard protocol that lets AI tools securely call app capabilities. Once connected, your AI
               client can create and manage todos through Yalp tools.

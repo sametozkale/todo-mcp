@@ -3,6 +3,8 @@
 import { updateProfileAction } from "@/app/(app)/profile/actions";
 import { ToDoMcpLogo } from "@/components/brand/to-do-mcp-logo";
 import { createClient } from "@/lib/supabase/client";
+import { Logout02Icon, McpServerIcon, ProfileIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Avatar,
   Button,
@@ -121,21 +123,30 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                 </Avatar>
               </Dropdown.Trigger>
             <Dropdown.Popover placement="bottom end">
-                <Dropdown.Menu>
+                <Dropdown.Menu className="w-[180px]">
                   <Dropdown.Item
                     onAction={() => profileModal.open()}
                   >
-                    Profile
+                    <span className="inline-flex items-center gap-2">
+                      <HugeiconsIcon icon={ProfileIcon} size={16} strokeWidth={1.75} />
+                      <span>Profile</span>
+                    </span>
                   </Dropdown.Item>
                   <Dropdown.Item
                     onAction={() => {
                       router.push("/mcp");
                     }}
                   >
-                    MCP Connections
+                    <span className="inline-flex items-center gap-2">
+                      <HugeiconsIcon icon={McpServerIcon} size={16} strokeWidth={1.75} />
+                      <span>MCP Connections</span>
+                    </span>
                   </Dropdown.Item>
                 <Dropdown.Item onAction={handleLogout}>
-                    Log out
+                    <span className="inline-flex items-center gap-2">
+                      <HugeiconsIcon icon={Logout02Icon} size={16} strokeWidth={1.75} />
+                      <span>Log out</span>
+                    </span>
                   </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown.Popover>

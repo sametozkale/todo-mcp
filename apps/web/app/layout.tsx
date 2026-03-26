@@ -14,9 +14,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="light" data-theme="light">
       <body
-        className={`${inter.variable} ${openRunde.variable} font-sans antialiased`}
+        className={`${inter.variable} ${openRunde.variable} light bg-[#fafafa] text-foreground font-sans antialiased`}
       >
         <Providers>{children}</Providers>
       </body>
