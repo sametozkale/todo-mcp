@@ -246,3 +246,13 @@ export const tools: Record<string, FlowdoMcpTool> = {
   }
 };
 
+// Friendly aliases for easier prompting in MCP clients.
+// Keep legacy names for backwards compatibility.
+tools['/todo list'] = tools.list_todos;
+tools['/todo create'] = tools.create_todo;
+tools['/todo update'] = tools.update_todo;
+tools['/todo delete'] = tools.delete_todo;
+tools['/list list'] = tools.list_lists;
+tools['/list create'] = tools.create_list;
+tools['/list resolve'] = tools.resolve_list;
+
