@@ -9,6 +9,7 @@ import {
   Label,
   Surface,
   TextField,
+  toast,
 } from "@heroui/react";
 import { signupAction, type AuthActionState } from "@/app/(auth)/actions";
 
@@ -30,6 +31,11 @@ export function SignupForm() {
     const editedSinceSubmit = editCounter !== lastSubmitEditCounterRef.current;
     return editedSinceSubmit ? undefined : state.error;
   }, [state, editCounter]);
+
+  useEffect(() => {
+    if (!visibleError) return;
+    toast.danger(visibleError, { timeout: 4500 });
+  }, [visibleError]);
 
   useEffect(() => {
     if (!state?.fields) return;

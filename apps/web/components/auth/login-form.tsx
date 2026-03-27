@@ -9,6 +9,7 @@ import {
   Label,
   Surface,
   TextField,
+  toast,
 } from "@heroui/react";
 import { loginAction, type AuthActionState } from "@/app/(auth)/actions";
 
@@ -40,6 +41,11 @@ export function LoginForm({ searchParamsError, nextPath }: LoginFormProps) {
     if (editedSinceSubmit) return undefined;
     return state?.error ?? callbackMessage;
   }, [state?.error, callbackMessage, editCounter]);
+
+  useEffect(() => {
+    if (!visibleError) return;
+    toast.danger(visibleError, { timeout: 4500 });
+  }, [visibleError]);
 
   return (
     <div className="flex w-full flex-1 flex-col items-center">

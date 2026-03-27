@@ -7,9 +7,11 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 if command -v lsof >/dev/null 2>&1; then
-  lsof -ti tcp:3001 | xargs kill 2>/dev/null || true
+  lsof -ti tcp:3001 -sTCP:LISTEN | xargs kill 2>/dev/null || true
   sleep 0.4
 fi
+
+rm -rf "apps/web/.next" "apps/web/.turbo" "node_modules/.cache/next" "node_modules/.cache/turbo" 2>/dev/null || true
 
 pnpm dev:web &
 echo "Web dev restarted in background → http://localhost:3001"

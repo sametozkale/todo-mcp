@@ -17,6 +17,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Delete02Icon,
   PlusSignIcon,
+  ArrowDown01Icon,
   SlidersHorizontalIcon,
 } from "@hugeicons/core-free-icons";
 import { GripVertical } from "lucide-react";
@@ -152,6 +153,7 @@ function applyTodoOptimistic(state: TodoRow[], action: TodoOptimisticAction): To
 export function TodayClient({
   initialTodos,
   composerListId,
+  view,
 }: TodayClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -163,17 +165,8 @@ export function TodayClient({
     ? `yalp:display:showCompleted:${composerListId}`
     : "yalp:display:showCompleted:all";
 
-  const [showCompleted, setShowCompleted] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true;
-    try {
-      const raw = window.localStorage.getItem(displayPrefKey);
-      if (raw === "false") return false;
-      if (raw === "true") return true;
-    } catch {
-      // Ignore localStorage failures (private mode, blocked storage, etc.)
-    }
-    return true;
-  });
+  // Keep initial render deterministic for SSR hydration; apply persisted preference after mount.
+  const [showCompleted, setShowCompleted] = useState<boolean>(true);
 
   // When navigating between lists, `TodayClient` can re-mount or re-use; keep
   // the per-list display preference consistent with the last selection.
@@ -181,7 +174,8 @@ export function TodayClient({
     if (typeof window === "undefined") return;
     try {
       const raw = window.localStorage.getItem(displayPrefKey);
-      setShowCompleted(raw === "false" ? false : true);
+      if (raw === "false") setShowCompleted(false);
+      else setShowCompleted(true);
     } catch {
       setShowCompleted(true);
     }
@@ -250,11 +244,18 @@ export function TodayClient({
         composerInputRef.current?.focus();
         return;
       }
+
+      // List page only: toggle hide/show completed tasks.
+      if (view === "list" && (e.key === "h" || e.key === "H")) {
+        e.preventDefault();
+        setShowCompleted((v) => !v);
+        return;
+      }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedTodoId]);
+  }, [selectedTodoId, view]);
 
   const chipActive = (href: string) => pathname === href;
 
@@ -422,9 +423,16 @@ export function TodayClient({
                 aria-label={`Delete ${todo.title}`}
                 onPress={() => {
                   startTodoTransition(async () => {
-                    addOptimistic({ type: "delete", id: todo.id });
-                    await deleteTodoAction(todo.id);
-                    scheduleRefresh();
+                    try {
+                      addOptimistic({ type: "delete", id: todo.id });
+                      await deleteTodoAction(todo.id);
+                      toast.success("Todo deleted.", { timeout: 2500 });
+                    } catch {
+                      addOptimistic({ type: "add", todo });
+                      toast.danger("Could not delete todo.", { timeout: 4500 });
+                    } finally {
+                      scheduleRefresh();
+                    }
                   });
                 }}
                 isDisabled={isTodoPending}
@@ -603,9 +611,11 @@ export function TodayClient({
     const r = await deleteListAction(deleteTarget.listId, mode);
     setDeleteBusy(false);
     if (r.ok) {
+      toast.success("List deleted.", { timeout: 2500 });
       afterListDeleted(deleteTarget.slug);
     } else {
       setDeleteError(r.error);
+      toast.danger(r.error, { timeout: 4500 });
     }
   }
 
@@ -720,15 +730,61 @@ export function TodayClient({
         </p>
       ) : null}
       <div className="mb-5 flex w-full items-center justify-between gap-3">
-        <nav
-          className="flex flex-1 flex-wrap items-center gap-[2px] min-w-0"
-          aria-label="List filters"
-        >
-          <Link
-            href="/all"
-            className={filterChipClass("/all")}
-            aria-current={pathname === "/all" ? "page" : undefined}
+        {/* Mobile: select a list instead of horizontal chips. */}
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:hidden">
+          <Dropdown.Root>
+            <Dropdown.Trigger>
+              <span
+                className="inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-[12px] border border-[#e6e6e6] bg-white px-3 py-2 text-[13px] font-medium text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+                aria-label="Select list"
+              >
+                <span className="truncate">
+                  {pathname === "/all"
+                    ? `All • ${counts.all}`
+                    : lists.find((l) => isTabActiveForList(l.slug))?.title ?? "Select list"}
+                </span>
+                <HugeiconsIcon icon={ArrowDown01Icon} size={16} strokeWidth={1.75} className="text-muted" />
+              </span>
+            </Dropdown.Trigger>
+            <Dropdown.Popover placement="bottom start">
+              <Dropdown.Menu aria-label="Lists">
+                <Dropdown.Item
+                  textValue="All"
+                  onAction={() => router.push("/all")}
+                >
+                  All <span className="mx-[2px] text-muted/70">•</span> {counts.all}
+                </Dropdown.Item>
+                {lists.map((list) => (
+                  <Dropdown.Item
+                    key={list.id}
+                    textValue={list.title}
+                    onAction={() => router.push(listHref(list.slug))}
+                  >
+                    {list.title}
+                    <span className="mx-[2px] text-muted/70">•</span> {counts.byListId[list.id] ?? 0}
+                  </Dropdown.Item>
+                ))}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+
+          <button
+            type="button"
+            className="shrink-0 rounded-[12px] p-2 text-muted hover:bg-[#f3f3f3] hover:text-foreground"
+            aria-label="Add list"
+            onClick={() => {
+              setCreateListError(null);
+              setNewListTitle("");
+              createListModal.open();
+            }}
           >
+            <HugeiconsIcon icon={PlusSignIcon} size={16} strokeWidth={1.75} className="text-current" />
+          </button>
+        </div>
+
+        {/* Desktop: horizontal list chips. */}
+        <nav className="hidden min-w-0 flex-1 flex-wrap items-center gap-[2px] sm:flex" aria-label="List filters">
+          <Link href="/all" className={filterChipClass("/all")} aria-current={pathname === "/all" ? "page" : undefined}>
             All{" "}
             {chipActive("/all") ? (
               <>

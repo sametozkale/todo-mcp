@@ -122,6 +122,16 @@ select {
  * (line-height matches inner box after 1px borders; py-0 so text sits centered)
  */
 @layer components {
+  /* HeroUI Toast: size to content (no fixed width). */
+  .toast {
+    width: fit-content;
+    max-width: min(560px, calc(100vw - 2rem));
+  }
+
+  .toast__content {
+    max-width: 100%;
+  }
+
   .input[data-slot="input"] {
     @apply h-9 min-h-9 sm:h-10 sm:min-h-10;
     padding-top: 0;

@@ -3,7 +3,7 @@
 import { updateProfileAction } from "@/app/(app)/profile/actions";
 import { ToDoMcpLogo } from "@/components/brand/to-do-mcp-logo";
 import { createClient } from "@/lib/supabase/client";
-import { Logout02Icon, McpServerIcon, ProfileIcon } from "@hugeicons/core-free-icons";
+import { Logout02Icon, McpServerIcon, UserCircleIcon, KeyboardIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Avatar,
@@ -57,6 +57,7 @@ export type AppHeaderProps = {
 export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
   const router = useRouter();
   const profileModal = useOverlayState();
+  const shortcutsModal = useOverlayState();
   const [fullName, setFullName] = useState(initialProfile.fullName);
   const [avatarUrl, setAvatarUrl] = useState(initialProfile.avatarUrl ?? "");
   const [formError, setFormError] = useState<string | null>(null);
@@ -131,8 +132,14 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                     onAction={() => profileModal.open()}
                   >
                     <span className="inline-flex items-center gap-2">
-                      <HugeiconsIcon icon={ProfileIcon} size={16} strokeWidth={1.75} />
+                      <HugeiconsIcon icon={UserCircleIcon} size={16} strokeWidth={1.75} />
                       <span>Profile</span>
+                    </span>
+                  </Dropdown.Item>
+                  <Dropdown.Item onAction={() => shortcutsModal.open()}>
+                    <span className="inline-flex items-center gap-2">
+                      <HugeiconsIcon icon={KeyboardIcon} size={16} strokeWidth={1.75} />
+                      <span>Shortcuts</span>
                     </span>
                   </Dropdown.Item>
                   <Dropdown.Item
@@ -225,6 +232,41 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                     </Button>
                   </Modal.Footer>
                 </form>
+              </Modal.Dialog>
+            </Modal.Container>
+          </Modal.Backdrop>
+        </Modal.Root>
+      ) : null}
+
+      {overlaysReady ? (
+        <Modal.Root state={shortcutsModal}>
+          <Modal.Trigger className="sr-only absolute h-px w-px overflow-hidden border-0 p-0 opacity-0">
+            <span aria-hidden="true" />
+          </Modal.Trigger>
+          <Modal.Backdrop>
+            <Modal.Container size="md" placement="center">
+              <Modal.Dialog>
+                <Modal.CloseTrigger />
+                <Modal.Header className="mb-[18px]">
+                  <Modal.Heading>Keyboard shortcuts</Modal.Heading>
+                </Modal.Header>
+                <Modal.Body className="pt-0">
+                  <div className="space-y-2 text-[13px] leading-snug text-foreground">
+                    <div className="flex items-center gap-3 rounded-[14px] border border-[#efefef] bg-[#fafafa] px-3 py-2">
+                      <kbd className="inline-flex h-7 min-w-7 items-center justify-center rounded-[10px] border border-[#e6e6e6] bg-white px-2 font-sans text-[12px] font-semibold text-foreground shadow-[0_1px_0_rgba(0,0,0,0.06)]">
+                        N
+                      </kbd>
+                      <span className="min-w-0 truncate text-muted">Focus the new todo input</span>
+                    </div>
+
+                    <div className="flex items-center gap-3 rounded-[14px] border border-[#efefef] bg-[#fafafa] px-3 py-2">
+                      <kbd className="inline-flex h-7 min-w-7 items-center justify-center rounded-[10px] border border-[#e6e6e6] bg-white px-2 font-sans text-[12px] font-semibold text-foreground shadow-[0_1px_0_rgba(0,0,0,0.06)]">
+                        H
+                      </kbd>
+                      <span className="min-w-0 truncate text-muted">Hide / show completed tasks (list pages)</span>
+                    </div>
+                  </div>
+                </Modal.Body>
               </Modal.Dialog>
             </Modal.Container>
           </Modal.Backdrop>

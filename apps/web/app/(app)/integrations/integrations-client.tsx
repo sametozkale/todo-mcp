@@ -2,7 +2,7 @@
 
 import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Button, Input, Label, TextField } from "@heroui/react";
+import { Button, Input, Label, TextField, toast } from "@heroui/react";
 import { useMemo, useState, useTransition } from "react";
 import { Copy as CopyIcon, Info as InfoIcon } from "lucide-react";
 import type { ApiKeyRow, CreateApiKeyResult } from "./actions";
@@ -49,7 +49,7 @@ function StatusBadge({ status }: { status: PlatformCardProps["status"] }) {
     );
   }
   return (
-    <span className="inline-flex rounded-full border border-[#e7e7e7] bg-white px-2 py-[3px] text-[11px] font-medium text-muted">
+    <span className="inline-flex rounded-full border border-[#e7e7e7] bg-white px-2 py-[3px] text-[11px] font-medium text-muted opacity-0 transition-opacity group-hover:opacity-100">
       Not Connected
     </span>
   );
@@ -71,7 +71,11 @@ function PlatformCard({
 }: PlatformCardProps) {
   const showInfoIcon = Boolean(infoTooltip && status !== "connected");
   return (
-    <div className={["rounded-2xl border border-[#ececec] bg-[#fafafa] p-4", cardClassName].filter(Boolean).join(" ")}>
+    <div
+      className={["group rounded-2xl border border-[#ececec] bg-[#fafafa] p-4", cardClassName]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="inline-flex items-center gap-2">
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#e3e3e3] bg-white text-[14px] leading-none">
@@ -119,7 +123,6 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
   const [newKey, setNewKey] = useState<string | null>(null);
   const [label, setLabel] = useState("MCP Key");
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<Record<string, PlatformCardProps["status"]>>({
     cursor: "not_connected",
     claudeDesktop: "not_connected",
@@ -158,8 +161,8 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
   function copy(text: string) {
     navigator.clipboard
       .writeText(text)
-      .then(() => setToast("Config copied to clipboard."))
-      .catch(() => setToast("Could not copy to clipboard."));
+      .then(() => toast.success("Copied to clipboard.", { timeout: 2500 }))
+      .catch(() => toast.danger("Could not copy to clipboard.", { timeout: 4000 }));
   }
 
   const syncCommand = "npx -y -p yalp-mcp-server yalp-mcp";
@@ -269,6 +272,48 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
                 </p>
               </div>
             </details>
+
+            <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
+                <span>What are “friendly aliases” and how do I use them?</span>
+                <HugeiconsIcon
+                  icon={ArrowDown01Icon}
+                  size={16}
+                  strokeWidth={1.75}
+                  className="text-muted transition-transform duration-200 group-open:rotate-180"
+                />
+              </summary>
+              <div className="mt-2 space-y-2 text-xs text-muted">
+                <p>
+                  Friendly aliases are alternate tool names that map to the same Yalp MCP actions. If your client
+                  supports tool calling, you can use either name — they behave the same.
+                </p>
+                <div className="space-y-1">
+                  <p className="font-medium text-foreground">Examples</p>
+                  <p>
+                    - <code className="rounded bg-white px-1 py-0.5 text-[11px] text-foreground">list_todos</code>{" "}
+                    and{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px] text-foreground">todo_list</code>
+                  </p>
+                  <p>
+                    - <code className="rounded bg-white px-1 py-0.5 text-[11px] text-foreground">create_todo</code>{" "}
+                    and{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px] text-foreground">todo_create</code>
+                  </p>
+                  <p>
+                    - <code className="rounded bg-white px-1 py-0.5 text-[11px] text-foreground">update_todo</code>{" "}
+                    and{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px] text-foreground">todo_update</code>
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-medium text-foreground">If it “doesn’t work”</p>
+                  <p>- Make sure the client is actually connected (check Active connections).</p>
+                  <p>- Some clients show only the “canonical” tool names and hide aliases — that’s OK.</p>
+                  <p>- If your client can’t see any tools, re-check your API key and MCP URL/config.</p>
+                </div>
+              </div>
+            </details>
           </div>
         </div>
       ) : null}
@@ -287,11 +332,6 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
             {error}
           </p>
         ) : null}
-        {toast ? (
-          <p className="mb-4 text-sm text-foreground" role="status">
-            {toast}
-          </p>
-        ) : null}
 
         <div className="flex flex-col gap-4">
           <section className="rounded-2xl border border-[#ececec] bg-[#fafafa] p-4 md:col-span-1">
@@ -305,7 +345,7 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex flex-col gap-3 pl-7 sm:flex-row sm:items-end">
               <TextField
                 name="label"
                 value={label}
@@ -321,17 +361,17 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
                 className="h-9 min-h-9 sm:h-10 sm:min-h-10"
                 onPress={() => {
                   setError(null);
-                  setToast(null);
                   startTransition(async () => {
                     const result: CreateApiKeyResult = await createApiKeyAction(label);
                     if (!result.ok) {
                       setError(result.error);
                       setConnectionStatus((prev) => ({ ...prev, cursor: "error" }));
+                      toast.danger(result.error, { timeout: 4500 });
                       return;
                     }
                     setNewKey(result.apiKey);
                     setKeys((prev) => [result.row, ...prev]);
-                    setToast("API key generated successfully.");
+                    toast.success("API key generated.", { timeout: 2500 });
                   });
                 }}
               >
@@ -372,7 +412,7 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
                   if (!cursorInstallLink) return;
                   window.location.href = cursorInstallLink;
                   setConnectionStatus((prev) => ({ ...prev, cursor: "connected" }));
-                  setToast("Cursor deeplink launched.");
+                  toast.success("Cursor deeplink launched.", { timeout: 2500 });
                 }}
               />
               <PlatformCard
@@ -580,9 +620,11 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
                         const result = await revokeApiKeyAction(k.id);
                         if (!result.ok) {
                           setError(result.error);
+                          toast.danger(result.error, { timeout: 4500 });
                           return;
                         }
                         setKeys((prev) => prev.filter((x) => x.id !== k.id));
+                        toast.success("Disconnected.", { timeout: 2500 });
                       });
                     }}
                   >
