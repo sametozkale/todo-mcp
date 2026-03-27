@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 type TodoSummary = {
   id: string;
   user_id: string;
@@ -75,14 +77,11 @@ export const tools: Record<string, FlowdoMcpTool> = {
   list_todos: {
     description: 'List todos for the authenticated user',
     inputSchema: {
-      type: 'object',
-      properties: {
-        apiKey: { type: 'string' },
-        listId: { type: ['string', 'null'], nullable: true },
-        listSlug: { type: 'string' },
-        listTitle: { type: 'string' },
-        listRef: { type: 'string' }
-      },
+      apiKey: z.string().optional(),
+      listId: z.string().nullable().optional(),
+      listSlug: z.string().optional(),
+      listTitle: z.string().optional(),
+      listRef: z.string().optional()
     },
     handler: async ({
       apiKey,
@@ -111,17 +110,13 @@ export const tools: Record<string, FlowdoMcpTool> = {
   create_todo: {
     description: 'Create a new todo for the authenticated user',
     inputSchema: {
-      type: 'object',
-      properties: {
-        apiKey: { type: 'string' },
-        title: { type: 'string' },
-        description: { type: 'string' },
-        listId: { type: ['string', 'null'], nullable: true },
-        listSlug: { type: 'string' },
-        listTitle: { type: 'string' },
-        listRef: { type: 'string' }
-      },
-      required: ['title']
+      apiKey: z.string().optional(),
+      title: z.string(),
+      description: z.string().optional(),
+      listId: z.string().nullable().optional(),
+      listSlug: z.string().optional(),
+      listTitle: z.string().optional(),
+      listRef: z.string().optional()
     },
     handler: async ({
       apiKey,
@@ -148,15 +143,11 @@ export const tools: Record<string, FlowdoMcpTool> = {
   update_todo: {
     description: 'Update an existing todo for the authenticated user',
     inputSchema: {
-      type: 'object',
-      properties: {
-        apiKey: { type: 'string' },
-        id: { type: 'string' },
-        title: { type: 'string' },
-        description: { type: 'string' },
-        is_completed: { type: 'boolean' }
-      },
-      required: ['id']
+      apiKey: z.string().optional(),
+      id: z.string(),
+      title: z.string().optional(),
+      description: z.string().optional(),
+      is_completed: z.boolean().optional()
     },
     handler: async (input: {
       apiKey?: string;
@@ -176,12 +167,8 @@ export const tools: Record<string, FlowdoMcpTool> = {
   delete_todo: {
     description: 'Delete a todo by id for the authenticated user',
     inputSchema: {
-      type: 'object',
-      properties: {
-        apiKey: { type: 'string' },
-        id: { type: 'string' }
-      },
-      required: ['id']
+      apiKey: z.string().optional(),
+      id: z.string()
     },
     handler: async ({ apiKey, id }: { apiKey?: string; id: string }) => {
       const resolvedApiKey = getApiKey(apiKey);
@@ -192,10 +179,7 @@ export const tools: Record<string, FlowdoMcpTool> = {
   list_lists: {
     description: 'List all lists for the authenticated user',
     inputSchema: {
-      type: 'object',
-      properties: {
-        apiKey: { type: 'string' }
-      },
+      apiKey: z.string().optional()
     },
     handler: async ({ apiKey }: { apiKey?: string }) => {
       const resolvedApiKey = getApiKey(apiKey);
@@ -206,12 +190,8 @@ export const tools: Record<string, FlowdoMcpTool> = {
   create_list: {
     description: 'Create a new list for the authenticated user',
     inputSchema: {
-      type: 'object',
-      properties: {
-        apiKey: { type: 'string' },
-        title: { type: 'string' }
-      },
-      required: ['title']
+      apiKey: z.string().optional(),
+      title: z.string()
     },
     handler: async ({ apiKey, title }: { apiKey?: string; title: string }) => {
       const resolvedApiKey = getApiKey(apiKey);
@@ -223,14 +203,11 @@ export const tools: Record<string, FlowdoMcpTool> = {
     description:
       'Resolve a list by listSlug, listTitle, or listRef. Defaults to Today. Can create the list if missing.',
     inputSchema: {
-      type: 'object',
-      properties: {
-        apiKey: { type: 'string' },
-        listSlug: { type: 'string' },
-        listTitle: { type: 'string' },
-        listRef: { type: 'string' },
-        createIfMissing: { type: 'boolean' }
-      }
+      apiKey: z.string().optional(),
+      listSlug: z.string().optional(),
+      listTitle: z.string().optional(),
+      listRef: z.string().optional(),
+      createIfMissing: z.boolean().optional()
     },
     handler: async (input: {
       apiKey?: string;

@@ -1,6 +1,6 @@
 {
   "name": "yalp-mcp-server",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": false,
   "type": "module",
   "main": "dist/server.js",
@@ -21,11 +21,12 @@
     "test": "echo \"No tests yet\""
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.1.0"
+    "@modelcontextprotocol/sdk": "^1.1.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "tsx": "^4.19.0",
     "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
     "typescript": "^5.6.0"
   }
 }
