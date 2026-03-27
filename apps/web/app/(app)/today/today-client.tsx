@@ -246,7 +246,7 @@ export function TodayClient({
       }
 
       // List page only: toggle hide/show completed tasks.
-      if (view === "list" && (e.key === "h" || e.key === "H")) {
+      if (view === "list" && e.code === "KeyH") {
         e.preventDefault();
         setShowCompleted((v) => !v);
         return;
