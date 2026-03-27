@@ -13,10 +13,10 @@ Create a Yalp API key in the app, then install the MCP server in Cursor using th
   "mcpServers": {
     "yalp": {
       "command": "npx",
-      "args": ["-y", "@yalp/mcp-server"],
+      "args": ["-y", "yalp/mcp-server"],
       "env": {
         "YALP_API_KEY": "yalp_<your_key_here>",
-        "YALP_API_BASE_URL": "https://yalp.ai"
+        "YALP_API_BASE_URL": "https://todo-mcp-web.vercel.app"
       }
     }
   }
@@ -26,7 +26,7 @@ Create a Yalp API key in the app, then install the MCP server in Cursor using th
 ## Environment variables
 
 - `YALP_API_KEY` (required): Yalp API key generated from the app.
-- `YALP_API_BASE_URL` (optional): Yalp base URL (defaults to `https://yalp.ai`).
+- `YALP_API_BASE_URL` (optional): Yalp base URL (defaults to `https://todo-mcp-web.vercel.app`).
 
 ## Tools
 

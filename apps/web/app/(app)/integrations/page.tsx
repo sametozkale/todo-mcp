@@ -20,7 +20,7 @@ export default async function IntegrationsPage() {
   }
 
   const initialKeys = await listApiKeysAction();
-  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://yalp.ai").replace(/\/+$/, "");
+  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://todo-mcp-web.vercel.app").replace(/\/+$/, "");
 
   return (
     <div className="mx-auto w-full max-w-3xl pt-6">

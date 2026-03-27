@@ -44,7 +44,7 @@ function getBaseUrl(): string {
     process.env.YALP_BASE_URL ||
     process.env.FLOWDO_API_BASE_URL ||
     process.env.FLOWDO_BASE_URL ||
-    'https://yalp.ai'
+    'https://todo-mcp-web.vercel.app'
   ).replace(/\/+$/, '');
 }
 

@@ -14,7 +14,7 @@ async function getRequestOrigin(): Promise<string> {
   if (host) {
     return `${protocol}://${host}`;
   }
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "https://yalp.ai";
+  return process.env.NEXT_PUBLIC_SITE_URL ?? "https://todo-mcp-web.vercel.app";
 }
 
 export type AuthActionState = {

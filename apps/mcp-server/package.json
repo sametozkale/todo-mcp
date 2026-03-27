@@ -1,5 +1,5 @@
 {
-  "name": "@yalp/mcp-server",
+  "name": "yalp/mcp-server",
   "version": "0.1.0",
   "private": false,
   "type": "module",
