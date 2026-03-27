@@ -124,7 +124,7 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
       mcpServers: {
         yalp: {
           command: "npx",
-          args: ["-y", "yalp-mcp-server"],
+          args: ["-y", "-p", "yalp-mcp-server", "yalp-mcp"],
           env: {
             YALP_API_KEY: newKey,
             YALP_API_BASE_URL: baseUrl,
@@ -150,7 +150,7 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
       .catch(() => setToast("Could not copy to clipboard."));
   }
 
-  const syncCommand = "npx -y yalp-mcp-server@latest --help";
+  const syncCommand = "npx -y -p yalp-mcp-server yalp-mcp";
   const universalConfig = JSON.stringify(cursorConfig, null, 2);
   const claudeDesktopConfigPath = "~/Library/Application Support/Claude/claude_desktop_config.json";
   const mcpRemoteUrl = `${baseUrl}/api/mcp`;

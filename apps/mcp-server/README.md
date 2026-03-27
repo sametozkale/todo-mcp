@@ -13,7 +13,7 @@ Create a Yalp API key in the app, then install the MCP server in Cursor using th
   "mcpServers": {
     "yalp": {
       "command": "npx",
-      "args": ["-y", "yalp-mcp-server"],
+      "args": ["-y", "-p", "yalp-mcp-server", "yalp-mcp"],
       "env": {
         "YALP_API_KEY": "yalp_<your_key_here>",
         "YALP_API_BASE_URL": "https://todo-mcp-web.vercel.app"
