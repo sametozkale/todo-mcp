@@ -263,7 +263,7 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                       <kbd className="inline-flex h-7 min-w-7 items-center justify-center rounded-[10px] border border-[#e6e6e6] bg-white px-2 font-sans text-[12px] font-semibold text-foreground shadow-[0_1px_0_rgba(0,0,0,0.06)]">
                         H
                       </kbd>
-                      <span className="min-w-0 truncate text-muted">Hide / show completed tasks (list pages)</span>
+                      <span className="min-w-0 truncate text-muted">Hide / show completed tasks</span>
                     </div>
                   </div>
                 </Modal.Body>

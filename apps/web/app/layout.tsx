@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   description: "Yalp — todo app",
   icons: {
     icon: [{ url: "/to-do-mcp-logo.png", type: "image/png" }],
+    shortcut: [{ url: "/to-do-mcp-logo.png", type: "image/png" }],
     apple: [{ url: "/to-do-mcp-logo.png", type: "image/png" }],
   },
 };

@@ -37,8 +37,8 @@ export default async function TodayPage() {
     .select("id, title, is_completed, created_at")
     .eq("user_id", user.id)
     .eq("list_id", todayList.id)
-    .order("position", { ascending: true })
-    .order("created_at", { ascending: true });
+    .order("position", { ascending: true, nullsFirst: true })
+    .order("created_at", { ascending: false });
 
   if (error) {
     return (

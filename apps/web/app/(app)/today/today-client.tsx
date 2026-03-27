@@ -144,7 +144,7 @@ function applyTodoOptimistic(state: TodoRow[], action: TodoOptimisticAction): To
     case "delete":
       return state.filter((t) => t.id !== action.id);
     case "add":
-      return [...state, action.todo];
+      return [action.todo, ...state];
     case "reorder":
       return reorderTodosByIds(state, action.orderedIds);
   }
@@ -245,8 +245,8 @@ export function TodayClient({
         return;
       }
 
-      // List page only: toggle hide/show completed tasks.
-      if (view === "list" && e.code === "KeyH") {
+      // Toggle hide/show completed tasks.
+      if (e.code === "KeyH") {
         e.preventDefault();
         setShowCompleted((v) => !v);
         return;
