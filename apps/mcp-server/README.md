@@ -49,4 +49,3 @@ Legacy names (still supported):
 - `create_todo`
 - `update_todo`
 - `delete_todo`
-

@@ -29,25 +29,27 @@ type PlatformCardProps = {
   onCta: () => void;
   disabled?: boolean;
   helper?: React.ReactNode;
+  ctaClassName?: string;
+  cardClassName?: string;
 };
 
 function StatusBadge({ status }: { status: PlatformCardProps["status"] }) {
   if (status === "connected") {
     return (
-      <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
+      <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-[3px] text-[11px] font-medium text-emerald-700">
         Connected
       </span>
     );
   }
   if (status === "error") {
     return (
-      <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-medium text-rose-700">
+      <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-[3px] text-[11px] font-medium text-rose-700">
         Error
       </span>
     );
   }
   return (
-    <span className="inline-flex rounded-full border border-[#e7e7e7] bg-white px-2 py-1 text-[11px] font-medium text-muted">
+    <span className="inline-flex rounded-full border border-[#e7e7e7] bg-white px-2 py-[3px] text-[11px] font-medium text-muted">
       Not Connected
     </span>
   );
@@ -64,20 +66,39 @@ function PlatformCard({
   onCta,
   disabled,
   helper,
+  ctaClassName,
+  cardClassName,
 }: PlatformCardProps) {
+  const showInfoIcon = Boolean(infoTooltip && status !== "connected");
   return (
-    <div className="rounded-2xl border border-[#ececec] bg-[#fafafa] p-4">
+    <div className={["rounded-2xl border border-[#ececec] bg-[#fafafa] p-4", cardClassName].filter(Boolean).join(" ")}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="inline-flex items-center gap-2">
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#e3e3e3] bg-white text-[14px] leading-none">
             {icon}
         </span>
-          <p className="text-sm font-medium text-foreground">{title}</p>
+          <div className="inline-flex items-center gap-[6px]">
+            <p className="text-sm font-medium text-foreground">{title}</p>
+            {showInfoIcon ? (
+              <span
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#e6e6e6] bg-white/60 text-muted/70 hover:text-foreground/80"
+                title={infoTooltip}
+                aria-label={infoTooltip}
+              >
+                <InfoIcon size={14} strokeWidth={2} className="text-current" aria-hidden="true" />
+              </span>
+            ) : null}
+          </div>
         </div>
         <StatusBadge status={status} />
       </div>
       <p className="mb-3 text-xs text-muted">{description}</p>
-      <Button variant={status === "connected" ? "secondary" : "primary"} onPress={onCta} isDisabled={disabled}>
+      <Button
+        variant={status === "connected" ? "secondary" : "primary"}
+        onPress={onCta}
+        isDisabled={disabled}
+        className={ctaClassName}
+      >
         <span className="inline-flex items-center gap-2">
           {ctaIcon ? (
             <span className="inline-flex items-center" aria-hidden="true">
@@ -85,15 +106,6 @@ function PlatformCard({
             </span>
           ) : null}
           {ctaLabel}
-          {infoTooltip && status !== "connected" ? (
-            <span
-              className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#e6e6e6] bg-white/60 text-muted/70 hover:text-foreground/80"
-              title={infoTooltip}
-              aria-label={infoTooltip}
-            >
-              <InfoIcon size={14} strokeWidth={2} className="text-current" aria-hidden="true" />
-            </span>
-          ) : null}
         </span>
       </Button>
       {helper ? <div className="mt-2 text-xs text-muted">{helper}</div> : null}
@@ -103,7 +115,7 @@ function PlatformCard({
 
 export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
   const [keys, setKeys] = useState<ApiKeyRow[]>(initialKeys);
-  const [activeTab, setActiveTab] = useState<"connect" | "active">("connect");
+  const [activeTab, setActiveTab] = useState<"connect" | "active" | "faq">("connect");
   const [newKey, setNewKey] = useState<string | null>(null);
   const [label, setLabel] = useState("MCP Key");
   const [error, setError] = useState<string | null>(null);
@@ -157,36 +169,109 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <nav className="flex w-full flex-wrap items-center gap-[2px]" aria-label="MCP sections">
+      <nav className="flex w-full items-center justify-between gap-3" aria-label="MCP sections">
+        <div className="flex flex-wrap items-center gap-[2px]">
+          <button
+            type="button"
+            className={[
+              "rounded-[10px] px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+              "inline-flex items-center whitespace-nowrap leading-none",
+              activeTab === "connect"
+                ? "bg-[#ececec] text-foreground"
+                : "text-muted hover:text-foreground/80",
+            ].join(" ")}
+            onClick={() => setActiveTab("connect")}
+            aria-current={activeTab === "connect" ? "page" : undefined}
+          >
+            Connect
+          </button>
+          <button
+            type="button"
+            className={[
+              "rounded-[10px] px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+              "inline-flex items-center whitespace-nowrap leading-none",
+              activeTab === "active"
+                ? "bg-[#ececec] text-foreground"
+                : "text-muted hover:text-foreground/80",
+            ].join(" ")}
+            onClick={() => setActiveTab("active")}
+            aria-current={activeTab === "active" ? "page" : undefined}
+          >
+            Active connections
+          </button>
+        </div>
         <button
           type="button"
           className={[
             "rounded-[10px] px-2.5 py-1.5 text-[13px] font-medium transition-colors",
             "inline-flex items-center whitespace-nowrap leading-none",
-            activeTab === "connect"
+            activeTab === "faq"
               ? "bg-[#ececec] text-foreground"
               : "text-muted hover:text-foreground/80",
           ].join(" ")}
-          onClick={() => setActiveTab("connect")}
-          aria-current={activeTab === "connect" ? "page" : undefined}
+          onClick={() => setActiveTab("faq")}
+          aria-current={activeTab === "faq" ? "page" : undefined}
         >
-          Connect
-        </button>
-        <button
-          type="button"
-          className={[
-            "rounded-[10px] px-2.5 py-1.5 text-[13px] font-medium transition-colors",
-            "inline-flex items-center whitespace-nowrap leading-none",
-            activeTab === "active"
-              ? "bg-[#ececec] text-foreground"
-              : "text-muted hover:text-foreground/80",
-          ].join(" ")}
-          onClick={() => setActiveTab("active")}
-          aria-current={activeTab === "active" ? "page" : undefined}
-        >
-          Active connections
+          FAQ
         </button>
       </nav>
+
+      {activeTab === "faq" ? (
+        <div className="rounded-[28px] border border-[#eaeaea] bg-white p-6 shadow-[0_10px_30px_-20px_rgba(0,0,0,0.25)]">
+          <div className="mb-5 space-y-2">
+            <h2 className="font-title text-2xl font-semibold text-foreground">FAQ</h2>
+            <p className="text-sm text-muted">Quick answers for setting up MCP connections.</p>
+          </div>
+
+          <div className="space-y-2">
+            <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
+                <span>What is MCP?</span>
+                <HugeiconsIcon
+                  icon={ArrowDown01Icon}
+                  size={16}
+                  strokeWidth={1.75}
+                  className="text-muted transition-transform duration-200 group-open:rotate-180"
+                />
+              </summary>
+              <p className="mt-2 text-xs text-muted">
+                MCP (Model Context Protocol) is a standard protocol that lets AI clients securely call external app
+                capabilities as tools. Once you connect this Yalp MCP server with your API key, your client can list,
+                create, update, and delete your todos and lists through Yalp—so you don’t have to manually wire
+                endpoints or keys for each app.
+              </p>
+            </details>
+
+            <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
+                <span>Where do I paste the config?</span>
+                <HugeiconsIcon
+                  icon={ArrowDown01Icon}
+                  size={16}
+                  strokeWidth={1.75}
+                  className="text-muted transition-transform duration-200 group-open:rotate-180"
+                />
+              </summary>
+              <div className="mt-2 space-y-1 text-xs text-muted">
+                <p>
+                  - <span className="font-medium text-foreground">Cursor</span>: Use the “Add to Cursor” button (deeplink).
+                </p>
+                <p>
+                  - <span className="font-medium text-foreground">Claude Desktop</span>: Paste into{" "}
+                  <code className="rounded bg-white px-1 py-0.5 text-[11px] text-foreground">
+                    {claudeDesktopConfigPath}
+                  </code>
+                  .
+                </p>
+                <p>
+                  - <span className="font-medium text-foreground">Claude Web</span>: Use the remote MCP URL:{" "}
+                  <code className="rounded bg-white px-1 py-0.5 text-[11px] text-foreground">{mcpRemoteUrl}</code>
+                </p>
+              </div>
+            </details>
+          </div>
+        </div>
+      ) : null}
 
       {activeTab === "connect" ? (
       <div className="rounded-[28px] border border-[#eaeaea] bg-white p-6 shadow-[0_10px_30px_-20px_rgba(0,0,0,0.25)]">
@@ -195,47 +280,6 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
           <p className="text-sm text-muted">
             Add your MCP server to Cursor, Claude, Windsurf, VS Code and more with a single click.
           </p>
-          <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
-            <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
-              <span>What is MCP?</span>
-              <HugeiconsIcon
-                icon={ArrowDown01Icon}
-                size={16}
-                strokeWidth={1.75}
-                className="text-muted transition-transform duration-200 group-open:rotate-180"
-              />
-            </summary>
-            <p className="mt-2 text-xs text-muted">
-              MCP (Model Context Protocol) is a standard protocol that lets AI clients securely call external app
-              capabilities as tools. Once you connect this Yalp MCP server with your API key, your client can
-              list, create, update, and delete your todos and lists through Yalp—so you don’t have to manually
-              wire endpoints or keys for each app.
-            </p>
-          </details>
-        </div>
-
-        <div className="mb-5 rounded-2xl border border-[#ececec] bg-[#fafafa] p-4">
-          <p className="mb-3 text-sm font-semibold text-foreground">Connect in 3 simple steps</p>
-          <ol className="space-y-2 text-sm text-muted">
-            <li className="flex items-start gap-2">
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white text-xs font-semibold text-foreground">
-                1
-              </span>
-              <span>Create your MCP API key with the button below.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white text-xs font-semibold text-foreground">
-                2
-              </span>
-              <span>Choose your AI tool card (Cursor, Claude, VS Code, etc.).</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white text-xs font-semibold text-foreground">
-                3
-              </span>
-              <span>Click connect/copy, then verify it appears under Active connections.</span>
-            </li>
-          </ol>
         </div>
 
         {error ? (
@@ -249,160 +293,211 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
           </p>
         ) : null}
 
-        <div>
-          <p className="mb-3 text-sm font-medium text-foreground">Create API key</p>
+        <div className="flex flex-col gap-4">
+          <section className="rounded-2xl border border-[#ececec] bg-[#fafafa] p-4 md:col-span-1">
+            <div className="mb-3 flex items-start gap-2">
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white text-xs font-semibold text-foreground">
+                1
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Create API key</p>
+                <p className="mt-0.5 text-xs text-muted">Generate the MCP key used by Cursor, Claude and other clients.</p>
+              </div>
+            </div>
 
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-            <TextField
-              name="label"
-              value={label}
-              onChange={(v) => setLabel(String(v))}
-              className="w-full sm:max-w-xs"
-            >
-              <Label>Key label</Label>
-              <Input placeholder="MCP Key" fullWidth />
-            </TextField>
-            <Button
-              variant="primary"
-              isDisabled={isPending}
-              onPress={() => {
-                setError(null);
-                setToast(null);
-                startTransition(async () => {
-                  const result: CreateApiKeyResult = await createApiKeyAction(label);
-                  if (!result.ok) {
-                    setError(result.error);
-                    setConnectionStatus((prev) => ({ ...prev, cursor: "error" }));
-                    return;
-                  }
-                  setNewKey(result.apiKey);
-                  setKeys((prev) => [result.row, ...prev]);
-                  setToast("API key generated successfully.");
-                });
-              }}
-            >
-              {isPending ? "Generating…" : "Generate key"}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <TextField
+                name="label"
+                value={label}
+                onChange={(v) => setLabel(String(v))}
+                className="w-full sm:max-w-xs"
+              >
+                <Label>Key label</Label>
+                <Input placeholder="MCP Key" fullWidth />
+              </TextField>
+              <Button
+                variant="primary"
+                isDisabled={isPending}
+                className="h-9 min-h-9 sm:h-10 sm:min-h-10"
+                onPress={() => {
+                  setError(null);
+                  setToast(null);
+                  startTransition(async () => {
+                    const result: CreateApiKeyResult = await createApiKeyAction(label);
+                    if (!result.ok) {
+                      setError(result.error);
+                      setConnectionStatus((prev) => ({ ...prev, cursor: "error" }));
+                      return;
+                    }
+                    setNewKey(result.apiKey);
+                    setKeys((prev) => [result.row, ...prev]);
+                    setToast("API key generated successfully.");
+                  });
+                }}
+              >
+                {isPending ? "Generating…" : "Generate key"}
+              </Button>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-[#ececec] bg-[#fafafa] p-4 md:col-span-2">
+            <div className="mb-3 flex items-start gap-2">
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white text-xs font-semibold text-foreground">
+                2
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Choose your platform</p>
+                <p className="mt-0.5 text-xs text-muted">Pick the client you want to connect with this Yalp MCP server.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <PlatformCard
+                title="Cursor"
+                icon={
+                  <img
+                    src="https://www.cursor.com/favicon.ico"
+                    alt="Cursor logo"
+                    className="h-4 w-4"
+                    loading="lazy"
+                  />
+                }
+                description="One-click install with Cursor deeplink."
+                status={connectionStatus.cursor}
+                ctaLabel={connectionStatus.cursor === "connected" ? "Connected" : "Add to Cursor"}
+                disabled={!newKey || connectionStatus.cursor === "connected"}
+                cardClassName="bg-white"
+                ctaClassName="h-7 min-h-7 rounded-[10px]"
+                onCta={() => {
+                  if (!cursorInstallLink) return;
+                  window.location.href = cursorInstallLink;
+                  setConnectionStatus((prev) => ({ ...prev, cursor: "connected" }));
+                  setToast("Cursor deeplink launched.");
+                }}
+              />
+              <PlatformCard
+                title="Claude Desktop"
+                icon={
+                  <img
+                    src="https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/anthropic.svg"
+                    alt="Claude logo"
+                    className="h-4 w-4"
+                    loading="lazy"
+                  />
+                }
+                description="Use Desktop config file and paste MCP JSON."
+                status={connectionStatus.claudeDesktop}
+                ctaLabel="Copy Claude Config"
+                ctaIcon={<CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />}
+                disabled={!cursorConfig}
+                cardClassName="bg-white"
+                ctaClassName="h-7 min-h-7 rounded-[10px]"
+                onCta={() => {
+                  copy(universalConfig);
+                  setConnectionStatus((prev) => ({ ...prev, claudeDesktop: "connected" }));
+                }}
+                infoTooltip={claudeDesktopConfigPath}
+              />
+              <PlatformCard
+                title="Claude Web"
+                icon={
+                  <img
+                    src="https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/anthropic.svg"
+                    alt="Claude logo"
+                    className="h-4 w-4"
+                    loading="lazy"
+                  />
+                }
+                description="Use remote MCP endpoint with authorization flow."
+                status={connectionStatus.claudeWeb}
+                ctaLabel="Copy MCP URL"
+                ctaIcon={<CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />}
+                cardClassName="bg-white"
+                ctaClassName="h-7 min-h-7 rounded-[10px]"
+                onCta={() => {
+                  copy(mcpRemoteUrl);
+                  setConnectionStatus((prev) => ({ ...prev, claudeWeb: "connected" }));
+                }}
+                infoTooltip={mcpRemoteUrl}
+              />
+              <PlatformCard
+                title="Windsurf"
+                icon={
+                  <img
+                    src="https://windsurf.com/favicon.ico"
+                    alt="Windsurf logo"
+                    className="h-4 w-4"
+                    loading="lazy"
+                  />
+                }
+                description="Install via Windsurf MCP settings with JSON config."
+                status={connectionStatus.windsurf}
+                ctaLabel="Copy Config"
+                ctaIcon={<CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />}
+                disabled={!cursorConfig}
+                cardClassName="bg-white"
+                ctaClassName="h-7 min-h-7 rounded-[10px]"
+                onCta={() => {
+                  copy(universalConfig);
+                  setConnectionStatus((prev) => ({ ...prev, windsurf: "connected" }));
+                }}
+              />
+              <PlatformCard
+                title="VS Code"
+                icon={
+                  <img
+                    src="https://code.visualstudio.com/favicon.ico"
+                    alt="VS Code logo"
+                    className="h-4 w-4"
+                    loading="lazy"
+                  />
+                }
+                description="Paste config to MCP extension or settings.json."
+                status={connectionStatus.vscode}
+                ctaLabel="Copy VS Code Config"
+                ctaIcon={<CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />}
+                disabled={!cursorConfig}
+                cardClassName="bg-white"
+                ctaClassName="h-7 min-h-7 rounded-[10px]"
+                onCta={() => {
+                  copy(universalConfig);
+                  setConnectionStatus((prev) => ({ ...prev, vscode: "connected" }));
+                }}
+              />
+              <PlatformCard
+                title="Manual / Other"
+                icon={<span className="text-[12px] font-semibold text-[#444]">&gt;_</span>}
+                description="Universal JSON config for any MCP-compatible client."
+                status={connectionStatus.manual}
+                ctaLabel="Copy Universal Config"
+                ctaIcon={<CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />}
+                disabled={!cursorConfig}
+                cardClassName="bg-white"
+                ctaClassName="h-7 min-h-7 rounded-[10px]"
+                onCta={() => {
+                  copy(universalConfig);
+                  setConnectionStatus((prev) => ({ ...prev, manual: "connected" }));
+                }}
+              />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-[#ececec] bg-[#fafafa] p-4 md:col-span-1">
+            <div className="mb-3 flex items-start gap-2">
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white text-xs font-semibold text-foreground">
+                3
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Connect & verify</p>
+                <p className="mt-0.5 text-xs text-muted">Click Connect/Copy on a platform card, then check that it shows under Active connections.</p>
+              </div>
+            </div>
+
+            <Button variant="secondary" className="self-start" onPress={() => setActiveTab("active")}>
+              View Active connections
             </Button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <PlatformCard
-              title="Cursor"
-              icon={
-                <img
-                  src="https://www.cursor.com/favicon.ico"
-                  alt="Cursor logo"
-                  className="h-4 w-4"
-                  loading="lazy"
-                />
-              }
-              description="One-click install with Cursor deeplink."
-              status={connectionStatus.cursor}
-              ctaLabel={connectionStatus.cursor === "connected" ? "Connected" : "Add to Cursor"}
-              disabled={!newKey || connectionStatus.cursor === "connected"}
-              onCta={() => {
-                if (!cursorInstallLink) return;
-                window.location.href = cursorInstallLink;
-                setConnectionStatus((prev) => ({ ...prev, cursor: "connected" }));
-                setToast("Cursor deeplink launched.");
-              }}
-              helper={!newKey ? "Generate an API key first." : null}
-            />
-            <PlatformCard
-              title="Claude Desktop"
-              icon={
-                <img
-                  src="https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/anthropic.svg"
-                  alt="Claude logo"
-                  className="h-4 w-4"
-                  loading="lazy"
-                />
-              }
-              description="Use Desktop config file and paste MCP JSON."
-              status={connectionStatus.claudeDesktop}
-              ctaLabel="Copy Claude Config"
-              ctaIcon={<CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />}
-              disabled={!cursorConfig}
-              onCta={() => {
-                copy(universalConfig);
-                setConnectionStatus((prev) => ({ ...prev, claudeDesktop: "connected" }));
-              }}
-              infoTooltip={claudeDesktopConfigPath}
-            />
-            <PlatformCard
-              title="Claude Web"
-              icon={
-                <img
-                  src="https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/anthropic.svg"
-                  alt="Claude logo"
-                  className="h-4 w-4"
-                  loading="lazy"
-                />
-              }
-              description="Use remote MCP endpoint with authorization flow."
-              status={connectionStatus.claudeWeb}
-              ctaLabel="Copy MCP URL"
-              ctaIcon={<CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />}
-              onCta={() => {
-                copy(mcpRemoteUrl);
-                setConnectionStatus((prev) => ({ ...prev, claudeWeb: "connected" }));
-              }}
-              infoTooltip={mcpRemoteUrl}
-            />
-            <PlatformCard
-              title="Windsurf"
-              icon={
-                <img
-                  src="https://windsurf.com/favicon.ico"
-                  alt="Windsurf logo"
-                  className="h-4 w-4"
-                  loading="lazy"
-                />
-              }
-              description="Install via Windsurf MCP settings with JSON config."
-              status={connectionStatus.windsurf}
-              ctaLabel="Copy Config"
-              ctaIcon={<CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />}
-              disabled={!cursorConfig}
-              onCta={() => {
-                copy(universalConfig);
-                setConnectionStatus((prev) => ({ ...prev, windsurf: "connected" }));
-              }}
-            />
-            <PlatformCard
-              title="VS Code"
-              icon={
-                <img
-                  src="https://code.visualstudio.com/favicon.ico"
-                  alt="VS Code logo"
-                  className="h-4 w-4"
-                  loading="lazy"
-                />
-              }
-              description="Paste config to MCP extension or settings.json."
-              status={connectionStatus.vscode}
-              ctaLabel="Copy VS Code Config"
-              ctaIcon={<CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />}
-              disabled={!cursorConfig}
-              onCta={() => {
-                copy(universalConfig);
-                setConnectionStatus((prev) => ({ ...prev, vscode: "connected" }));
-              }}
-            />
-            <PlatformCard
-              title="Manual / Other"
-              icon={<span className="text-[12px] font-semibold text-[#444]">&gt;_</span>}
-              description="Universal JSON config for any MCP-compatible client."
-              status={connectionStatus.manual}
-              ctaLabel="Copy Universal Config"
-              ctaIcon={<CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />}
-              disabled={!cursorConfig}
-              onCta={() => {
-                copy(universalConfig);
-                setConnectionStatus((prev) => ({ ...prev, manual: "connected" }));
-              }}
-            />
-          </div>
+            <p className="mt-2 text-[11px] text-muted">It may take a few seconds after the client connects.</p>
+          </section>
         </div>
 
         {newKey ? (

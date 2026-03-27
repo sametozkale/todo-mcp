@@ -159,7 +159,42 @@ export function TodayClient({
   const formRef = useRef<HTMLFormElement>(null);
   const composerInputRef = useRef<HTMLInputElement>(null);
   const [addError, setAddError] = useState<string | null>(null);
-  const [showCompleted, setShowCompleted] = useState(true);
+  const displayPrefKey = composerListId
+    ? `yalp:display:showCompleted:${composerListId}`
+    : "yalp:display:showCompleted:all";
+
+  const [showCompleted, setShowCompleted] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      const raw = window.localStorage.getItem(displayPrefKey);
+      if (raw === "false") return false;
+      if (raw === "true") return true;
+    } catch {
+      // Ignore localStorage failures (private mode, blocked storage, etc.)
+    }
+    return true;
+  });
+
+  // When navigating between lists, `TodayClient` can re-mount or re-use; keep
+  // the per-list display preference consistent with the last selection.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(displayPrefKey);
+      setShowCompleted(raw === "false" ? false : true);
+    } catch {
+      setShowCompleted(true);
+    }
+  }, [displayPrefKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(displayPrefKey, String(showCompleted));
+    } catch {
+      // Ignore write failures.
+    }
+  }, [displayPrefKey, showCompleted]);
   const [uiOrderIds, setUiOrderIds] = useState<string[] | null>(null);
   const [draggingTodoId, setDraggingTodoId] = useState<string | null>(null);
   const [optimisticTodos, addOptimistic] = useOptimistic(
@@ -684,9 +719,9 @@ export function TodayClient({
           {listDeleteInlineError}
         </p>
       ) : null}
-      <div className="mb-5 flex w-full items-start justify-between gap-3">
+      <div className="mb-5 flex w-full items-center justify-between gap-3">
         <nav
-          className="flex w-full flex-wrap items-center gap-[2px]"
+          className="flex flex-1 flex-wrap items-center gap-[2px] min-w-0"
           aria-label="List filters"
         >
           <Link
@@ -694,7 +729,12 @@ export function TodayClient({
             className={filterChipClass("/all")}
             aria-current={pathname === "/all" ? "page" : undefined}
           >
-            All <span className="mx-[2px] text-muted/70">•</span> {counts.all}
+            All{" "}
+            {chipActive("/all") ? (
+              <>
+                <span className="mx-[2px] text-muted/70">•</span> {counts.all}
+              </>
+            ) : null}
           </Link>
           {lists.map((list) => (
             <div
@@ -716,7 +756,12 @@ export function TodayClient({
                 className={filterChipClass(listHref(list.slug))}
                 aria-current={isTabActiveForList(list.slug) ? "page" : undefined}
               >
-                {list.title} <span className="mx-[2px] text-muted/70">•</span> {counts.byListId[list.id] ?? 0}
+                {list.title}{" "}
+                {isTabActiveForList(list.slug) ? (
+                  <>
+                    <span className="mx-[2px] text-muted/70">•</span> {counts.byListId[list.id] ?? 0}
+                  </>
+                ) : null}
               </Link>
             </div>
           ))}
@@ -734,13 +779,14 @@ export function TodayClient({
           </button>
         </nav>
 
-        <Dropdown.Root>
-          <Dropdown.Trigger>
-            <span className="inline-flex shrink-0 items-center gap-2 rounded-[12px] px-2.5 py-1.5 text-[13px] font-medium text-muted hover:text-foreground">
-              <HugeiconsIcon icon={SlidersHorizontalIcon} size={16} strokeWidth={1.75} className="text-current" />
-              Display
-            </span>
-          </Dropdown.Trigger>
+        <div className="flex-shrink-0">
+          <Dropdown.Root>
+            <Dropdown.Trigger>
+              <span className="inline-flex shrink-0 items-center gap-2 rounded-[12px] px-2.5 py-1.5 text-[13px] font-medium text-muted hover:text-foreground">
+                <HugeiconsIcon icon={SlidersHorizontalIcon} size={16} strokeWidth={1.75} className="text-current" />
+                Display
+              </span>
+            </Dropdown.Trigger>
           <Dropdown.Popover
             placement="bottom end"
             style={{ width: "max-content", minWidth: "0px" }}
@@ -763,7 +809,8 @@ export function TodayClient({
               </Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown.Popover>
-        </Dropdown.Root>
+          </Dropdown.Root>
+        </div>
       </div>
 
       {contextMenu ? (
