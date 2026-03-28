@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { ClaudeBrandIcon } from "@/components/claude-brand-icon";
 import type { PlatformId } from "@/lib/mcp-platform-guides";
 import { getInstallGuide } from "@/lib/mcp-platform-guides";
 
@@ -24,18 +25,11 @@ function PlatformIcon({ id }: { id: PlatformId }) {
       );
     case "claudeDesktop":
     case "claudeWeb":
-      return (
-        <Image
-          src="https://raw.githubusercontent.com/simple-icons/simple-icons/master/icons/claude.svg"
-          alt=""
-          width={24}
-          height={24}
-          className="h-6 w-6"
-        />
-      );
+      return <ClaudeBrandIcon className="h-6 w-6 shrink-0" />;
     case "windsurf":
       return <Image src="https://windsurf.com/favicon.ico" alt="" width={24} height={24} className="h-6 w-6" />;
     case "claudeCode":
+      return <ClaudeBrandIcon className="h-6 w-6 shrink-0" />;
     case "manual":
       return (
         <span className="flex h-6 w-6 items-center justify-center text-sm font-semibold text-[#444]">&gt;_</span>

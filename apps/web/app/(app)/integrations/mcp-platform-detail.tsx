@@ -5,6 +5,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@heroui/react";
 import Image from "next/image";
 import { Copy as CopyIcon } from "lucide-react";
+import { ClaudeBrandIcon } from "@/components/claude-brand-icon";
 import type { InstallGuide, PlatformId } from "@/lib/mcp-platform-guides";
 
 function PlatformIcon({ id }: { id: PlatformId }) {
@@ -25,18 +26,11 @@ function PlatformIcon({ id }: { id: PlatformId }) {
       );
     case "claudeDesktop":
     case "claudeWeb":
-      return (
-        <Image
-          src="https://raw.githubusercontent.com/simple-icons/simple-icons/master/icons/claude.svg"
-          alt=""
-          width={20}
-          height={20}
-          className="h-5 w-5"
-        />
-      );
+      return <ClaudeBrandIcon className="h-5 w-5 shrink-0" />;
     case "windsurf":
       return <Image src="https://windsurf.com/favicon.ico" alt="" width={20} height={20} className="h-5 w-5" />;
     case "claudeCode":
+      return <ClaudeBrandIcon className="h-5 w-5 shrink-0" />;
     case "manual":
       return (
         <span className="flex h-5 w-5 items-center justify-center text-xs font-semibold text-[#444]">&gt;_</span>
