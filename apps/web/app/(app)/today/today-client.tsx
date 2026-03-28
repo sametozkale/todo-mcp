@@ -66,11 +66,9 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSubscription } from "@/hooks/useSubscription";
+import { isClientDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { CSSProperties, ChangeEvent, MutableRefObject, Ref } from "react";
-
-const SHOULD_DEBUG_INGEST =
-  process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEBUG_INGEST === "true";
 
 type TodoRow = {
   id: string;
@@ -738,14 +736,9 @@ export function TodayClient({
   async function persistReorderIfPossible(orderedIds: string[], rollbackOrder: string[]) {
     if (orderedIds.length === 0) return;
     // #region debug-log:persistReorderIfPossible
-    if (SHOULD_DEBUG_INGEST) {
-      fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "e410d4",
-        },
-        body: JSON.stringify({
+    if (isClientDebugIngestEnabled()) {
+      void sendDebugIngest(
+        {
           sessionId: "e410d4",
           runId: "pre-fix-reorder-1",
           hypothesisId: "H3-persist-reorder",
@@ -758,8 +751,9 @@ export function TodayClient({
             orderedIdsLast: orderedIds[orderedIds.length - 1] ?? null,
           },
           timestamp: Date.now(),
-        }),
-      }).catch(() => {});
+        },
+        { headerSessionId: "e410d4" },
+      );
     }
     // #endregion
     // Merge: if completed are hidden, only the visible subset was reordered.

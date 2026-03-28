@@ -117,9 +117,7 @@ const RESERVED_LIST_SLUGS = [
   "twitter-image",
 ] as const;
 
-export const RESERVED_LIST_SLUG_SET: ReadonlySet<string> = new Set(
-  RESERVED_LIST_SLUGS,
-);
+const RESERVED_LIST_SLUG_SET: ReadonlySet<string> = new Set(RESERVED_LIST_SLUGS);
 
 export function isReservedListSlug(slug: string): boolean {
   return RESERVED_LIST_SLUG_SET.has(slug.toLowerCase());

@@ -10,7 +10,7 @@ function addHttpsDeployment(set: Set<string>, value: string | undefined) {
 }
 
 /** Origins we accept from `Origin` / `Referer` when building Stripe return URLs (avoids open redirects). */
-export function collectAllowedPublicSiteOrigins(): string[] {
+function collectAllowedPublicSiteOrigins(): string[] {
   const out = new Set<string>();
   const env = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (env) out.add(normalizeOrigin(env));

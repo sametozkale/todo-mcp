@@ -3,6 +3,7 @@
 import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button, Input, Label, TextField, toast } from "@heroui/react";
+import Image from "next/image";
 import { useMemo, useState, useTransition } from "react";
 import { Copy as CopyIcon, Info as InfoIcon } from "lucide-react";
 import type { ApiKeyRow, CreateApiKeyResult } from "./actions";
@@ -395,11 +396,12 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
               <PlatformCard
                 title="Cursor"
                 icon={
-                  <img
+                  <Image
                     src="https://www.cursor.com/favicon.ico"
                     alt="Cursor logo"
+                    width={16}
+                    height={16}
                     className="h-4 w-4"
-                    loading="lazy"
                   />
                 }
                 description="One-click install with Cursor deeplink."
@@ -418,11 +420,12 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
               <PlatformCard
                 title="Claude Desktop"
                 icon={
-                  <img
+                  <Image
                     src="https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/anthropic.svg"
                     alt="Claude logo"
+                    width={16}
+                    height={16}
                     className="h-4 w-4"
-                    loading="lazy"
                   />
                 }
                 description="Use Desktop config file and paste MCP JSON."
@@ -441,11 +444,12 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
               <PlatformCard
                 title="Claude Web"
                 icon={
-                  <img
+                  <Image
                     src="https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/anthropic.svg"
                     alt="Claude logo"
+                    width={16}
+                    height={16}
                     className="h-4 w-4"
-                    loading="lazy"
                   />
                 }
                 description="Use remote MCP endpoint with authorization flow."
@@ -463,11 +467,12 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
               <PlatformCard
                 title="Windsurf"
                 icon={
-                  <img
+                  <Image
                     src="https://windsurf.com/favicon.ico"
                     alt="Windsurf logo"
+                    width={16}
+                    height={16}
                     className="h-4 w-4"
-                    loading="lazy"
                   />
                 }
                 description="Install via Windsurf MCP settings with JSON config."
@@ -485,11 +490,12 @@ export function IntegrationsClient({ initialKeys, baseUrl }: Props) {
               <PlatformCard
                 title="VS Code"
                 icon={
-                  <img
+                  <Image
                     src="https://code.visualstudio.com/favicon.ico"
                     alt="VS Code logo"
+                    width={16}
+                    height={16}
                     className="h-4 w-4"
-                    loading="lazy"
                   />
                 }
                 description="Paste config to MCP extension or settings.json."

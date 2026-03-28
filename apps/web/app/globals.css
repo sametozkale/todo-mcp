@@ -1,5 +1,7 @@
 /* HeroUI v3: import order matters — Tailwind first, then HeroUI design system */
 @import "tailwindcss";
+/* Explicit scan roots (apps/web/*) so utilities are generated reliably in this monorepo + Next 15. */
+@source "../**/*.{js,ts,jsx,tsx}";
 @import "@heroui/styles";
 
 /*
@@ -18,7 +20,7 @@
 }
 
 /* Align primitive --separator with theme tokens (used by var(--separator) in HeroUI CSS) */
-/* Flowdo field kit: no elevation on inputs; light border #f4f4f4; primary #00b5e9 */
+/* Yalp field kit: no elevation on inputs; light border #f4f4f4; primary #00b5e9 */
 @layer base {
   :root,
   .light,

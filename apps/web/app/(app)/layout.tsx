@@ -1,12 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 import { PRODUCT_HOME } from "@/lib/routes";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+
+/** Authenticated app shell: not intended for search indexing (see app/robots.ts). */
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 import { AppHeader } from "./app-header";
 import { ListsProvider } from "./lists-shell";
 import { SubscriptionProvider, type SubscriptionSnapshot, type UsageSnapshot } from "@/hooks/useSubscription";
-
-const SHOULD_DEBUG_INGEST = process.env.NODE_ENV !== "production" && process.env.DEBUG_INGEST === "true";
+import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -16,23 +21,16 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   if (!user) {
     // #region debug auth redirect next
-    if (SHOULD_DEBUG_INGEST) {
-      await fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "f7ebea",
-        },
-        body: JSON.stringify({
-          sessionId: "f7ebea",
-          runId: "pre-fix",
-          hypothesisId: "H1-layout-redirect-next",
-          location: "apps/web/app/(app)/layout.tsx",
-          message: "Unauthenticated redirect from (app) layout",
-          data: { productHome: PRODUCT_HOME },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
+    if (isServerDebugIngestEnabled()) {
+      await sendDebugIngest({
+        sessionId: "f7ebea",
+        runId: "pre-fix",
+        hypothesisId: "H1-layout-redirect-next",
+        location: "apps/web/app/(app)/layout.tsx",
+        message: "Unauthenticated redirect from (app) layout",
+        data: { productHome: PRODUCT_HOME },
+        timestamp: Date.now(),
+      });
     }
     // #endregion
 

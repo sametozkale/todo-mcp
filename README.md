@@ -12,10 +12,20 @@ The web app (`apps/web`) uses **Next.js 15**, **Tailwind CSS v4**, and **[HeroUI
 ## Supabase setup (one-time)
 
 1. Create a new project in the Supabase dashboard.
-2. In the SQL editor, run the contents of `supabase/migrations/0001_init_flowdo.sql` to create the schema and RLS policies.
+2. In the SQL editor, run the contents of `supabase/migrations/0001_init_yalp.sql` to create the schema and RLS policies.
 3. In **Project Settings → API**, copy:
    - Project URL
    - `anon` public key
    - `service_role` secret key
 4. Add these values to your environment files as described in `.env.example`.
+
+## Public URL (`NEXT_PUBLIC_SITE_URL`)
+
+Production will use **`https://yalp.ai`** as the canonical domain. Until DNS and SSL for `yalp.ai` are ready, set `NEXT_PUBLIC_SITE_URL` to your live deployment (for example `https://todo-mcp-web.vercel.app`). Local dev usually sets `NEXT_PUBLIC_SITE_URL=http://localhost:3001` so metadata and redirects match the dev server.
+
+After moving to `yalp.ai`, update: **Vercel** project domains, **Supabase** Auth redirect URLs and Site URL, **Stripe** success/cancel URLs if hardcoded anywhere outside the app, **MCP / Cursor** configs that embed the API base URL, and any **marketing or llms.txt** mirrors outside this repo.
+
+## Rebranding checklist (Flowdo → Yalp)
+
+If you previously used Flowdo naming or env vars: use only **`YALP_*`** env vars (see `.env.example`). **API keys** must use the `yalp_` prefix — revoke old keys in the app and create new ones if needed. **Electron** `appId` is now `com.yalp.app`; existing installs may need a fresh build. **Supabase migration** filename changed to `0001_init_yalp.sql` — already-applied databases should not re-run SQL; new environments use the new file.
 

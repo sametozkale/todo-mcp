@@ -35,7 +35,7 @@ type CreateTodoInput = {
 };
 
 /** Tool shape used with McpServer.registerTool */
-export type FlowdoMcpTool = {
+export type YalpMcpTool = {
   description: string;
   inputSchema: Record<string, unknown>;
   handler: (args: any) => Promise<unknown>;
@@ -45,17 +45,15 @@ function getBaseUrl(): string {
   return (
     process.env.YALP_API_BASE_URL ||
     process.env.YALP_BASE_URL ||
-    process.env.FLOWDO_API_BASE_URL ||
-    process.env.FLOWDO_BASE_URL ||
-    'https://todo-mcp-web.vercel.app'
+    'https://yalp.ai'
   ).replace(/\/+$/, '');
 }
 
 function getApiKey(provided?: string): string {
-  return (provided ?? process.env.YALP_API_KEY ?? process.env.FLOWDO_API_KEY ?? '').trim();
+  return (provided ?? process.env.YALP_API_KEY ?? '').trim();
 }
 
-async function callFlowdoApi<T>(
+async function callYalpApi<T>(
   tool: string,
   payload: Record<string, unknown>
 ): Promise<T> {
@@ -74,7 +72,7 @@ async function callFlowdoApi<T>(
   return (await res.json()) as T;
 }
 
-export const tools: Record<string, FlowdoMcpTool> = {
+export const tools: Record<string, YalpMcpTool> = {
   list_todos: {
     description: 'List todos for the authenticated user',
     inputSchema: {
@@ -99,7 +97,7 @@ export const tools: Record<string, FlowdoMcpTool> = {
     }) => {
       const resolvedApiKey = getApiKey(apiKey);
       if (!resolvedApiKey) throw new Error('Missing apiKey.');
-      return await callFlowdoApi<TodoSummary[]>('list_todos', {
+      return await callYalpApi<TodoSummary[]>('list_todos', {
         apiKey: resolvedApiKey,
         listId: listId ?? null,
         listSlug,
@@ -130,7 +128,7 @@ export const tools: Record<string, FlowdoMcpTool> = {
     }: CreateTodoInput & { apiKey?: string }) => {
       const resolvedApiKey = getApiKey(apiKey);
       if (!resolvedApiKey) throw new Error('Missing apiKey.');
-      return await callFlowdoApi<TodoSummary>('create_todo', {
+      return await callYalpApi<TodoSummary>('create_todo', {
         apiKey: resolvedApiKey,
         title,
         description: description ?? null,
@@ -159,7 +157,7 @@ export const tools: Record<string, FlowdoMcpTool> = {
     }) => {
       const resolvedApiKey = getApiKey(input.apiKey);
       if (!resolvedApiKey) throw new Error('Missing apiKey.');
-      return await callFlowdoApi<TodoSummary>('update_todo', {
+      return await callYalpApi<TodoSummary>('update_todo', {
         ...input,
         apiKey: resolvedApiKey
       });
@@ -174,7 +172,7 @@ export const tools: Record<string, FlowdoMcpTool> = {
     handler: async ({ apiKey, id }: { apiKey?: string; id: string }) => {
       const resolvedApiKey = getApiKey(apiKey);
       if (!resolvedApiKey) throw new Error('Missing apiKey.');
-      return await callFlowdoApi<{ success: true }>('delete_todo', { apiKey: resolvedApiKey, id });
+      return await callYalpApi<{ success: true }>('delete_todo', { apiKey: resolvedApiKey, id });
     }
   },
   list_lists: {
@@ -185,7 +183,7 @@ export const tools: Record<string, FlowdoMcpTool> = {
     handler: async ({ apiKey }: { apiKey?: string }) => {
       const resolvedApiKey = getApiKey(apiKey);
       if (!resolvedApiKey) throw new Error('Missing apiKey.');
-      return await callFlowdoApi<List[]>('list_lists', { apiKey: resolvedApiKey });
+      return await callYalpApi<List[]>('list_lists', { apiKey: resolvedApiKey });
     }
   },
   create_list: {
@@ -197,7 +195,7 @@ export const tools: Record<string, FlowdoMcpTool> = {
     handler: async ({ apiKey, title }: { apiKey?: string; title: string }) => {
       const resolvedApiKey = getApiKey(apiKey);
       if (!resolvedApiKey) throw new Error('Missing apiKey.');
-      return await callFlowdoApi<List>('create_list', { apiKey: resolvedApiKey, title });
+      return await callYalpApi<List>('create_list', { apiKey: resolvedApiKey, title });
     }
   },
   resolve_list: {
@@ -219,7 +217,7 @@ export const tools: Record<string, FlowdoMcpTool> = {
     }) => {
       const resolvedApiKey = getApiKey(input.apiKey);
       if (!resolvedApiKey) throw new Error('Missing apiKey.');
-      return await callFlowdoApi<List>('resolve_list', { ...input, apiKey: resolvedApiKey });
+      return await callYalpApi<List>('resolve_list', { ...input, apiKey: resolvedApiKey });
     }
   }
 };

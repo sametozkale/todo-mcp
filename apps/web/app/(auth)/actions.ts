@@ -4,8 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { PRODUCT_HOME } from "@/lib/routes";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-
-const SHOULD_DEBUG_INGEST = process.env.NODE_ENV !== "production" && process.env.DEBUG_INGEST === "true";
+import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
+import { getSiteUrl } from "@/lib/site-url";
 
 async function getRequestOrigin(): Promise<string> {
   const h = await headers();
@@ -14,7 +14,7 @@ async function getRequestOrigin(): Promise<string> {
   if (host) {
     return `${protocol}://${host}`;
   }
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "https://todo-mcp-web.vercel.app";
+  return getSiteUrl();
 }
 
 export type AuthActionState = {
@@ -50,23 +50,16 @@ export async function loginAction(
       ? nextRaw
       : PRODUCT_HOME;
   // #region debug login action next
-  if (SHOULD_DEBUG_INGEST) {
-    await fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "f7ebea",
-      },
-      body: JSON.stringify({
-        sessionId: "f7ebea",
-        runId: "pre-fix",
-        hypothesisId: "H3-loginAction-next",
-        location: "apps/web/app/(auth)/actions.ts",
-        message: "Login action selecting next redirect",
-        data: { nextRaw, next },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
+  if (isServerDebugIngestEnabled()) {
+    await sendDebugIngest({
+      sessionId: "f7ebea",
+      runId: "pre-fix",
+      hypothesisId: "H3-loginAction-next",
+      location: "apps/web/app/(auth)/actions.ts",
+      message: "Login action selecting next redirect",
+      data: { nextRaw, next },
+      timestamp: Date.now(),
+    });
   }
   // #endregion
   redirect(next);

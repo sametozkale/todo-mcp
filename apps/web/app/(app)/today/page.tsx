@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { TodayClient } from "./today-client";
 
 export const metadata: Metadata = {
-  title: "Today — Yalp",
+  title: "Today",
   description: "Your tasks for today.",
+  robots: { index: false, follow: false },
 };
 
 export const dynamic = "force-dynamic";

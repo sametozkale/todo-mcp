@@ -3,8 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { TodayClient } from "../today/today-client";
 
 export const metadata: Metadata = {
-  title: "All — Yalp",
+  title: "All",
   description: "All your tasks.",
+  robots: { index: false, follow: false },
 };
 
 export const dynamic = "force-dynamic";

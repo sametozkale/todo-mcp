@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { getSiteUrl } from "@/lib/site-url";
 import { redirect } from "next/navigation";
 import { IntegrationsClient } from "./integrations-client";
 import { listApiKeysAction } from "./actions";
 
 export const metadata: Metadata = {
-  title: "MCP Connections — Yalp",
+  title: "MCP Connections",
   description: "Connect your AI tools to Yalp via MCP.",
+  robots: { index: false, follow: false },
 };
 
 export default async function IntegrationsPage() {
@@ -20,7 +22,7 @@ export default async function IntegrationsPage() {
   }
 
   const initialKeys = await listApiKeysAction();
-  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://todo-mcp-web.vercel.app").replace(/\/+$/, "");
+  const baseUrl = getSiteUrl();
 
   return (
     <div className="mx-auto w-full max-w-3xl pt-6">

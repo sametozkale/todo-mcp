@@ -16,7 +16,7 @@
     "@types/node": "^22.0.0"
   },
   "build": {
-    "appId": "com.flowdo.app",
+    "appId": "com.yalp.app",
     "mac": {
       "category": "public.app-category.productivity",
       "target": ["dmg"]

@@ -1,11 +1,26 @@
 import type { Metadata } from "next";
 import { LoginForm } from "@/components/auth/login-form";
+import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
 
-const SHOULD_DEBUG_INGEST = process.env.NODE_ENV !== "production" && process.env.DEBUG_INGEST === "true";
+const title = "Log in to Yalp";
+const description =
+  "Sign in to manage your tasks, lists, and MCP connections. Secure access to your Yalp workspace.";
 
 export const metadata: Metadata = {
-  title: "Log in — Yalp",
-  description: "Sign in to your Yalp account.",
+  title: "Log in",
+  description,
+  alternates: { canonical: "/login" },
+  openGraph: {
+    title,
+    description,
+    url: "/login",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+  },
 };
 
 export default async function LoginPage({
@@ -16,23 +31,16 @@ export default async function LoginPage({
   const params = await searchParams;
 
   // #region debug login page searchParams
-  if (SHOULD_DEBUG_INGEST) {
-    await fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "f7ebea",
-      },
-      body: JSON.stringify({
-        sessionId: "f7ebea",
-        runId: "login-searchparams-debug",
-        hypothesisId: "H7-login-page-next-param",
-        location: "apps/web/app/(auth)/login/page.tsx",
-        message: "Login page received searchParams",
-        data: { error: params.error, next: params.next },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
+  if (isServerDebugIngestEnabled()) {
+    await sendDebugIngest({
+      sessionId: "f7ebea",
+      runId: "login-searchparams-debug",
+      hypothesisId: "H7-login-page-next-param",
+      location: "apps/web/app/(auth)/login/page.tsx",
+      message: "Login page received searchParams",
+      data: { error: params.error, next: params.next },
+      timestamp: Date.now(),
+    });
   }
   // #endregion
 

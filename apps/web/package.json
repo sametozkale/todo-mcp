@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "clean": "rm -rf .next .turbo ../../node_modules/.cache",
     "grant-lifetime": "node --env-file=.env.local scripts/grant-lifetime.mjs",
     "dev": "next dev -p 3001",
     "dev:3002": "next dev -p 3002",
@@ -36,6 +37,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.14",
+    "eslint-plugin-unused-imports": "^4.4.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

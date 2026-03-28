@@ -1,5 +1,5 @@
 {
-  "name": "@flowdo/utils",
+  "name": "@yalp/utils",
   "private": true,
   "version": "0.1.0",
   "main": "src/index.ts",

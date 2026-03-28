@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
+import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
 
 function exists(p: string) {
   try {
@@ -38,19 +39,20 @@ export async function GET() {
   );
 
   // #region agent log
-  fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "8f4b9f" },
-    body: JSON.stringify({
-      sessionId: "8f4b9f",
-      runId: "pre-fix",
-      hypothesisId: "H1",
-      location: "apps/web/app/api/debug/next-assets/route.ts:1",
-      message: "Next asset existence snapshot",
-      data: result,
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
+  if (isServerDebugIngestEnabled()) {
+    void sendDebugIngest(
+      {
+        sessionId: "8f4b9f",
+        runId: "pre-fix",
+        hypothesisId: "H1",
+        location: "apps/web/app/api/debug/next-assets/route.ts:1",
+        message: "Next asset existence snapshot",
+        data: result,
+        timestamp: Date.now(),
+      },
+      { headerSessionId: "8f4b9f" },
+    );
+  }
   // #endregion
 
   return NextResponse.json(result);

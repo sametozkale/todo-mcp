@@ -1,0 +1,35 @@
+# Yalp — full product summary for LLMs
+
+## What it is
+
+Yalp is a productivity web application for managing todos and lists, with MCP integration so clients such as Cursor, Claude Desktop, Claude Web, Windsurf, and VS Code can connect to your account via a hosted MCP server and API keys.
+
+## Core features
+
+- Inbox / “All” view for tasks not assigned to a list
+- Custom lists with stable URL slugs per user
+- Today view for due/today-focused work
+- MCP Connections page: generate API keys, copy JSON config, one-click Cursor install where supported
+- Subscriptions via Stripe (monthly, yearly, lifetime Pro)
+
+## Free vs Pro (limits)
+
+Free tier (aligned with app constants):
+
+- Up to 25 active todos in the inbox / All list combined
+- 1 extra list beyond the default
+- Up to 10 active todos per extra list
+
+Pro removes these caps (unlimited active todos and lists).
+
+## URLs (public vs app)
+
+Public marketing and auth: `/`, `/login`, `/signup`. Authenticated app routes under `/all`, `/today`, `/integrations`, `/mcp`, list slugs, and `/subscription/*` require sign-in and are not intended for search indexing.
+
+## Official links
+
+Canonical production host: `https://yalp.ai` (set `NEXT_PUBLIC_SITE_URL` to match the URL users open, e.g. your Vercel URL, until DNS is configured).
+
+- Home: /
+- Login: /login
+- Sign up: /signup

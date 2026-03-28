@@ -66,7 +66,6 @@ function FreePlanUsageSection({
 }: {
   usage: {
     totalActiveTodosCount: number;
-    allListTodosCount: number;
     extraListsCount: number;
     maxExtraListTodosCount: number;
   };

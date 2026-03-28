@@ -15,8 +15,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const noIndex = { robots: { index: false, follow: false } } as const;
+
   if (!user) {
-    return { title: "List — Yalp" };
+    return { title: "List", ...noIndex };
   }
   const { data: list } = await supabase
     .from("lists")
@@ -26,11 +28,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .maybeSingle();
 
   if (!list) {
-    return { title: "List — Yalp" };
+    return { title: "List", ...noIndex };
   }
   return {
-    title: `${list.title} — Yalp`,
+    title: list.title,
     description: `Tasks in ${list.title}.`,
+    ...noIndex,
   };
 }
 

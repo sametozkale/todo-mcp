@@ -11,11 +11,11 @@ export type ApiKeyRow = {
 };
 
 function getPepper(): string {
-  return process.env.YALP_API_KEY_PEPPER ?? process.env.FLOWDO_API_KEY_PEPPER ?? "";
+  return process.env.YALP_API_KEY_PEPPER ?? "";
 }
 
 function hashApiKey(apiKey: string): string {
-  const hasValidPrefix = apiKey.startsWith("flowdo_") || apiKey.startsWith("yalp_");
+  const hasValidPrefix = apiKey.startsWith("yalp_");
   if (!hasValidPrefix || apiKey.length < 20) {
     throw new Error("Invalid API key format.");
   }

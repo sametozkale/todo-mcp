@@ -9,7 +9,7 @@ async function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1120,
     height: 720,
-    title: 'FlowDo',
+    title: 'Yalp',
     backgroundColor: '#020617',
     autoHideMenuBar: true,
     webPreferences: {

@@ -13,7 +13,7 @@ export function HomeCta() {
           "inline-flex no-underline",
         )}
       >
-        Log in
+        Log in to Yalp
       </Link>
       <Link
         href="/signup"
@@ -22,7 +22,7 @@ export function HomeCta() {
           "inline-flex no-underline",
         )}
       >
-        Sign up
+        Sign up for Yalp
       </Link>
     </div>
   );

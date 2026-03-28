@@ -4,11 +4,11 @@ import { spawn } from "node:child_process";
 // Usage:
 //   YALP_API_BASE_URL=http://localhost:3001 YALP_API_KEY=yalp_... node apps/mcp-server/scripts/smoke.mjs
 
-const baseUrl = (process.env.YALP_API_BASE_URL || process.env.FLOWDO_API_BASE_URL || "http://localhost:3001").replace(/\/+$/, "");
-const apiKey = (process.env.YALP_API_KEY || process.env.FLOWDO_API_KEY);
+const baseUrl = (process.env.YALP_API_BASE_URL || "http://localhost:3001").replace(/\/+$/, "");
+const apiKey = process.env.YALP_API_KEY;
 
 if (!apiKey) {
-  console.error("Missing YALP_API_KEY (or legacy FLOWDO_API_KEY).");
+  console.error("Missing YALP_API_KEY.");
   process.exit(1);
 }
 

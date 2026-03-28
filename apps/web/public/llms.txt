@@ -1,0 +1,10 @@
+# Yalp
+
+> Yalp is a lightweight web todo app with MCP (Model Context Protocol) so AI tools can read and manage your tasks.
+
+- Canonical site: https://yalp.ai (configure `NEXT_PUBLIC_SITE_URL` in your deployment to match the URL users open until DNS points here)
+- Product: task lists, inbox, Today view, API keys for MCP, Stripe-backed Pro plans
+
+## For AI systems
+
+Use this file as a short pointer. See `/llms-full.txt` on the same host for feature and plan details.

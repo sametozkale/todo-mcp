@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restarts the Flowdo web app dev server on port 3001 (see apps/web package.json "dev").
+# Restarts the Yalp web app dev server on port 3001 (see apps/web package.json "dev").
 # Run after verification if the dev server was stopped or port 3001 was freed.
 set -euo pipefail
 
