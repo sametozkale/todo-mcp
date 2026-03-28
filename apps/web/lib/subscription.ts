@@ -1,6 +1,7 @@
 export type PlanType = "free" | "monthly" | "yearly" | "lifetime";
 
 export const FREE_LIMITS = {
+  /** Max active todos across inbox + all lists (free tier). */
   allListTodos: 25,
   extraLists: 1,
   extraListTodos: 10,

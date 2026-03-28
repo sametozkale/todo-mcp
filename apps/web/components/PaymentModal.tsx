@@ -64,21 +64,26 @@ const PRO_ENTITLEMENT_FEATURES = [
 function FreePlanUsageSection({
   usage,
 }: {
-  usage: { allListTodosCount: number; extraListsCount: number; maxExtraListTodosCount: number };
+  usage: {
+    totalActiveTodosCount: number;
+    allListTodosCount: number;
+    extraListsCount: number;
+    maxExtraListTodosCount: number;
+  };
 }) {
   return (
     <div
-      className="rounded-[16px] border border-[#efefef] bg-[#fafafa] px-4 py-4 sm:px-5"
+      className="rounded-2xl border border-[#ebebeb] bg-[#f7f7f7] p-4 sm:p-5"
       role="region"
       aria-label="Free plan usage"
     >
-      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-muted">
+      <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">
         Free plan usage
       </p>
-      <div className="space-y-3">
+      <div className="flex flex-col gap-4">
         <LimitRow
-          label="Inbox (All, unassigned)"
-          current={usage.allListTodosCount}
+          label="Active todos (all lists)"
+          current={usage.totalActiveTodosCount}
           max={FREE_LIMITS.allListTodos}
         />
         <LimitRow
@@ -100,16 +105,16 @@ function LimitRow({ label, current, max }: { label: string; current: number; max
   const clamped = Math.max(0, Math.min(current, max));
   const pct = max <= 0 ? 0 : Math.round((clamped / max) * 100);
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2 text-[12px]">
-        <span className="text-muted">{label}</span>
-        <span className="font-medium text-foreground">
+    <div className="flex flex-col gap-2">
+      <div className="flex min-h-[1.25rem] items-start justify-between gap-3 text-[13px] leading-tight">
+        <span className="min-w-0 flex-1 text-muted">{label}</span>
+        <span className="shrink-0 tabular-nums font-medium text-foreground">
           {current} / {max}
         </span>
       </div>
-      <div className="h-2 w-full rounded-full bg-white shadow-[inset_0_0_0_1px_#efefef]">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white shadow-[inset_0_0_0_1px_#e8e8e8]">
         <div
-          className="h-2 rounded-full bg-[#00b5e9]"
+          className="h-full rounded-full bg-[#00b5e9] transition-[width] duration-300 ease-out"
           style={{ width: `${pct}%` }}
           aria-hidden="true"
         />
@@ -132,7 +137,7 @@ function PlanCardColumn({
   return (
     <div
       className={[
-        "relative flex h-full flex-col rounded-[16px] border bg-white p-4 transition-shadow sm:p-5",
+        "relative flex h-full flex-col rounded-2xl border bg-white p-4 transition-shadow sm:p-5",
         featured
           ? "border-[#00b5e9] shadow-[0_8px_30px_rgba(0,181,233,0.12),0_1px_0_rgba(0,0,0,0.04)] ring-1 ring-inset ring-[#00b5e9]/25"
           : "border-[#efefef] shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
@@ -197,7 +202,7 @@ function LifetimePlanRow({
 }) {
   const Icon = p.icon;
   return (
-    <div className="relative rounded-[16px] border border-[#efefef] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:p-5">
+    <div className="relative rounded-2xl border border-[#efefef] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:p-5">
       <div className="flex flex-col gap-4 sm:grid sm:grid-cols-[minmax(0,12.5rem)_minmax(0,1fr)] sm:grid-rows-[auto_auto] sm:items-start sm:gap-x-6 sm:gap-y-3">
         <div className="min-w-0 w-full sm:col-start-1 sm:row-start-1 sm:max-w-[12.5rem]">
           <div className="flex gap-2">
@@ -360,7 +365,7 @@ export function PaymentModal() {
           >
             {showHeaderClose ? <Modal.CloseTrigger /> : null}
 
-            <Modal.Header className="mb-1 flex flex-col gap-1 border-0 pb-0 sm:mb-2">
+            <Modal.Header className="border-0 pb-0">
               <div className="flex flex-wrap items-center gap-2 pr-10">
                 <Modal.Heading className="font-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
                   {isPro ? "Your plan" : "Upgrade to Pro"}
@@ -371,7 +376,7 @@ export function PaymentModal() {
                   </span>
                 ) : null}
               </div>
-              <p id="plans-modal-subtitle" className="text-[13px] leading-snug text-muted">
+              <p id="plans-modal-subtitle" className="text-[13px] leading-relaxed text-muted">
                 {isPro
                   ? currentPlan === "lifetime"
                     ? "Lifetime includes every Pro capability with a single payment — no renewals or subscription management."
@@ -381,7 +386,7 @@ export function PaymentModal() {
               {!paymentModal.dismissible && !isPro ? (
                 <p
                   id="plans-modal-limit-notice"
-                  className="rounded-[12px] border border-[#e8f7fc] bg-[#f0fbff] px-3 py-2 text-[12px] leading-snug text-foreground"
+                  className="rounded-xl border border-[#c8ecf7] bg-[#eef9fd] px-4 py-3 text-[13px] leading-relaxed text-foreground"
                   role="status"
                 >
                   You’ve reached a limit on the free plan. Choose a plan below to continue — this dialog
@@ -390,9 +395,12 @@ export function PaymentModal() {
               ) : null}
             </Modal.Header>
 
-            <Modal.Body className="gap-4 pt-3">
+            <Modal.Body className="!mt-5 flex flex-col gap-5 pt-0 sm:!mt-6">
               {checkoutError ? (
-                <p className="rounded-[12px] border border-[color:var(--color-danger)]/25 bg-[color:var(--color-danger)]/[0.06] px-3 py-2 text-[13px] text-[color:var(--color-danger)]" role="alert">
+                <p
+                  className="rounded-xl border border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger)]/[0.06] px-4 py-3 text-[13px] leading-relaxed text-[color:var(--color-danger)]"
+                  role="alert"
+                >
                   {checkoutError}
                 </p>
               ) : null}
@@ -472,8 +480,8 @@ export function PaymentModal() {
                 </div>
               ) : (
                 <>
-                  <div className="flex flex-col gap-3 px-2 sm:gap-4 sm:px-3">
-                    <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                  <div className="flex flex-col gap-4 sm:gap-5">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
                       {RECURRING_PLANS.map((p) => (
                         <PlanCardColumn
                           key={p.key}
@@ -491,11 +499,9 @@ export function PaymentModal() {
                     />
                   </div>
 
-                  <div>
-                    <p className="text-center text-[11px] leading-snug text-muted">
-                      Secure checkout with Stripe. You can manage your plans in the customer portal.
-                    </p>
-                  </div>
+                  <p className="mx-auto max-w-lg text-center text-[12px] leading-relaxed text-muted">
+                    Secure checkout with Stripe. You can manage your plans in the customer portal.
+                  </p>
                 </>
               )}
             </Modal.Body>

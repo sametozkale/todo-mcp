@@ -84,6 +84,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   };
 
   const initialUsage: UsageSnapshot = {
+    totalActiveTodosCount: allCount,
     allListTodosCount,
     extraListsCount,
     maxExtraListTodosCount,

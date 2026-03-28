@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { slugifyListTitle } from "@/lib/list-slug";
+import { FREE_LIMITS, isProPlan, type PlanType } from "@/lib/subscription";
 
 type ToolName =
   | "list_lists"
@@ -77,7 +78,8 @@ type ListRow = {
 type ResolveListResult =
   | { status: "list"; row: ListRow }
   | { status: "inbox" }
-  | { status: "missing" };
+  | { status: "missing" }
+  | { status: "list_limit" };
 
 async function resolveListTarget(
   supabase: ReturnType<typeof getServiceSupabase>,
@@ -114,6 +116,28 @@ async function resolveListTarget(
   }
 
   if (!input.createIfMissing) return { status: "missing" };
+
+  const { data: subRow } = await supabase
+    .from("user_subscriptions")
+    .select("plan_type, subscription_status")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const plan = (subRow?.plan_type ?? "free") as PlanType;
+  const isPro = isProPlan(plan, subRow?.subscription_status ?? "inactive");
+
+  if (!isPro) {
+    const { count, error: listCountErr } = await supabase
+      .from("lists")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+
+    if (listCountErr) throw listCountErr;
+
+    if ((count ?? 0) >= FREE_LIMITS.extraLists) {
+      return { status: "list_limit" };
+    }
+  }
 
   const { data: maxRow } = await supabase
     .from("lists")
@@ -197,6 +221,31 @@ export async function POST(req: Request) {
       if (!title) return NextResponse.json({ error: "Missing title." }, { status: 400 });
       const slug = normalizeListRef(title);
 
+      const { data: subRow } = await supabase
+        .from("user_subscriptions")
+        .select("plan_type, subscription_status")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const plan = (subRow?.plan_type ?? "free") as PlanType;
+      const isPro = isProPlan(plan, subRow?.subscription_status ?? "inactive");
+
+      if (!isPro) {
+        const { count, error: countErr } = await supabase
+          .from("lists")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId);
+
+        if (countErr) throw countErr;
+
+        if ((count ?? 0) >= FREE_LIMITS.extraLists) {
+          return NextResponse.json(
+            { error: "Free plan allows 1 list. Upgrade for unlimited lists." },
+            { status: 403 },
+          );
+        }
+      }
+
       const { data: maxRow } = await supabase
         .from("lists")
         .select("position")
@@ -226,6 +275,12 @@ export async function POST(req: Request) {
       if (resolved.status === "missing") {
         return NextResponse.json({ error: "List not found." }, { status: 404 });
       }
+      if (resolved.status === "list_limit") {
+        return NextResponse.json(
+          { error: "Free plan allows 1 list. Upgrade for unlimited lists." },
+          { status: 403 },
+        );
+      }
       if (resolved.status === "inbox") {
         return NextResponse.json({
           id: null,
@@ -248,6 +303,12 @@ export async function POST(req: Request) {
       });
       if (resolved.status === "missing") {
         return NextResponse.json({ error: "List not found." }, { status: 404 });
+      }
+      if (resolved.status === "list_limit") {
+        return NextResponse.json(
+          { error: "Free plan allows 1 list. Upgrade for unlimited lists." },
+          { status: 403 },
+        );
       }
 
       const query = supabase.from("todos").select("*").eq("user_id", userId).order("position");
@@ -274,8 +335,61 @@ export async function POST(req: Request) {
       if (resolved.status === "missing") {
         return NextResponse.json({ error: "List not found." }, { status: 404 });
       }
+      if (resolved.status === "list_limit") {
+        return NextResponse.json(
+          { error: "Free plan allows 1 list. Upgrade for unlimited lists." },
+          { status: 403 },
+        );
+      }
 
       const listId = resolved.status === "inbox" ? null : resolved.row.id;
+
+      const { data: subRow } = await supabase
+        .from("user_subscriptions")
+        .select("plan_type, subscription_status")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const plan = (subRow?.plan_type ?? "free") as PlanType;
+      const isPro = isProPlan(plan, subRow?.subscription_status ?? "inactive");
+
+      if (!isPro) {
+        const { count: totalActive, error: totalErr } = await supabase
+          .from("todos")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .or("is_completed.is.null,is_completed.eq.false");
+
+        if (totalErr) throw totalErr;
+
+        if ((totalActive ?? 0) >= FREE_LIMITS.allListTodos) {
+          return NextResponse.json(
+            {
+              error:
+                "You've reached the 25 active todo limit on the free plan. Upgrade to add more.",
+            },
+            { status: 403 },
+          );
+        }
+
+        if (listId) {
+          const { count, error: countErr } = await supabase
+            .from("todos")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .eq("list_id", listId)
+            .or("is_completed.is.null,is_completed.eq.false");
+
+          if (countErr) throw countErr;
+
+          if ((count ?? 0) >= FREE_LIMITS.extraListTodos) {
+            return NextResponse.json(
+              { error: "This list is full (10/10). Upgrade to add more todos." },
+              { status: 403 },
+            );
+          }
+        }
+      }
 
       const { data: minAllPosRow } = await supabase
         .from("todos")

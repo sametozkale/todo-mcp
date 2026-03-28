@@ -11,6 +11,8 @@ export type SubscriptionSnapshot = {
 };
 
 export type UsageSnapshot = {
+  /** All active todos (inbox + every list) — used for the free-tier account cap. */
+  totalActiveTodosCount: number;
   /** Active todos with no list (inbox / new tasks from All). */
   allListTodosCount: number;
   extraListsCount: number;
@@ -92,13 +94,14 @@ export function useSubscription() {
   const canAddTodo = useCallback(
     (listId: string | null) => {
       if (isPro) return true;
+      if (usage.totalActiveTodosCount >= FREE_LIMITS.allListTodos) return false;
       if (!listId) {
         return usage.allListTodosCount < FREE_LIMITS.allListTodos;
       }
       const activeInThisList = usage.activeTodosByListId[listId] ?? 0;
       return activeInThisList < FREE_LIMITS.extraListTodos;
     },
-    [isPro, usage.allListTodosCount, usage.activeTodosByListId],
+    [isPro, usage.totalActiveTodosCount, usage.allListTodosCount, usage.activeTodosByListId],
   );
 
   return {
