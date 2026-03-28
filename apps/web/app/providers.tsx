@@ -11,7 +11,10 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <>
       {children}
-      <ToastProvider />
+      <ToastProvider
+        placement="bottom end"
+        width="min(560px, calc(100vw - 24px))"
+      />
     </>
   );
 }

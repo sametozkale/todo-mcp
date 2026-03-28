@@ -5,8 +5,7 @@ import { revalidatePath } from "next/cache";
  * revalidating every `/{slug}` on each todo toggle (major latency win).
  */
 export function revalidateAppShell() {
-  revalidatePath("/today", "layout");
-  revalidatePath("/all");
+  revalidatePath("/all", "layout");
 }
 
 /**

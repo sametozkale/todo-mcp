@@ -122,10 +122,38 @@ select {
  * (line-height matches inner box after 1px borders; py-0 so text sits centered)
  */
 @layer components {
-  /* HeroUI Toast: size to content (no fixed width). */
-  .toast {
+  /*
+   * Toast region: sağ alt — ekrandan sağda 24px, altta 24px (placement: bottom end).
+   */
+  [data-slot="toast-region"].toast-region--bottom-end {
+    top: auto !important;
+    left: auto !important;
+    right: 24px !important;
+    bottom: 24px !important;
+    transform: none !important;
+    width: min(560px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  @media (min-width: 640px) {
+    [data-slot="toast-region"].toast-region--bottom-end {
+      width: min(560px, calc(100vw - 24px));
+    }
+  }
+
+  /*
+   * Toast kartları: içerik genişliği, bölgenin sağ kenarına hizalı (sağ alt stack).
+   */
+  [data-slot="toast-region"].toast-region--bottom-end .toast[data-slot="toast"] {
+    left: auto !important;
+    right: 0 !important;
     width: fit-content;
-    max-width: min(560px, calc(100vw - 2rem));
+    max-width: min(560px, calc(100vw - 24px));
+    margin-left: 0;
+    margin-right: 0;
+    transform: none;
   }
 
   .toast__content {

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidateAppShell, revalidateTodoListPaths } from "@/lib/revalidate-todo-pages";
+import { isProPlan, type PlanType } from "@/lib/subscription";
 
 export type AddTodoState = { error?: string; success?: boolean } | null;
 
@@ -23,23 +24,96 @@ export async function addTodoAction(_prevState: AddTodoState, formData: FormData
     return { error: "Not signed in." };
   }
 
-  if (listId) {
+  const { data: subRow } = await supabase
+    .from("user_subscriptions")
+    .select("plan_type, subscription_status")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const plan = (subRow?.plan_type ?? "free") as PlanType;
+  const isPro = isProPlan(plan, subRow?.subscription_status ?? "inactive");
+
+  /** All view: unassigned (no list). Named list: that list's id. */
+  const effectiveListId: string | null = listId;
+
+  if (effectiveListId) {
     const { data: listRow, error: listErr } = await supabase
       .from("lists")
-      .select("id")
-      .eq("id", listId)
+      .select("id, slug")
+      .eq("id", effectiveListId)
       .eq("user_id", user.id)
       .maybeSingle();
 
     if (listErr || !listRow) {
       return { error: "Invalid list." };
     }
+
+    if (!isPro) {
+      const { count, error: countErr } = await supabase
+        .from("todos")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("list_id", listRow.id)
+        .or("is_completed.is.null,is_completed.eq.false");
+
+      if (countErr) {
+        return { error: countErr.message };
+      }
+
+      if ((count ?? 0) >= 10) {
+        return {
+          error: "This list is full (10/10). Upgrade to add more todos.",
+        };
+      }
+    }
+  } else if (!isPro) {
+    const { count, error: countErr } = await supabase
+      .from("todos")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .is("list_id", null)
+      .or("is_completed.is.null,is_completed.eq.false");
+
+    if (countErr) {
+      return { error: countErr.message };
+    }
+
+    if ((count ?? 0) >= 25) {
+      return {
+        error: "You've reached the 25 todo limit for inbox (All). Upgrade to add more.",
+      };
+    }
   }
+
+  const minListBase = supabase
+    .from("todos")
+    .select("position")
+    .eq("user_id", user.id)
+    .order("position", { ascending: true })
+    .limit(1);
+
+  const { data: minListPosRow } =
+    effectiveListId == null
+      ? await minListBase.is("list_id", null).maybeSingle()
+      : await minListBase.eq("list_id", effectiveListId).maybeSingle();
+
+  const { data: minAllPosRow } = await supabase
+    .from("todos")
+    .select("all_position")
+    .eq("user_id", user.id)
+    .order("all_position", { ascending: true, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+
+  const nextListPosition = (minListPosRow?.position ?? 0) - 1;
+  const nextAllPosition = (minAllPosRow?.all_position ?? 0) - 1;
 
   const { error } = await supabase.from("todos").insert({
     user_id: user.id,
-    list_id: listId,
+    list_id: effectiveListId,
     title,
+    position: nextListPosition,
+    all_position: nextAllPosition,
   });
 
   if (error) {
@@ -164,11 +238,12 @@ export async function reorderAllTodosAction(orderedTodoIds: string[]) {
     return { success: true as const };
   }
 
+  // Only `all_position` — per-list `position` stays untouched so list views keep their own order.
   const updates = await Promise.all(
     ids.map((id, idx) =>
       supabase
         .from("todos")
-        .update({ position: idx })
+        .update({ all_position: idx })
         .eq("id", id)
         .eq("user_id", user.id),
     ),

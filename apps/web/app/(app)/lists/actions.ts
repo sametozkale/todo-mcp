@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { slugifyListTitle, validateListSlugForCreate } from "@/lib/list-slug";
 import { revalidateTodoListPaths } from "@/lib/revalidate-todo-pages";
+import { isProPlan, type PlanType } from "@/lib/subscription";
 
 export type CreateListResult =
   | { ok: true; slug: string }
@@ -25,6 +26,33 @@ export async function createListAction(title: string): Promise<CreateListResult>
   } = await supabase.auth.getUser();
   if (!user) {
     return { ok: false, error: "Not signed in." };
+  }
+
+  const { data: subRow } = await supabase
+    .from("user_subscriptions")
+    .select("plan_type, subscription_status")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const plan = (subRow?.plan_type ?? "free") as PlanType;
+  const isPro = isProPlan(plan, subRow?.subscription_status ?? "inactive");
+
+  if (!isPro) {
+    const { count, error: countErr } = await supabase
+      .from("lists")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    if (countErr) {
+      return { ok: false, error: countErr.message };
+    }
+
+    if ((count ?? 0) >= 1) {
+      return {
+        ok: false,
+        error: "Free plan allows 1 list. Upgrade for unlimited lists.",
+      };
+    }
   }
 
   const { data: maxRow } = await supabase

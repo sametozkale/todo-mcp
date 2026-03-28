@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { AppHeader } from "./app-header";
 import { ListsProvider } from "./lists-shell";
+import { SubscriptionProvider, type SubscriptionSnapshot, type UsageSnapshot } from "@/hooks/useSubscription";
 
 const SHOULD_DEBUG_INGEST = process.env.NODE_ENV !== "production" && process.env.DEBUG_INGEST === "true";
 
@@ -52,32 +53,57 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   const { data: todoListIds } = await supabase
     .from("todos")
-    .select("list_id")
+    .select("list_id, is_completed")
     .eq("user_id", user.id);
 
-  const allCount = todoListIds?.length ?? 0;
+  const activeTodos = (todoListIds ?? []).filter((t) => t.is_completed !== true);
+  const allCount = activeTodos.length;
   const byListId: Record<string, number> = {};
-  for (const row of todoListIds ?? []) {
-    if (row.list_id) {
-      byListId[row.list_id] = (byListId[row.list_id] ?? 0) + 1;
-    }
+  for (const row of activeTodos) {
+    if (row.list_id) byListId[row.list_id] = (byListId[row.list_id] ?? 0) + 1;
   }
+
+  /** Inbox: active todos not assigned to a list (captures from / All). */
+  const allListTodosCount = activeTodos.filter((t) => t.list_id == null).length;
+  const lists = listRows ?? [];
+  const extraListsCount = lists.length;
+  const maxExtraListTodosCount =
+    lists.length === 0 ? 0 : Math.max(...lists.map((l) => byListId[l.id] ?? 0));
+
+  const { data: subRow } = await supabase
+    .from("user_subscriptions")
+    .select("plan_type, subscription_status, current_period_end, cancel_at_period_end")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const initialSubscription: SubscriptionSnapshot = {
+    plan: (subRow?.plan_type ?? "free") as SubscriptionSnapshot["plan"],
+    subscription_status: subRow?.subscription_status ?? "inactive",
+    current_period_end: subRow?.current_period_end ?? null,
+    cancel_at_period_end: subRow?.cancel_at_period_end ?? false,
+  };
+
+  const initialUsage: UsageSnapshot = {
+    allListTodosCount,
+    extraListsCount,
+    maxExtraListTodosCount,
+    activeTodosByListId: byListId,
+  };
 
   return (
     <div className="flex min-h-dvh flex-col bg-[#fafafa]">
-      <AppHeader
-        initialProfile={{
-          fullName: profile?.full_name ?? "",
-          avatarUrl: profile?.avatar_url ?? null,
-        }}
-        userEmail={user.email ?? null}
-      />
-      <ListsProvider
-        lists={listRows ?? []}
-        counts={{ all: allCount, byListId }}
-      >
-        <div className="flex flex-1 flex-col px-4 pb-24 pt-2 sm:px-6">{children}</div>
-      </ListsProvider>
+      <SubscriptionProvider initialSubscription={initialSubscription} initialUsage={initialUsage}>
+        <AppHeader
+          initialProfile={{
+            fullName: profile?.full_name ?? "",
+            avatarUrl: profile?.avatar_url ?? null,
+          }}
+          userEmail={user.email ?? null}
+        />
+        <ListsProvider lists={listRows ?? []} counts={{ all: allCount, byListId }}>
+          <div className="flex flex-1 flex-col px-4 pb-24 pt-2 sm:px-6">{children}</div>
+        </ListsProvider>
+      </SubscriptionProvider>
     </div>
   );
 }

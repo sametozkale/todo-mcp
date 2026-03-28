@@ -24,7 +24,7 @@ export default async function AllPage() {
     .from("todos")
     .select("id, title, is_completed, created_at")
     .eq("user_id", user.id)
-    .order("position", { ascending: true, nullsFirst: true })
+    .order("all_position", { ascending: true, nullsFirst: true })
     .order("created_at", { ascending: false });
 
   if (error) {

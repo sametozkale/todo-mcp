@@ -53,6 +53,8 @@ import {
   useOverlayState,
 } from "@heroui/react";
 import {
+  forwardRef,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useOptimistic,
@@ -63,6 +65,9 @@ import {
 } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useSubscription } from "@/hooks/useSubscription";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import type { CSSProperties, ChangeEvent, MutableRefObject, Ref } from "react";
 
 const SHOULD_DEBUG_INGEST =
   process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEBUG_INGEST === "true";
@@ -72,6 +77,29 @@ type TodoRow = {
   title: string;
   is_completed: boolean | null;
 };
+
+/** Listeden çıkış: hafif sola kayma + küçülme + soldurma (FM’de silme için yaygın pattern). */
+const TODO_ROW_EXIT = {
+  opacity: 0,
+  x: -14,
+  scale: 0.975,
+  transition: { duration: 0.22, ease: [0.32, 0.72, 0, 1] as const },
+};
+
+/** Çok satırda toplam cascade süresini ~0,5s içinde tut; sıra değişince aynı id’ye aynı gecikme (ref ile). */
+const LIST_ENTRANCE_INDEX_CAP = 40;
+const LIST_ENTRANCE_TIME_BUDGET_SEC = 0.52;
+
+function computeTodoEntranceDelay(
+  visualIndex: number,
+  visibleCount: number,
+  prefersReducedMotion: boolean | null,
+): number {
+  if (prefersReducedMotion) return 0;
+  const cappedCount = Math.max(1, Math.min(visibleCount, LIST_ENTRANCE_INDEX_CAP));
+  const stagger = Math.min(0.038, LIST_ENTRANCE_TIME_BUDGET_SEC / cappedCount);
+  return Math.min(visualIndex, LIST_ENTRANCE_INDEX_CAP) * stagger;
+}
 
 export type TodayClientProps = {
   initialTodos: TodoRow[];
@@ -135,6 +163,25 @@ function reorderTodosByIds(state: TodoRow[], orderedIds: string[]): TodoRow[] {
   return ordered;
 }
 
+/** Merge a visible-only order into the full id list (same rules as drag-end persistence). */
+function mergeVisibleOrderIntoFull(
+  fullIds: string[],
+  visibleOrderedIds: string[],
+  visibleSet: Set<string>,
+): string[] {
+  const mergedIds: string[] = [];
+  let i = 0;
+  for (const id of fullIds) {
+    if (visibleSet.has(id)) {
+      mergedIds.push(visibleOrderedIds[i] ?? id);
+      i += 1;
+    } else {
+      mergedIds.push(id);
+    }
+  }
+  return mergedIds;
+}
+
 function applyTodoOptimistic(state: TodoRow[], action: TodoOptimisticAction): TodoRow[] {
   switch (action.type) {
     case "toggle":
@@ -150,6 +197,304 @@ function applyTodoOptimistic(state: TodoRow[], action: TodoOptimisticAction): To
   }
 }
 
+/** Checkbox tamamlandığında: kısa ses + desteklenen cihazlarda vibrate (bu dosyada tutuluyor; ek webpack chunk hatası riskini azaltır). */
+let sharedAudioContext: AudioContext | null = null;
+
+function getAudioContext(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+  if (!sharedAudioContext) {
+    const Ctx =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return null;
+    sharedAudioContext = new Ctx();
+  }
+  return sharedAudioContext;
+}
+
+function playTodoCompleteChime(): void {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  try {
+    if (ctx.state === "suspended") void ctx.resume();
+    const t0 = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(520, t0);
+    osc.frequency.exponentialRampToValueAtTime(880, t0 + 0.028);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.exponentialRampToValueAtTime(0.11, t0 + 0.004);
+    env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
+    osc.connect(env);
+    env.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.1);
+  } catch {
+    // autoplay / AudioContext
+  }
+}
+
+function tryTodoCompleteVibrate(): void {
+  if (typeof navigator === "undefined") return;
+  const v = navigator.vibrate;
+  if (typeof v !== "function") return;
+  try {
+    v.call(navigator, [12, 24, 10]);
+  } catch {
+    // ignore
+  }
+}
+
+function feedbackTodoMarkedComplete(): void {
+  playTodoCompleteChime();
+  tryTodoCompleteVibrate();
+}
+
+type TodoRowMeasuredSortable = Pick<
+  ReturnType<typeof useSortable>,
+  "setNodeRef" | "setActivatorNodeRef" | "attributes" | "listeners"
+> & {
+  style: CSSProperties;
+  isDragging?: boolean;
+};
+
+type TodoRowHandlers = {
+  setSelectedTodoId: (id: string) => void;
+  isTodoPending: boolean;
+  startTodoTransition: (cb: () => void | Promise<void>) => void;
+  addOptimistic: (action: TodoOptimisticAction) => void;
+  scheduleRefresh: () => void;
+};
+
+function TodoRowMeasured({
+  todo,
+  sortable,
+  rootRef,
+  entranceDelay,
+  setSelectedTodoId,
+  isTodoPending,
+  startTodoTransition,
+  addOptimistic,
+  scheduleRefresh,
+}: {
+  todo: TodoRow;
+  rootRef?: Ref<HTMLLIElement | null>;
+  sortable?: TodoRowMeasuredSortable;
+  /** Liste / rota yüklemesinde sırayla görünüm (sn); sürükleme / yeniden sıra etkilenmez. */
+  entranceDelay: number;
+} & TodoRowHandlers) {
+  const titleRef = useRef<HTMLSpanElement>(null);
+  const checkboxRef = useRef<HTMLInputElement>(null);
+  const [isMultiline, setIsMultiline] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+
+    const compute = () => {
+      const style = window.getComputedStyle(el);
+      const lineHeight = Number.parseFloat(style.lineHeight);
+      const height = el.getBoundingClientRect().height;
+
+      if (Number.isFinite(lineHeight) && lineHeight > 0) {
+        setIsMultiline(height > lineHeight * 1.6);
+        return;
+      }
+
+      setIsMultiline(height > 26);
+    };
+
+    compute();
+
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => compute());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [todo.title, todo.is_completed]);
+
+  const setNodeRefFromSortable = sortable?.setNodeRef;
+  const mergedLiRef = useCallback(
+    (node: HTMLLIElement | null) => {
+      setNodeRefFromSortable?.(node);
+      const r = rootRef;
+      if (!r) return;
+      if (typeof r === "function") r(node);
+      else (r as MutableRefObject<HTMLLIElement | null>).current = node;
+    },
+    [setNodeRefFromSortable, rootRef],
+  );
+
+  const rowInnerClass = [
+    "flex min-w-0 flex-1 gap-3 rounded-[16px] px-3 transition-colors duration-150 ease-out",
+    "group-hover:bg-[#f4f4f4]",
+    isMultiline ? "items-start py-2.5" : "items-center py-1.5",
+  ].join(" ");
+
+  return (
+    <motion.li
+      ref={mergedLiRef}
+      layout={sortable ? !sortable.isDragging : true}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{
+        opacity: sortable?.isDragging ? 0.85 : 1,
+        y: 0,
+      }}
+      transition={{
+        opacity: { duration: 0.2, delay: entranceDelay },
+        y: { duration: 0.22, ease: [0.32, 0.72, 0, 1], delay: entranceDelay },
+        layout: { duration: 0.2, ease: [0.32, 0.72, 0, 1] },
+      }}
+      exit={TODO_ROW_EXIT}
+      className="group relative w-full list-none"
+      style={sortable?.style}
+      data-todo-row="1"
+      data-todo-id={todo.id}
+      onClick={(e) => {
+        const el = e.target as HTMLElement;
+        if (el.closest('input[type="checkbox"]')) return;
+        if (el.closest("button")) return;
+        setSelectedTodoId(todo.id);
+      }}
+    >
+      <div className="relative flex min-w-0 flex-1">
+        {sortable ? (
+          <button
+            type="button"
+            ref={sortable.setActivatorNodeRef}
+            {...sortable.attributes}
+            {...(sortable.listeners ?? {})}
+            aria-describedby={undefined}
+            className={[
+              "absolute z-10 inline-flex min-h-9 min-w-9 cursor-grab items-center justify-center rounded-[8px] p-0 text-muted/70 transition-opacity duration-150 ease-out",
+              "left-0 -translate-x-[calc(100%-2px)]",
+              isMultiline ? "top-[10px] translate-y-0" : "top-1/2 -translate-y-1/2",
+              sortable.isDragging
+                ? "opacity-100"
+                : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:pointer-events-auto focus-visible:opacity-100",
+              "hover:text-foreground/80 active:cursor-grabbing",
+            ].join(" ")}
+            aria-label={`Reorder ${todo.title}`}
+          >
+            <GripVertical size={16} strokeWidth={2} className="text-current" />
+          </button>
+        ) : null}
+
+        <div className={rowInnerClass}>
+          <span
+            className={["flex shrink-0", isMultiline ? "items-start" : "items-center"].join(" ")}
+          >
+            <input
+              type="checkbox"
+              className={[
+                "todo-checkbox-squircle",
+                isMultiline ? "self-start mt-[2px]" : "self-center",
+              ].join(" ")}
+              ref={checkboxRef}
+              checked={!!todo.is_completed}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                const checked = e.target.checked;
+                if (checked) {
+                  feedbackTodoMarkedComplete();
+                }
+                startTodoTransition(async () => {
+                  addOptimistic({ type: "toggle", id: todo.id, completed: checked });
+                  await toggleTodoAction(todo.id, checked);
+                  scheduleRefresh();
+                });
+              }}
+              aria-label={
+                todo.is_completed
+                  ? `Mark incomplete: ${todo.title}`
+                  : `Mark complete: ${todo.title}`
+              }
+            />
+          </span>
+
+          <span
+            ref={titleRef}
+            className={
+              todo.is_completed
+                ? "min-w-0 flex-1 text-[14px] leading-5 text-muted line-through"
+                : "min-w-0 flex-1 text-[14px] leading-5 text-foreground"
+            }
+          >
+            {todo.title}
+          </span>
+
+          <span
+            className={[
+              "flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100",
+              isMultiline ? "self-start -mt-1" : "",
+            ].join(" ").trim()}
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="min-h-7 min-w-7 p-0 text-muted hover:text-foreground"
+              aria-label={`Delete ${todo.title}`}
+              onPress={() => {
+                startTodoTransition(async () => {
+                  try {
+                    addOptimistic({ type: "delete", id: todo.id });
+                    await deleteTodoAction(todo.id);
+                    toast.success("Todo deleted.", { timeout: 2500 });
+                  } catch {
+                    addOptimistic({ type: "add", todo });
+                    toast.danger("Could not delete todo.", { timeout: 4500 });
+                  } finally {
+                    scheduleRefresh();
+                  }
+                });
+              }}
+              isDisabled={isTodoPending}
+            >
+              <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={1.75} />
+            </Button>
+          </span>
+        </div>
+      </div>
+    </motion.li>
+  );
+}
+
+const PresenceTodoRow = forwardRef<
+  HTMLLIElement,
+  { todo: TodoRow; entranceDelay: number } & TodoRowHandlers
+>(function PresenceTodoRow({ todo, entranceDelay, ...handlers }, ref) {
+  return <TodoRowMeasured todo={todo} rootRef={ref} entranceDelay={entranceDelay} {...handlers} />;
+});
+
+const SortableTodoItem = forwardRef<
+  HTMLLIElement,
+  { todo: TodoRow; entranceDelay: number } & TodoRowHandlers
+>(function SortableTodoItem({ todo, entranceDelay, ...handlers }, ref) {
+    const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+      useSortable({ id: todo.id });
+
+    return (
+      <TodoRowMeasured
+        todo={todo}
+        rootRef={ref}
+        entranceDelay={entranceDelay}
+        {...handlers}
+        sortable={{
+          setNodeRef,
+          setActivatorNodeRef,
+          attributes,
+          listeners,
+          isDragging,
+          style: {
+            transform: CSS.Transform.toString(transform),
+            transition,
+            zIndex: isDragging ? 20 : undefined,
+          },
+        }}
+      />
+    );
+});
+
 export function TodayClient({
   initialTodos,
   composerListId,
@@ -157,7 +502,27 @@ export function TodayClient({
 }: TodayClientProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const prefersReducedMotion = useReducedMotion();
+  const routeListKey = `${pathname}::${composerListId ?? ""}`;
+  const entranceDelayByIdRef = useRef<Map<string, number>>(new Map());
+  const routeListKeyForDelaysRef = useRef(routeListKey);
+  if (routeListKeyForDelaysRef.current !== routeListKey) {
+    routeListKeyForDelaysRef.current = routeListKey;
+    entranceDelayByIdRef.current = new Map();
+  }
+  const getEntranceDelay = useCallback(
+    (id: string, visualIndex: number, visibleCount: number) => {
+      const m = entranceDelayByIdRef.current;
+      if (m.has(id)) return m.get(id)!;
+      const d = computeTodoEntranceDelay(visualIndex, visibleCount, prefersReducedMotion);
+      m.set(id, d);
+      return d;
+    },
+    [prefersReducedMotion],
+  );
+
   const { lists, counts } = useListsShell();
+  const subscription = useSubscription();
   const formRef = useRef<HTMLFormElement>(null);
   const composerInputRef = useRef<HTMLInputElement>(null);
   const [addError, setAddError] = useState<string | null>(null);
@@ -222,9 +587,9 @@ export function TodayClient({
     rollbackOrder: string[];
   } | null>(null);
 
-  function scheduleRefresh() {
+  const scheduleRefresh = useCallback(() => {
     queueMicrotask(() => router.refresh());
-  }
+  }, [router]);
 
   useEffect(() => {
     if (!reorderError) return;
@@ -279,173 +644,6 @@ export function TodayClient({
     });
   }
 
-  function TodoRowMeasured({
-    todo,
-    sortable,
-  }: {
-    todo: TodoRow;
-    sortable?: Pick<
-      ReturnType<typeof useSortable>,
-      "setNodeRef" | "setActivatorNodeRef" | "attributes" | "listeners"
-    > & {
-      style: React.CSSProperties;
-      isDragging?: boolean;
-    };
-  }) {
-    const titleRef = useRef<HTMLSpanElement>(null);
-    const checkboxRef = useRef<HTMLInputElement>(null);
-    const actionsRef = useRef<HTMLSpanElement>(null);
-    const [isMultiline, setIsMultiline] = useState(false);
-
-    useLayoutEffect(() => {
-      const el = titleRef.current;
-      if (!el) return;
-
-      const compute = () => {
-        const style = window.getComputedStyle(el);
-        const lineHeight = Number.parseFloat(style.lineHeight);
-        const height = el.getBoundingClientRect().height;
-
-        if (Number.isFinite(lineHeight) && lineHeight > 0) {
-          setIsMultiline(height > lineHeight * 1.6);
-          return;
-        }
-
-        // Fallback: 2+ satır neredeyse her durumda daha yüksek olacaktır.
-        setIsMultiline(height > 26);
-      };
-
-      compute();
-
-      if (typeof ResizeObserver === "undefined") return;
-      const ro = new ResizeObserver(() => compute());
-      ro.observe(el);
-      return () => ro.disconnect();
-    }, [todo.title, todo.is_completed]);
-
-    const rowInnerClass = [
-      "flex min-w-0 flex-1 gap-3 rounded-[16px] px-3 transition-colors duration-150 ease-out",
-      "group-hover:bg-[#f4f4f4]",
-      isMultiline ? "items-start py-2.5" : "items-center py-1.5",
-    ].join(" ");
-
-    return (
-      <li
-        ref={sortable?.setNodeRef}
-        className="group relative w-full list-none"
-        style={sortable?.style}
-        data-todo-row="1"
-        data-todo-id={todo.id}
-        onClick={(e) => {
-          const el = e.target as HTMLElement;
-          if (el.closest('input[type="checkbox"]')) return;
-          if (el.closest("button")) return;
-          setSelectedTodoId(todo.id);
-        }}
-      >
-        <div className="relative flex min-w-0 flex-1">
-          {sortable ? (
-            <button
-              type="button"
-              ref={sortable.setActivatorNodeRef}
-              {...sortable.attributes}
-              {...(sortable.listeners ?? {})}
-              aria-describedby={undefined}
-              className={[
-                "absolute z-10 inline-flex min-h-9 min-w-9 cursor-grab items-center justify-center rounded-[8px] p-0 text-muted/70 transition-opacity duration-150 ease-out",
-                "left-0 -translate-x-[calc(100%-2px)]",
-                isMultiline ? "top-[10px] translate-y-0" : "top-1/2 -translate-y-1/2",
-                sortable.isDragging
-                  ? "opacity-100"
-                  : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:pointer-events-auto focus-visible:opacity-100",
-                "hover:text-foreground/80 active:cursor-grabbing",
-              ].join(" ")}
-              aria-label={`Reorder ${todo.title}`}
-            >
-              <GripVertical size={16} strokeWidth={2} className="text-current" />
-            </button>
-          ) : null}
-
-          <div className={rowInnerClass}>
-            <span
-              className={[
-                "flex shrink-0",
-                isMultiline ? "items-start" : "items-center",
-              ].join(" ")}
-            >
-              <input
-                type="checkbox"
-                className={[
-                  "todo-checkbox-squircle",
-                  isMultiline ? "self-start mt-[2px]" : "self-center",
-                ].join(" ")}
-                ref={checkboxRef}
-                checked={!!todo.is_completed}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  const checked = e.target.checked;
-                  startTodoTransition(async () => {
-                    addOptimistic({ type: "toggle", id: todo.id, completed: checked });
-                    await toggleTodoAction(todo.id, checked);
-                    scheduleRefresh();
-                  });
-                }}
-                aria-label={
-                  todo.is_completed
-                    ? `Mark incomplete: ${todo.title}`
-                    : `Mark complete: ${todo.title}`
-                }
-              />
-            </span>
-
-            <span
-              ref={titleRef}
-              className={
-                todo.is_completed
-                  ? "min-w-0 flex-1 text-[14px] leading-5 text-muted line-through"
-                  : "min-w-0 flex-1 text-[14px] leading-5 text-foreground"
-              }
-            >
-              {todo.title}
-            </span>
-
-            <span
-              ref={actionsRef}
-              className={[
-                "flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100",
-                isMultiline ? "self-start -mt-1" : "",
-              ].join(" ").trim()}
-            >
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="min-h-7 min-w-7 p-0 text-muted hover:text-foreground"
-                aria-label={`Delete ${todo.title}`}
-                onPress={() => {
-                  startTodoTransition(async () => {
-                    try {
-                      addOptimistic({ type: "delete", id: todo.id });
-                      await deleteTodoAction(todo.id);
-                      toast.success("Todo deleted.", { timeout: 2500 });
-                    } catch {
-                      addOptimistic({ type: "add", todo });
-                      toast.danger("Could not delete todo.", { timeout: 4500 });
-                    } finally {
-                      scheduleRefresh();
-                    }
-                  });
-                }}
-                isDisabled={isTodoPending}
-              >
-                <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={1.75} />
-              </Button>
-            </span>
-          </div>
-        </div>
-      </li>
-    );
-  }
-
   const visibleTodos = showCompleted
     ? optimisticTodos
     : optimisticTodos.filter((t) => !t.is_completed);
@@ -473,6 +671,69 @@ export function TodayClient({
       }
     }
   }, [uiOrderIds, visibleIds.length, visibleIdSet]);
+
+  const hasCompletedTodos = useMemo(
+    () => optimisticTodos.some((t) => Boolean(t.is_completed)),
+    [optimisticTodos],
+  );
+
+  const moveCompletedToBottom = useCallback(() => {
+    if (!canReorder || !hasCompletedTodos) return;
+
+    const byId = new Map(optimisticTodos.map((t) => [t.id, t] as const));
+    const fullIds = optimisticTodos.map((t) => t.id);
+    const currentFullOrder =
+      uiOrderIds && uiOrderIds.length === visibleIds.length
+        ? mergeVisibleOrderIntoFull(fullIds, uiOrderIds, visibleIdSet)
+        : fullIds;
+
+    const incomplete = currentFullOrder.filter((id) => !byId.get(id)?.is_completed);
+    const complete = currentFullOrder.filter((id) => Boolean(byId.get(id)?.is_completed));
+    const newFullOrder = [...incomplete, ...complete];
+
+    let unchanged = true;
+    for (let i = 0; i < newFullOrder.length; i++) {
+      if (newFullOrder[i] !== currentFullOrder[i]) {
+        unchanged = false;
+        break;
+      }
+    }
+    if (unchanged) return;
+
+    const previousUiOrder = uiOrderIds ?? visibleIds;
+    const newVisibleOrder = showCompleted ? newFullOrder : incomplete;
+
+    startTodoTransition(async () => {
+      latestOrderRef.current = newVisibleOrder;
+      setUiOrderIds(newVisibleOrder);
+
+      try {
+        if (composerListId) {
+          await reorderTodosAction(composerListId, newFullOrder);
+        } else if (pathname === "/all") {
+          await reorderAllTodosAction(newFullOrder);
+        }
+        scheduleRefresh();
+        toast.success("Completed tasks moved to the bottom.", { timeout: 2000 });
+      } catch {
+        setUiOrderIds(previousUiOrder);
+        latestOrderRef.current = previousUiOrder;
+        setReorderError("Could not save the new order.");
+      }
+    });
+  }, [
+    canReorder,
+    hasCompletedTodos,
+    optimisticTodos,
+    uiOrderIds,
+    visibleIds,
+    visibleIdSet,
+    showCompleted,
+    composerListId,
+    pathname,
+    scheduleRefresh,
+    startTodoTransition,
+  ]);
 
   async function persistReorderIfPossible(orderedIds: string[], rollbackOrder: string[]) {
     if (orderedIds.length === 0) return;
@@ -504,18 +765,7 @@ export function TodayClient({
     // Merge: if completed are hidden, only the visible subset was reordered.
     // Preserve the relative placement of hidden items by reusing the subset slots.
     const fullIds = optimisticTodos.map((t) => t.id);
-    const visibleSet = visibleIdSet;
-
-    const mergedIds: string[] = [];
-    let i = 0;
-    for (const id of fullIds) {
-      if (visibleSet.has(id)) {
-        mergedIds.push(orderedIds[i] ?? id);
-        i += 1;
-      } else {
-        mergedIds.push(id);
-      }
-    }
+    const mergedIds = mergeVisibleOrderIntoFull(fullIds, orderedIds, visibleIdSet);
 
     try {
       if (composerListId) {
@@ -552,11 +802,10 @@ export function TodayClient({
   }
 
   function listHref(slug: string) {
-    return slug === "today" ? "/today" : `/${slug}`;
+    return `/${slug}`;
   }
 
   function isTabActiveForList(slug: string) {
-    if (slug === "today") return pathname === "/today";
     return pathname === `/${slug}`;
   }
 
@@ -568,6 +817,13 @@ export function TodayClient({
       setCreateListError("Enter a list name.");
       return;
     }
+
+    if (!subscription.isPro && !subscription.canCreateList()) {
+      toast.danger("Free plan allows 1 list. Upgrade for unlimited lists.", { timeout: 4500 });
+      subscription.openPaymentModal({ dismissible: false });
+      return;
+    }
+
     setCreatePending(true);
     const result = await createListAction(title);
     setCreatePending(false);
@@ -578,6 +834,10 @@ export function TodayClient({
       scheduleRefresh();
     } else {
       setCreateListError(result.error);
+      if (!subscription.isPro && /upgrade/i.test(result.error)) {
+        toast.danger(result.error, { timeout: 4500 });
+        subscription.openPaymentModal({ dismissible: false });
+      }
     }
   }
 
@@ -596,7 +856,7 @@ export function TodayClient({
     deleteTasksModal.close();
     setDeleteTarget(null);
     setDeleteError(null);
-    const path = slug === "today" ? "/today" : `/${slug}`;
+    const path = `/${slug}`;
     // `usePathname()` URL segmentiyle birebir eşleşmeyebiliyor (örn. farklı harf büyüklüğü veya
     // trailing slash). Silinen liste sayfasındaysa her durumda `/all`'a geç.
     const normalize = (p: string) => p.replace(/\/+$/, "").toLowerCase();
@@ -628,6 +888,19 @@ export function TodayClient({
       setAddError("Enter a task title.");
       return;
     }
+
+    if (!subscription.isPro && !subscription.canAddTodo(composerListId)) {
+      const isInbox = !composerListId;
+      toast.danger(
+        isInbox
+          ? "You've reached the 25 todo inbox limit (All). Upgrade to add more."
+          : "This list is full (10/10). Upgrade to add more todos.",
+        { timeout: 4500 },
+      );
+      subscription.openPaymentModal({ dismissible: false });
+      return;
+    }
+
     const tempId = `optimistic-${crypto.randomUUID()}`;
     if (titleInput) titleInput.value = "";
     const fd = new FormData();
@@ -641,6 +914,18 @@ export function TodayClient({
       const result = await addTodoAction(null, fd);
       if (result?.error) {
         setAddError(result.error);
+        const err = result.error;
+        const isDefaultListFailure =
+          /default list/i.test(err) ||
+          err.includes("Could not find your default list.") ||
+          err.includes("Could not find or create your default list");
+        if (
+          !subscription.isPro &&
+          (/upgrade/i.test(err) || isDefaultListFailure)
+        ) {
+          toast.danger(err, { timeout: 4500 });
+          subscription.openPaymentModal({ dismissible: false });
+        }
       }
       scheduleRefresh();
     });
@@ -698,29 +983,16 @@ export function TodayClient({
     }
   }
 
-  function SortableTodoItem({ todo }: { todo: TodoRow }) {
-    const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
-      useSortable({ id: todo.id });
-
-    return (
-      <TodoRowMeasured
-        todo={todo}
-        sortable={{
-          setNodeRef,
-          setActivatorNodeRef,
-          attributes,
-          listeners,
-          isDragging,
-          style: {
-            transform: CSS.Transform.toString(transform),
-            transition,
-            zIndex: isDragging ? 20 : undefined,
-            opacity: isDragging ? 0.85 : 1,
-          },
-        }}
-      />
-    );
-  }
+  const todoRowHandlers = useMemo<TodoRowHandlers>(
+    () => ({
+      setSelectedTodoId,
+      isTodoPending,
+      startTodoTransition,
+      addOptimistic,
+      scheduleRefresh,
+    }),
+    [setSelectedTodoId, isTodoPending, startTodoTransition, addOptimistic, scheduleRefresh],
+  );
 
   return (
     <div className="today-shell flex w-full flex-col text-foreground">
@@ -863,6 +1135,15 @@ export function TodayClient({
               >
                 Mark all incomplete
               </Dropdown.Item>
+              {canReorder ? (
+                <Dropdown.Item
+                  onAction={moveCompletedToBottom}
+                  isDisabled={!hasCompletedTodos}
+                  textValue="Move completed to bottom"
+                >
+                  Move completed to bottom
+                </Dropdown.Item>
+              ) : null}
             </Dropdown.Menu>
           </Dropdown.Popover>
           </Dropdown.Root>
@@ -1009,7 +1290,7 @@ export function TodayClient({
           className="relative"
         >
           {composerListId ? <input type="hidden" name="list_id" value={composerListId} /> : null}
-          <div className="flex min-h-10 items-center gap-4 rounded-[16px] border border-[#e4e4e4] bg-white pr-4 shadow-[0_2px_10px_rgba(0,0,0,0.022),0_1px_2px_rgba(0,0,0,0.016)]">
+          <div className="flex min-h-10 items-center gap-4 rounded-[16px] border border-[#e4e4e4] bg-white pr-3 shadow-[0_2px_10px_rgba(0,0,0,0.022),0_1px_2px_rgba(0,0,0,0.016)]">
             <input
               ref={composerInputRef}
               name="title"
@@ -1017,9 +1298,9 @@ export function TodayClient({
               autoComplete="off"
               placeholder="New todo @list @2pm"
               disabled={isAddPending}
-              className="min-w-0 flex-1 border-0 bg-transparent pt-2.5 pb-3 pl-4 text-[13px] leading-5 text-foreground outline-none placeholder:text-muted"
+              className="min-w-0 flex-1 border-0 bg-transparent pt-2.5 pb-[11px] pl-4 text-[13px] leading-5 text-foreground outline-none placeholder:text-muted"
             />
-            <kbd className="hidden shrink-0 rounded border border-[#e6e6e6] bg-[#fafafa] px-1.5 py-0.5 font-sans text-[11px] font-medium text-muted sm:inline-block">
+            <kbd className="hidden shrink-0 items-center justify-center rounded border border-[#e6e6e6] bg-[#fafafa] px-1.5 py-1 font-sans text-[11px] font-medium leading-none text-muted sm:inline-flex">
               N
             </kbd>
           </div>
@@ -1071,9 +1352,16 @@ export function TodayClient({
           >
             <SortableContext items={uiOrderIds ?? visibleIds} strategy={verticalListSortingStrategy}>
               <ul className="relative flex flex-col overflow-visible">
-                {orderedVisibleTodos.map((todo) => (
-                  <SortableTodoItem key={todo.id} todo={todo} />
-                ))}
+                <AnimatePresence initial mode="popLayout">
+                  {orderedVisibleTodos.map((todo, index) => (
+                    <SortableTodoItem
+                      key={todo.id}
+                      todo={todo}
+                      entranceDelay={getEntranceDelay(todo.id, index, orderedVisibleTodos.length)}
+                      {...todoRowHandlers}
+                    />
+                  ))}
+                </AnimatePresence>
               </ul>
             </SortableContext>
             <DragOverlay>
@@ -1086,9 +1374,16 @@ export function TodayClient({
           </DndContext>
         ) : (
           <ul className="flex flex-col">
-            {visibleTodos.map((todo) => (
-              <TodoRowMeasured key={todo.id} todo={todo} />
-            ))}
+            <AnimatePresence initial mode="popLayout">
+              {visibleTodos.map((todo, index) => (
+                <PresenceTodoRow
+                  key={todo.id}
+                  todo={todo}
+                  entranceDelay={getEntranceDelay(todo.id, index, visibleTodos.length)}
+                  {...todoRowHandlers}
+                />
+              ))}
+            </AnimatePresence>
           </ul>
         )}
       </section>

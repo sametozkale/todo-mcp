@@ -61,11 +61,29 @@ function normalizeListRef(ref: string): string {
   return slug || "today";
 }
 
-async function resolveListId(
+/** Default capture targets map to todos with list_id = null (same as web / All). */
+const INBOX_SLUGS = new Set(["today", "all", "inbox"]);
+
+type ListRow = {
+  id: string;
+  title: string;
+  slug: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+};
+
+type ResolveListResult =
+  | { status: "list"; row: ListRow }
+  | { status: "inbox" }
+  | { status: "missing" };
+
+async function resolveListTarget(
   supabase: ReturnType<typeof getServiceSupabase>,
   userId: string,
   input: { listId?: string | null; listSlug?: string; listTitle?: string; listRef?: string; createIfMissing?: boolean },
-) {
+): Promise<ResolveListResult> {
   if (input.listId) {
     const { data } = await supabase
       .from("lists")
@@ -73,7 +91,7 @@ async function resolveListId(
       .eq("id", input.listId)
       .eq("user_id", userId)
       .maybeSingle();
-    return data ?? null;
+    return data ? { status: "list", row: data as ListRow } : { status: "missing" };
   }
 
   const slug =
@@ -89,8 +107,13 @@ async function resolveListId(
     .eq("slug", slug)
     .maybeSingle();
 
-  if (existing) return existing;
-  if (!input.createIfMissing) return null;
+  if (existing) return { status: "list", row: existing as ListRow };
+
+  if (INBOX_SLUGS.has(slug)) {
+    return { status: "inbox" };
+  }
+
+  if (!input.createIfMissing) return { status: "missing" };
 
   const { data: maxRow } = await supabase
     .from("lists")
@@ -110,7 +133,7 @@ async function resolveListId(
     .single();
 
   if (error) throw error;
-  return created;
+  return { status: "list", row: created as ListRow };
 }
 
 export async function POST(req: Request) {
@@ -193,33 +216,45 @@ export async function POST(req: Request) {
     }
 
     if (tool === "resolve_list") {
-      const list = await resolveListId(supabase, userId, {
+      const resolved = await resolveListTarget(supabase, userId, {
         listId: (payload.listId as string | null | undefined) ?? null,
         listSlug: typeof payload.listSlug === "string" ? payload.listSlug : undefined,
         listTitle: typeof payload.listTitle === "string" ? payload.listTitle : undefined,
         listRef: typeof payload.listRef === "string" ? payload.listRef : undefined,
         createIfMissing: Boolean(payload.createIfMissing),
       });
-      if (!list) return NextResponse.json({ error: "List not found." }, { status: 404 });
-      return NextResponse.json(list);
+      if (resolved.status === "missing") {
+        return NextResponse.json({ error: "List not found." }, { status: 404 });
+      }
+      if (resolved.status === "inbox") {
+        return NextResponse.json({
+          id: null,
+          slug: "inbox",
+          title: "Inbox",
+          user_id: userId,
+          note: "Unassigned todos (same as All on web). Use list_id null when creating todos.",
+        });
+      }
+      return NextResponse.json(resolved.row);
     }
 
     if (tool === "list_todos") {
-      const list = await resolveListId(supabase, userId, {
+      const resolved = await resolveListTarget(supabase, userId, {
         listId: (payload.listId as string | null | undefined) ?? null,
         listSlug: typeof payload.listSlug === "string" ? payload.listSlug : undefined,
         listTitle: typeof payload.listTitle === "string" ? payload.listTitle : undefined,
         listRef: typeof payload.listRef === "string" ? payload.listRef : undefined,
         createIfMissing: false,
       });
-      const listId = list?.id ?? null;
+      if (resolved.status === "missing") {
+        return NextResponse.json({ error: "List not found." }, { status: 404 });
+      }
 
-      const query = supabase
-        .from("todos")
-        .select("*")
-        .eq("user_id", userId)
-        .order("position");
-      const { data, error } = listId ? await query.eq("list_id", listId) : await query.is("list_id", null);
+      const query = supabase.from("todos").select("*").eq("user_id", userId).order("position");
+      const { data, error } =
+        resolved.status === "inbox"
+          ? await query.is("list_id", null)
+          : await query.eq("list_id", resolved.row.id);
       if (error) throw error;
       return NextResponse.json(data ?? []);
     }
@@ -228,7 +263,7 @@ export async function POST(req: Request) {
       const title = String(payload.title ?? "").trim();
       if (!title) return NextResponse.json({ error: "Missing title." }, { status: 400 });
       const description = payload.description == null ? null : String(payload.description);
-      const list = await resolveListId(supabase, userId, {
+      const resolved = await resolveListTarget(supabase, userId, {
         listId: (payload.listId as string | null | undefined) ?? null,
         listSlug: typeof payload.listSlug === "string" ? payload.listSlug : undefined,
         listTitle: typeof payload.listTitle === "string" ? payload.listTitle : undefined,
@@ -236,17 +271,52 @@ export async function POST(req: Request) {
         createIfMissing: true,
       });
 
-      const { data, error } = await supabase
+      if (resolved.status === "missing") {
+        return NextResponse.json({ error: "List not found." }, { status: 404 });
+      }
+
+      const listId = resolved.status === "inbox" ? null : resolved.row.id;
+
+      const { data: minAllPosRow } = await supabase
         .from("todos")
-        .insert({
-          user_id: userId,
-          title,
-          description,
-          list_id: list?.id ?? null,
-          source: "mcp",
-        })
-        .select("*")
-        .single();
+        .select("all_position")
+        .eq("user_id", userId)
+        .order("all_position", { ascending: true, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+
+      const insertPayload: Record<string, unknown> = {
+        user_id: userId,
+        title,
+        description,
+        list_id: listId,
+        source: "mcp",
+        all_position: (minAllPosRow?.all_position ?? 0) - 1,
+      };
+
+      if (listId) {
+        const { data: minListPosRow } = await supabase
+          .from("todos")
+          .select("position")
+          .eq("user_id", userId)
+          .eq("list_id", listId)
+          .order("position", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        insertPayload.position = (minListPosRow?.position ?? 0) - 1;
+      } else {
+        const { data: minListPosRow } = await supabase
+          .from("todos")
+          .select("position")
+          .eq("user_id", userId)
+          .is("list_id", null)
+          .order("position", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        insertPayload.position = (minListPosRow?.position ?? 0) - 1;
+      }
+
+      const { data, error } = await supabase.from("todos").insert(insertPayload).select("*").single();
       if (error) throw error;
       return NextResponse.json(data);
     }

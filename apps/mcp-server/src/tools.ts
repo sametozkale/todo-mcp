@@ -8,6 +8,7 @@ type TodoSummary = {
   description: string | null;
   is_completed: boolean | null;
   position: number | null;
+  all_position?: number | null;
   source: string | null;
   created_at: string | null;
   updated_at: string | null;

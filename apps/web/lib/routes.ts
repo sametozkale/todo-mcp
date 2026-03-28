@@ -1,2 +1,2 @@
 /** Authenticated product entry (after login). */
-export const PRODUCT_HOME = "/today";
+export const PRODUCT_HOME = "/all";
