@@ -26,7 +26,11 @@ Create a Yalp API key in the app, then install the MCP server in Cursor using th
 ## Environment variables
 
 - `YALP_API_KEY` (required): Yalp API key generated from the app.
-- `YALP_API_BASE_URL` (optional): Yalp base URL (defaults to `https://yalp.ai`). Point at your real deployment (e.g. Vercel URL) until `yalp.ai` is live.
+- `YALP_API_BASE_URL` (optional): Yalp base URL (defaults to `https://yalp.ai`). Point at your real deployment (e.g. `https://todo-mcp-web.vercel.app`) until `yalp.ai` is live.
+
+## Versioning and npm
+
+The MCP server’s reported version matches **`package.json`** (single source of truth). Before publishing: bump `version` in `package.json`, run `pnpm build`, then `npm publish` from `apps/mcp-server`.
 
 ## Tools
 
