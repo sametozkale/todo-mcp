@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { getCachedUserListBySlug } from "@/lib/lists/cached-list-by-slug";
 import { notFound } from "next/navigation";
 import { TodayClient } from "../today/today-client";
 
@@ -11,21 +11,8 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { listSlug } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const noIndex = { robots: { index: false, follow: false } } as const;
-
-  if (!user) {
-    return { title: "List", ...noIndex };
-  }
-  const { data: list } = await supabase
-    .from("lists")
-    .select("title")
-    .eq("user_id", user.id)
-    .eq("slug", listSlug.toLowerCase())
-    .maybeSingle();
+  const { list } = await getCachedUserListBySlug(listSlug);
 
   if (!list) {
     return { title: "List", ...noIndex };
@@ -39,25 +26,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function UserListPage({ params }: Props) {
   const { listSlug } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, list } = await getCachedUserListBySlug(listSlug);
 
   if (!user) {
     return null;
   }
 
-  const slug = listSlug.toLowerCase();
-
-  const { data: list, error: listErr } = await supabase
-    .from("lists")
-    .select("id, title, slug")
-    .eq("user_id", user.id)
-    .eq("slug", slug)
-    .maybeSingle();
-
-  if (listErr || !list) {
+  if (!list) {
     notFound();
   }
 

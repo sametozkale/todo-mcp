@@ -3,6 +3,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /** HeroUI: compile with the app bundle to avoid webpack chunk/runtime mismatches in dev. */
   transpilePackages: ["@heroui/react", "@heroui/styles"],
+  /** Reduce barrel-import fan-out; helps avoid occasional dev runtime chunk/HMR mismatches. */
+  experimental: {
+    optimizePackageImports: ["@heroui/react", "lucide-react", "@hugeicons/react"],
+  },
   images: {
     remotePatterns: [
       {

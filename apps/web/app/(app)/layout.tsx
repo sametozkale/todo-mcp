@@ -1,23 +1,20 @@
-import { createClient } from "@/lib/supabase/server";
 import { PRODUCT_HOME } from "@/lib/routes";
+import { SubscriptionProvider, type SubscriptionSnapshot, type UsageSnapshot } from "@/hooks/useSubscription";
+import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
+import { getCachedAuth } from "@/lib/supabase/cached-auth";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import { AppHeader } from "./app-header";
+import { ListsProvider } from "./lists-shell";
 
 /** Authenticated app shell: not intended for search indexing (see app/robots.ts). */
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
-import { AppHeader } from "./app-header";
-import { ListsProvider } from "./lists-shell";
-import { SubscriptionProvider, type SubscriptionSnapshot, type UsageSnapshot } from "@/hooks/useSubscription";
-import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getCachedAuth();
 
   if (!user) {
     // #region debug auth redirect next
@@ -37,22 +34,21 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     redirect(`/login?next=${encodeURIComponent(PRODUCT_HOME)}`);
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, avatar_url")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const { data: listRows } = await supabase
-    .from("lists")
-    .select("id, title, slug, position")
-    .eq("user_id", user.id)
-    .order("position", { ascending: true });
-
-  const { data: todoListIds } = await supabase
-    .from("todos")
-    .select("list_id, is_completed")
-    .eq("user_id", user.id);
+  const [{ data: profile }, { data: listRows }, { data: todoListIds }, { data: subRow }] =
+    await Promise.all([
+      supabase.from("profiles").select("full_name, avatar_url").eq("id", user.id).maybeSingle(),
+      supabase
+        .from("lists")
+        .select("id, title, slug, position")
+        .eq("user_id", user.id)
+        .order("position", { ascending: true }),
+      supabase.from("todos").select("list_id, is_completed").eq("user_id", user.id),
+      supabase
+        .from("user_subscriptions")
+        .select("plan_type, subscription_status, current_period_end, cancel_at_period_end")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+    ]);
 
   const activeTodos = (todoListIds ?? []).filter((t) => t.is_completed !== true);
   const allCount = activeTodos.length;
@@ -67,12 +63,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const extraListsCount = lists.length;
   const maxExtraListTodosCount =
     lists.length === 0 ? 0 : Math.max(...lists.map((l) => byListId[l.id] ?? 0));
-
-  const { data: subRow } = await supabase
-    .from("user_subscriptions")
-    .select("plan_type, subscription_status, current_period_end, cancel_at_period_end")
-    .eq("user_id", user.id)
-    .maybeSingle();
 
   const initialSubscription: SubscriptionSnapshot = {
     plan: (subRow?.plan_type ?? "free") as SubscriptionSnapshot["plan"],

@@ -275,12 +275,15 @@ function TodoRowMeasured({
   startTodoTransition,
   addOptimistic,
   scheduleRefresh,
+  skipEntranceAnimation,
 }: {
   todo: TodoRow;
   rootRef?: Ref<HTMLLIElement | null>;
   sortable?: TodoRowMeasuredSortable;
   /** Liste / rota yüklemesinde sırayla görünüm (sn); sürükleme / yeniden sıra etkilenmez. */
   entranceDelay: number;
+  /** Liste sekmesi / rota değişiminde animasyonu kapat (daha hızlı his). */
+  skipEntranceAnimation?: boolean;
 } & TodoRowHandlers) {
   const titleRef = useRef<HTMLSpanElement>(null);
   const checkboxRef = useRef<HTMLInputElement>(null);
@@ -333,14 +336,18 @@ function TodoRowMeasured({
     <motion.li
       ref={mergedLiRef}
       layout={sortable ? !sortable.isDragging : true}
-      initial={{ opacity: 0, y: 10 }}
+      initial={skipEntranceAnimation ? false : { opacity: 0, y: 10 }}
       animate={{
         opacity: sortable?.isDragging ? 0.85 : 1,
         y: 0,
       }}
       transition={{
-        opacity: { duration: 0.2, delay: entranceDelay },
-        y: { duration: 0.22, ease: [0.32, 0.72, 0, 1], delay: entranceDelay },
+        opacity: { duration: 0.2, delay: skipEntranceAnimation ? 0 : entranceDelay },
+        y: {
+          duration: 0.22,
+          ease: [0.32, 0.72, 0, 1],
+          delay: skipEntranceAnimation ? 0 : entranceDelay,
+        },
         layout: { duration: 0.2, ease: [0.32, 0.72, 0, 1] },
       }}
       exit={TODO_ROW_EXIT}
@@ -459,15 +466,23 @@ function TodoRowMeasured({
 
 const PresenceTodoRow = forwardRef<
   HTMLLIElement,
-  { todo: TodoRow; entranceDelay: number } & TodoRowHandlers
->(function PresenceTodoRow({ todo, entranceDelay, ...handlers }, ref) {
-  return <TodoRowMeasured todo={todo} rootRef={ref} entranceDelay={entranceDelay} {...handlers} />;
+  { todo: TodoRow; entranceDelay: number; skipEntranceAnimation?: boolean } & TodoRowHandlers
+>(function PresenceTodoRow({ todo, entranceDelay, skipEntranceAnimation, ...handlers }, ref) {
+  return (
+    <TodoRowMeasured
+      todo={todo}
+      rootRef={ref}
+      entranceDelay={entranceDelay}
+      skipEntranceAnimation={skipEntranceAnimation}
+      {...handlers}
+    />
+  );
 });
 
 const SortableTodoItem = forwardRef<
   HTMLLIElement,
-  { todo: TodoRow; entranceDelay: number } & TodoRowHandlers
->(function SortableTodoItem({ todo, entranceDelay, ...handlers }, ref) {
+  { todo: TodoRow; entranceDelay: number; skipEntranceAnimation?: boolean } & TodoRowHandlers
+>(function SortableTodoItem({ todo, entranceDelay, skipEntranceAnimation, ...handlers }, ref) {
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
       useSortable({ id: todo.id });
 
@@ -476,6 +491,7 @@ const SortableTodoItem = forwardRef<
         todo={todo}
         rootRef={ref}
         entranceDelay={entranceDelay}
+        skipEntranceAnimation={skipEntranceAnimation}
         {...handlers}
         sortable={{
           setNodeRef,
@@ -500,6 +516,16 @@ export function TodayClient({
 }: TodayClientProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const [listNavGeneration, setListNavGeneration] = useState(0);
+  const prevPathnameForNav = useRef(pathname);
+  useEffect(() => {
+    if (prevPathnameForNav.current !== pathname) {
+      prevPathnameForNav.current = pathname;
+      setListNavGeneration((n) => n + 1);
+    }
+  }, [pathname]);
+  /** İlk yüklemede stagger korunur; /all ↔ liste ↔ /today arası geçişte satır girişi anında. */
+  const skipListEntranceAnimations = listNavGeneration > 0;
   const prefersReducedMotion = useReducedMotion();
   const routeListKey = `${pathname}::${composerListId ?? ""}`;
   const entranceDelayByIdRef = useRef<Map<string, number>>(new Map());
@@ -1352,6 +1378,7 @@ export function TodayClient({
                       key={todo.id}
                       todo={todo}
                       entranceDelay={getEntranceDelay(todo.id, index, orderedVisibleTodos.length)}
+                      skipEntranceAnimation={skipListEntranceAnimations}
                       {...todoRowHandlers}
                     />
                   ))}
@@ -1374,6 +1401,7 @@ export function TodayClient({
                   key={todo.id}
                   todo={todo}
                   entranceDelay={getEntranceDelay(todo.id, index, visibleTodos.length)}
+                  skipEntranceAnimation={skipListEntranceAnimations}
                   {...todoRowHandlers}
                 />
               ))}

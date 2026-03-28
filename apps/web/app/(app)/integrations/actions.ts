@@ -75,6 +75,36 @@ export async function createApiKeyAction(label?: string): Promise<CreateApiKeyRe
   return { ok: true, apiKey, row: data as ApiKeyRow };
 }
 
+const QUICK_CONNECT_LABEL = "Quick connect";
+
+/**
+ * One auto-generated key for MCP setup: replaces any previous rows with the same label so the
+ * list does not accumulate duplicates (plaintext is only ever shown once; DB stores hash only).
+ * Client also dedupes via sessionStorage + in-flight promise.
+ */
+export async function ensureInstallKeyForSetupAction(): Promise<CreateApiKeyResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { ok: false, error: "Not signed in." };
+  }
+
+  const { error: deleteError } = await supabase
+    .from("api_keys")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("label", QUICK_CONNECT_LABEL);
+
+  if (deleteError) {
+    return { ok: false, error: deleteError.message };
+  }
+
+  return createApiKeyAction(QUICK_CONNECT_LABEL);
+}
+
 export async function listApiKeysAction(): Promise<ApiKeyRow[]> {
   const supabase = await createClient();
   const {

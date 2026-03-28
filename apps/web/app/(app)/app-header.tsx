@@ -107,6 +107,8 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
   const avatarSrc =
     initialProfile.avatarUrl?.trim() || DEFAULT_AVATAR_SRC;
   const initials = getInitials(initialProfile.fullName, userEmail);
+  const profileModalPreviewSrc = avatarUrl.trim() || DEFAULT_AVATAR_SRC;
+  const profileModalInitials = getInitials(fullName, userEmail);
 
   return (
     <>
@@ -149,7 +151,7 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                   <Dropdown.Item
                     isDisabled
                     textValue="separator"
-                    className="pointer-events-none mx-auto my-[2px] h-px min-h-px w-[calc(100%-24px)] max-w-full cursor-default bg-[#efefef] px-0 py-0 opacity-100"
+                    className="pointer-events-none mx-auto my-[2px] h-px min-h-px w-[calc(100%-24px)] max-w-full cursor-default bg-[#f4f4f4] px-0 py-0 opacity-100"
                   >
                     <span aria-hidden="true" />
                   </Dropdown.Item>
@@ -187,9 +189,24 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                       <span>MCP Connections</span>
                     </span>
                   </Dropdown.Item>
-                <Dropdown.Item onAction={handleLogout}>
-                    <span className="inline-flex items-center gap-2">
-                      <HugeiconsIcon icon={Logout02Icon} size={16} strokeWidth={1.75} />
+                  <Dropdown.Item
+                    isDisabled
+                    textValue="separator"
+                    className="pointer-events-none mx-auto my-[2px] h-px min-h-px w-[calc(100%-24px)] max-w-full cursor-default bg-[#f4f4f4] px-0 py-0 opacity-100"
+                  >
+                    <span aria-hidden="true" />
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    onAction={handleLogout}
+                    className="text-[#ccc] hover:text-foreground focus:text-foreground data-[hovered]:text-foreground data-[focused]:text-foreground"
+                  >
+                    <span className="inline-flex items-center gap-2 text-inherit">
+                      <HugeiconsIcon
+                        icon={Logout02Icon}
+                        size={16}
+                        strokeWidth={1.75}
+                        className="text-current"
+                      />
                       <span>Log out</span>
                     </span>
                   </Dropdown.Item>
@@ -227,6 +244,17 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                 </Modal.Header>
                 <form onSubmit={handleProfileSubmit}>
                   <Modal.Body className="flex flex-col gap-4 pt-0">
+                    <div className="flex justify-start">
+                      <Avatar className="h-12 w-12 shrink-0 overflow-hidden ring-0 ring-offset-0">
+                        <Avatar.Image
+                          alt={fullName.trim() ? `${fullName.trim()} — profile photo` : "Profile photo preview"}
+                          src={profileModalPreviewSrc}
+                        />
+                        <Avatar.Fallback className="text-sm font-semibold">
+                          {profileModalInitials}
+                        </Avatar.Fallback>
+                      </Avatar>
+                    </div>
                     {formError ? (
                       <p className="text-sm text-[color:var(--color-danger)]" role="alert">
                         {formError}
