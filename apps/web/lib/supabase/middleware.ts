@@ -13,7 +13,9 @@ export async function updateSession(request: NextRequest) {
     // Debug endpoints should be reachable without auth.
     path.startsWith("/api/debug") ||
     // MCP endpoint uses API key auth (not Supabase session cookies).
-    path.startsWith("/api/mcp");
+    path.startsWith("/api/mcp") ||
+    // Stripe webhooks: verified with stripe-signature + STRIPE_WEBHOOK_SECRET (no user session).
+    path.startsWith("/api/stripe/webhook");
 
   // Public routes should never be blocked by middleware/auth provider issues.
   // If Supabase is temporarily unavailable/misconfigured, we still want the login page to render.
