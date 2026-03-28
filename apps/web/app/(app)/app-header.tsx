@@ -49,28 +49,6 @@ function getInitials(fullName: string, email: string | null) {
   return "?";
 }
 
-function LimitRow({ label, current, max }: { label: string; current: number; max: number }) {
-  const clamped = Math.max(0, Math.min(current, max));
-  const pct = max <= 0 ? 0 : Math.round((clamped / max) * 100);
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2 text-[12px]">
-        <span className="text-muted">{label}</span>
-        <span className="font-medium text-foreground">
-          {current} / {max}
-        </span>
-      </div>
-      <div className="h-2 w-full rounded-full bg-white shadow-[inset_0_0_0_1px_#efefef]">
-        <div
-          className="h-2 rounded-full bg-[#00b5e9]"
-          style={{ width: `${pct}%` }}
-          aria-hidden="true"
-        />
-      </div>
-    </div>
-  );
-}
-
 export type AppHeaderProps = {
   initialProfile: {
     fullName: string;
@@ -129,35 +107,6 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
   const avatarSrc =
     initialProfile.avatarUrl?.trim() || DEFAULT_AVATAR_SRC;
   const initials = getInitials(initialProfile.fullName, userEmail);
-
-  const planLabel =
-    subscription.plan === "lifetime"
-      ? "Lifetime"
-      : subscription.plan === "yearly"
-        ? "Yearly"
-        : subscription.plan === "monthly"
-          ? "Monthly"
-          : "Free";
-
-  const renewalLabel =
-    subscription.plan === "lifetime"
-      ? "Lifetime"
-      : subscription.currentPeriodEnd
-        ? new Date(subscription.currentPeriodEnd).toLocaleDateString(undefined, {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          })
-        : null;
-
-  async function handleManageBilling() {
-    const res = await fetch("/api/stripe/create-portal-session", { method: "POST" });
-    const json = (await res.json()) as { url?: string; error?: string };
-    if (!res.ok || !json.url) {
-      return;
-    }
-    window.location.href = json.url;
-  }
 
   return (
     <>
@@ -304,50 +253,6 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                         avatar.
                       </Description>
                     </TextField.Root>
-
-                    <div className="mt-2 rounded-[16px] border border-[#efefef] bg-[#fafafa] p-4">
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <div className="text-[13px] font-semibold text-foreground">Plans & limits</div>
-                        <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-foreground shadow-[0_1px_0_rgba(0,0,0,0.04)]">
-                          {planLabel}
-                        </span>
-                      </div>
-
-                      {subscription.isPro ? (
-                        <div className="space-y-2 text-[12px] text-muted">
-                          <div className="flex items-center justify-between gap-2">
-                            <span>{subscription.plan === "lifetime" ? "Access" : "Renews"}</span>
-                            <span className="font-medium text-foreground">{renewalLabel ?? "—"}</span>
-                          </div>
-                          {subscription.cancelAtPeriodEnd && renewalLabel ? (
-                            <div className="rounded-[12px] border border-[#efefef] bg-white px-3 py-2 text-[12px] text-foreground">
-                              Your subscription has been canceled. Access continues until {renewalLabel}.
-                            </div>
-                          ) : null}
-                          <Button variant="secondary" className="w-full" onPress={() => void handleManageBilling()}>
-                            Manage Billing
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <LimitRow
-                            label="Inbox (All, unassigned)"
-                            current={subscription.usage.allListTodosCount}
-                            max={25}
-                          />
-                          <LimitRow
-                            label="Extra Lists"
-                            current={subscription.usage.extraListsCount}
-                            max={1}
-                          />
-                          <LimitRow
-                            label="Extra List Todos"
-                            current={subscription.usage.maxExtraListTodosCount}
-                            max={10}
-                          />
-                        </div>
-                      )}
-                    </div>
                   </Modal.Body>
                   <Modal.Footer className="flex justify-end gap-2">
                     <Button

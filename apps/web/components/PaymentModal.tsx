@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button, Modal, useOverlayState } from "@heroui/react";
 import { useSubscription } from "@/hooks/useSubscription";
+import { FREE_LIMITS } from "@/lib/subscription";
 import { Check, InfinityIcon, Sparkles, CalendarDays } from "lucide-react";
 
 type PlanKey = "monthly" | "yearly" | "lifetime";
@@ -59,6 +60,63 @@ const PRO_ENTITLEMENT_FEATURES = [
   "Same fast inbox, drag-and-drop, and keyboard workflow — without free-tier limits",
   "Priority access to new product updates while you stay subscribed",
 ] as const;
+
+function FreePlanUsageSection({
+  usage,
+}: {
+  usage: { allListTodosCount: number; extraListsCount: number; maxExtraListTodosCount: number };
+}) {
+  return (
+    <div
+      className="rounded-[16px] border border-[#efefef] bg-[#fafafa] px-4 py-4 sm:px-5"
+      role="region"
+      aria-label="Free plan usage"
+    >
+      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-muted">
+        Free plan usage
+      </p>
+      <div className="space-y-3">
+        <LimitRow
+          label="Inbox (All, unassigned)"
+          current={usage.allListTodosCount}
+          max={FREE_LIMITS.allListTodos}
+        />
+        <LimitRow
+          label="Extra lists"
+          current={usage.extraListsCount}
+          max={FREE_LIMITS.extraLists}
+        />
+        <LimitRow
+          label="Extra list todos (max in one list)"
+          current={usage.maxExtraListTodosCount}
+          max={FREE_LIMITS.extraListTodos}
+        />
+      </div>
+    </div>
+  );
+}
+
+function LimitRow({ label, current, max }: { label: string; current: number; max: number }) {
+  const clamped = Math.max(0, Math.min(current, max));
+  const pct = max <= 0 ? 0 : Math.round((clamped / max) * 100);
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2 text-[12px]">
+        <span className="text-muted">{label}</span>
+        <span className="font-medium text-foreground">
+          {current} / {max}
+        </span>
+      </div>
+      <div className="h-2 w-full rounded-full bg-white shadow-[inset_0_0_0_1px_#efefef]">
+        <div
+          className="h-2 rounded-full bg-[#00b5e9]"
+          style={{ width: `${pct}%` }}
+          aria-hidden="true"
+        />
+      </div>
+    </div>
+  );
+}
 
 function PlanCardColumn({
   plan: p,
@@ -188,7 +246,14 @@ function LifetimePlanRow({
 }
 
 export function PaymentModal() {
-  const { paymentModal, closePaymentModal, isPro, plan: currentPlan, currentPeriodEnd } = useSubscription();
+  const {
+    paymentModal,
+    closePaymentModal,
+    isPro,
+    plan: currentPlan,
+    currentPeriodEnd,
+    usage,
+  } = useSubscription();
   const [loadingKey, setLoadingKey] = useState<PlanKey | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
@@ -207,29 +272,30 @@ export function PaymentModal() {
 
   const backdropDismissable = paymentModal.dismissible;
 
+  async function parseJsonResponse(res: Response): Promise<{ url?: string; error?: string }> {
+    const text = await res.text();
+    if (!text.trim()) {
+      return {};
+    }
+    try {
+      return JSON.parse(text) as { url?: string; error?: string };
+    } catch {
+      throw new Error(`Server returned an invalid response (${res.status}).`);
+    }
+  }
+
   async function startCheckout(planKey: PlanKey) {
     setCheckoutError(null);
     setLoadingKey(planKey);
     try {
-      const price_id =
-        planKey === "monthly"
-          ? process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID
-          : planKey === "yearly"
-            ? process.env.NEXT_PUBLIC_STRIPE_YEARLY_PRICE_ID
-            : process.env.NEXT_PUBLIC_STRIPE_LIFETIME_PRICE_ID;
-
-      if (!price_id) {
-        throw new Error("Pricing is not configured. Please try again later.");
-      }
-
       const res = await fetch("/api/stripe/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ price_id }),
+        body: JSON.stringify({ plan_key: planKey }),
       });
-      const json = (await res.json()) as { url?: string; error?: string };
+      const json = await parseJsonResponse(res);
       if (!res.ok || !json.url) {
-        throw new Error(json.error || "Could not start checkout.");
+        throw new Error(json.error || `Could not start checkout (${res.status}).`);
       }
       window.location.href = json.url;
     } catch (e) {
@@ -244,9 +310,9 @@ export function PaymentModal() {
     setCheckoutError(null);
     try {
       const res = await fetch("/api/stripe/create-portal-session", { method: "POST" });
-      const json = (await res.json()) as { url?: string; error?: string };
+      const json = await parseJsonResponse(res);
       if (!res.ok || !json.url) {
-        throw new Error(json.error || "Could not open billing portal.");
+        throw new Error(json.error || `Could not open billing portal (${res.status}).`);
       }
       window.location.href = json.url;
     } catch (e) {
@@ -285,7 +351,7 @@ export function PaymentModal() {
           className="w-[min(100vw-1.5rem,920px)] max-w-[min(100vw-1.5rem,920px)] sm:w-[min(100vw-2rem,920px)]"
         >
           <Modal.Dialog
-            className="max-h-[min(calc(100dvh-2rem),680px)] overflow-y-auto"
+            className="max-h-[min(calc(100dvh-1.25rem),min(920px,92dvh))] overflow-y-auto"
             aria-describedby={
               !paymentModal.dismissible && !isPro
                 ? "plans-modal-subtitle plans-modal-limit-notice"
@@ -330,6 +396,8 @@ export function PaymentModal() {
                   {checkoutError}
                 </p>
               ) : null}
+
+              {!isPro ? <FreePlanUsageSection usage={usage} /> : null}
 
               {isPro ? (
                 <div className="flex flex-col gap-5">
