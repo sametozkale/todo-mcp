@@ -19,6 +19,7 @@ import {
   SYNC_VERIFY_NPX_COMMAND,
 } from "@/lib/mcp-platform-configs";
 import {
+  DEFAULT_PLATFORM_ORDER,
   getInstallGuide,
   getSuggestedPlatformIds,
   isPlatformId,
@@ -137,13 +138,7 @@ export function IntegrationsClient({ userId, initialKeys, baseUrl, initialPlatfo
   );
 
   const [platformOrder, setPlatformOrder] = useState<PlatformId[]>(() => [
-    "cursor",
-    "vscode",
-    "claudeDesktop",
-    "claudeWeb",
-    "windsurf",
-    "claudeCode",
-    "manual",
+    ...DEFAULT_PLATFORM_ORDER,
   ]);
   const [suggestedIds, setSuggestedIds] = useState<Set<PlatformId>>(() => new Set());
 

@@ -15,15 +15,6 @@ export function HomeCta() {
       >
         Log in to Yalp
       </Link>
-      <Link
-        href="/signup"
-        className={cn(
-          buttonVariants({ variant: "primary", size: "md" }),
-          "inline-flex no-underline",
-        )}
-      >
-        Sign up for Yalp
-      </Link>
     </div>
   );
 }

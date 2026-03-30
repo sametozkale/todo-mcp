@@ -6,6 +6,8 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublicRoute =
     path === "/" ||
+    path.startsWith("/why-i-built") ||
+    path.startsWith("/roadmap") ||
     path.startsWith("/login") ||
     path.startsWith("/signup") ||
     path.startsWith("/auth/callback") ||

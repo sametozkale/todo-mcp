@@ -64,7 +64,7 @@ h4,
 h5,
 h6,
 [role="heading"] {
-  font-family: var(--font-title), var(--font-sans), sans-serif;
+  font-family: var(--font-open-runde), var(--font-sans), sans-serif;
 }
 
 /*
@@ -74,7 +74,7 @@ h6,
 [data-slot$="-title"],
 [data-slot$="-heading"],
 [data-slot="fieldset-legend"] {
-  font-family: var(--font-title), var(--font-sans), sans-serif;
+  font-family: var(--font-open-runde), var(--font-sans), sans-serif;
 }
 
 /*
@@ -82,12 +82,12 @@ h6,
  * (PopoverHeading has no data-slot; ToastTitle etc. are covered here)
  */
 [slot="title"] {
-  font-family: var(--font-title), var(--font-sans), sans-serif;
+  font-family: var(--font-open-runde), var(--font-sans), sans-serif;
 }
 
 /* Manual use (e.g. div acting as a heading) */
 .font-title {
-  font-family: var(--font-title), var(--font-sans), sans-serif;
+  font-family: var(--font-open-runde), var(--font-sans), sans-serif !important;
 }
 
 /* ---------- Inter: controls (order avoids overriding heading text) ---------- */

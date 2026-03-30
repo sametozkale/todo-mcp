@@ -20,9 +20,48 @@ export const metadata: Metadata = {
   description: defaultDescription,
   applicationName: siteName,
   icons: {
-    icon: [{ url: "/to-do-mcp-logo.png", type: "image/png" }],
-    shortcut: [{ url: "/to-do-mcp-logo.png", type: "image/png" }],
-    apple: [{ url: "/to-do-mcp-logo.png", type: "image/png" }],
+    icon: [
+      {
+        url: "/to-do-mcp-logo-black-48.svg",
+        type: "image/svg+xml",
+        sizes: "48x48",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/to-do-mcp-logo-white-48.svg",
+        type: "image/svg+xml",
+        sizes: "48x48",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
+    shortcut: [
+      {
+        url: "/to-do-mcp-logo-black-48.svg",
+        type: "image/svg+xml",
+        sizes: "48x48",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/to-do-mcp-logo-white-48.svg",
+        type: "image/svg+xml",
+        sizes: "48x48",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
+    apple: [
+      {
+        url: "/to-do-mcp-logo-black-48.svg",
+        type: "image/svg+xml",
+        sizes: "48x48",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/to-do-mcp-logo-white-48.svg",
+        type: "image/svg+xml",
+        sizes: "48x48",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
   },
   openGraph: {
     type: "website",
@@ -52,10 +91,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="light" data-theme="light">
-      <body
-        className={`${inter.variable} ${openRunde.variable} light bg-[#fafafa] text-foreground font-sans antialiased`}
-      >
+    <html
+      lang="en"
+      className={`light ${inter.variable} ${openRunde.variable}`}
+      data-theme="light"
+    >
+      <body className="light bg-[#fafafa] text-foreground font-sans antialiased">
         <OrganizationJsonLd />
         <SiteAnalytics />
         <Providers>{children}</Providers>

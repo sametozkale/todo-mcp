@@ -5,12 +5,18 @@ import { getSiteUrl } from "@/lib/site-url";
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = getSiteUrl();
 
-  const paths = ["", "/login", "/signup"] as const;
+  const routes = [
+    { path: "", changeFrequency: "daily" as const, priority: 1 },
+    { path: "/why-i-built", changeFrequency: "weekly" as const, priority: 0.8 },
+    { path: "/roadmap", changeFrequency: "weekly" as const, priority: 0.8 },
+    { path: "/login", changeFrequency: "monthly" as const, priority: 0.6 },
+    { path: "/signup", changeFrequency: "monthly" as const, priority: 0.7 },
+  ];
 
-  return paths.map((path, i) => ({
-    url: `${base}${path}`,
+  return routes.map((route) => ({
+    url: `${base}${route.path}`,
     lastModified: new Date(),
-    changeFrequency: "weekly" as const,
-    priority: i === 0 ? 1 : 0.8,
+    changeFrequency: route.changeFrequency,
+    priority: route.priority,
   }));
 }

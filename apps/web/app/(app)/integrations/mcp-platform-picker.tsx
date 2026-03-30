@@ -57,7 +57,7 @@ export function McpPlatformPicker({ platformOrder, suggestedIds, onSelect }: Pro
             type="button"
             onClick={() => onSelect(id)}
             className={[
-              "flex w-full items-center gap-4 rounded-2xl border border-[#ececec] bg-white p-4 text-left transition-colors",
+              "group flex w-full items-center gap-4 rounded-2xl border border-[#ececec] bg-white p-4 text-left transition-colors",
               "hover:border-[#d4d4d4] hover:bg-[#fafafa] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/20",
             ].join(" ")}
           >
@@ -73,13 +73,13 @@ export function McpPlatformPicker({ platformOrder, suggestedIds, onSelect }: Pro
                   </span>
                 ) : null}
               </span>
-              <span className="mt-0.5 block text-sm text-muted">{g.pickerBlurb}</span>
+              <span className="mt-0.5 block truncate text-sm text-muted">{g.pickerBlurb}</span>
             </span>
             <HugeiconsIcon
               icon={ArrowRight01Icon}
               size={20}
               strokeWidth={1.75}
-              className="shrink-0 text-muted"
+              className="shrink-0 text-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
               aria-hidden
             />
           </button>

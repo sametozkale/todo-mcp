@@ -7,7 +7,9 @@ export function OrganizationJsonLd() {
     "@type": "Organization",
     name: "Yalp",
     url,
-    logo: `${url}/to-do-mcp-logo.png`,
+    logo: `${url}/to-do-mcp-logo-black-48.svg`,
+    description:
+      "Yalp is a focused todo app with MCP integrations for AI-assisted workflows in tools like Cursor and Claude.",
   };
 
   return (

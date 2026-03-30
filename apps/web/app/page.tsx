@@ -4,11 +4,15 @@ import { getSiteUrl } from "@/lib/site-url";
 import { PRODUCT_HOME } from "@/lib/routes";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { HomeCta } from "./home-cta";
+import { LandingHeader } from "./landing-header";
+import { LandingHeroBlock } from "./landing-hero-block";
+import { LandingFeaturesPaper } from "./landing-features-paper";
+import { LandingIntegrationBeam } from "./landing-integration-beam";
+import { LandingPricingFooterPaper } from "./landing-pricing-footer-paper";
 
-const landingTitle = "Yalp — Fast todo lists and MCP connections for AI tools";
+const landingTitle = "Yalp — Manage todos from Cursor & Claude";
 const landingDescription =
-  "Yalp helps you capture tasks, organize lists, and stay focused. Connect Cursor, Claude, and other clients via MCP. Free tier includes inbox tasks and one extra list with generous limits.";
+  "One task list: use it from Cursor, Claude, or other MCP clients. Free tier with generous limits.";
 
 export const metadata: Metadata = {
   title: { absolute: landingTitle },
@@ -45,17 +49,13 @@ export default async function Home() {
   }
 
   return (
-    <main className="flex h-dvh max-h-dvh min-h-0 flex-col items-center justify-center gap-4 overflow-hidden p-6 pb-24 sm:gap-5 sm:p-8 sm:pb-24">
+    <main className="relative flex min-h-dvh flex-col items-center overflow-x-hidden bg-white p-6 pb-24 sm:p-8 sm:pb-24">
+      <LandingHeader />
       <SoftwareApplicationJsonLd />
-      <h1 className="font-title shrink-0 text-2xl font-semibold text-foreground sm:text-3xl">
-        Yalp
-      </h1>
-      <p className="max-w-md shrink text-center text-sm font-sans leading-snug text-muted sm:text-base">
-        <strong className="font-semibold text-foreground">What is Yalp?</strong> It is a lightweight
-        todo app for capturing tasks and lists, with MCP so you can use your todos from AI tools
-        like Cursor and Claude. Stay focused and get things done in one place.
-      </p>
-      <HomeCta />
+      <LandingHeroBlock />
+      <LandingIntegrationBeam />
+      <LandingFeaturesPaper />
+      <LandingPricingFooterPaper />
     </main>
   );
 }

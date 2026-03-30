@@ -11,7 +11,15 @@ if command -v lsof >/dev/null 2>&1; then
   sleep 0.4
 fi
 
-rm -rf "apps/web/.next" "apps/web/.turbo" "node_modules/.cache/next" "node_modules/.cache/turbo" 2>/dev/null || true
+# Wipe outputs that often desync (HTML points at layout.css / chunks that no longer exist → unstyled page / 404 CSS).
+rm -rf \
+  "apps/web/.next" \
+  "apps/web/.turbo" \
+  "apps/web/node_modules/.cache" \
+  "node_modules/.cache/next" \
+  "node_modules/.cache/turbo" \
+  2>/dev/null || true
 
-pnpm dev:web &
+# Use direct `next dev` (no Turbo) so HTML ↔ .next/static/css stay in sync (avoids layout.css 404 + unstyled pages).
+pnpm dev:web:direct &
 echo "Web dev restarted in background → http://localhost:3001"

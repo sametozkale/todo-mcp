@@ -2,11 +2,11 @@ import { CLAUDE_DESKTOP_CONFIG_HINT } from "./mcp-platform-configs";
 
 export const DEFAULT_PLATFORM_ORDER = [
   "cursor",
-  "vscode",
   "claudeDesktop",
   "claudeWeb",
   "windsurf",
   "claudeCode",
+  "vscode",
   "manual",
 ] as const;
 
@@ -67,7 +67,7 @@ const guides: Record<PlatformId, InstallGuide> = {
     headline: "Connect VS Code",
     pickerTitle: "VS Code",
     subline: "Add Yalp MCP to a project with a small config file.",
-    pickerBlurb: "Copilot MCP via .vscode/mcp.json",
+    pickerBlurb: "Copilot MCP — add project mcp.json",
     primaryLabel: "Copy VS Code config",
     primaryKind: "copy_vscode",
     needsInstallContext: true,

@@ -1,0 +1,11 @@
+name: Yalp
+url: https://yalp.ai
+summary: Focused todo app with MCP integration for Cursor, Claude, and AI-assisted workflows.
+canonical_pages:
+  - https://yalp.ai/
+  - https://yalp.ai/why-i-built
+  - https://yalp.ai/roadmap
+public_indexable_routes:
+  - /
+  - /why-i-built
+  - /roadmap

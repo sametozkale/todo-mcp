@@ -9,6 +9,7 @@
     "test": "turbo test",
     "dev:desktop": "turbo dev --filter=desktop",
     "dev:web": "turbo dev --filter=web",
+    "dev:web:direct": "pnpm --filter web dev",
     "dev:web:3002": "pnpm --filter web run dev:3002",
     "dev:web:restart": "bash scripts/restart-web-dev.sh",
     "dev:app": "turbo dev --filter=web --filter=mcp-server",
