@@ -1477,7 +1477,7 @@ export function TodayClient({
             modifiers={[restrictToHorizontalAxis]}
             onDragEnd={handleListTabsDragEnd}
           >
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-[2px]">
+            <div className="flex min-w-0 flex-wrap items-center gap-[2px]">
               <Link href="/all" className={filterChipClass("/all")} aria-current={pathname === "/all" ? "page" : undefined}>
                 All{" "}
                 {chipActive("/all") ? (
@@ -1507,20 +1507,20 @@ export function TodayClient({
                   />
                 ))}
               </SortableContext>
+              <button
+                type="button"
+                className="inline-flex shrink-0 items-center justify-center rounded-[12px] px-2 py-1.5 text-muted hover:bg-[#f3f3f3] hover:text-foreground"
+                aria-label="Add list"
+                onClick={() => {
+                  setCreateListError(null);
+                  setNewListTitle("");
+                  createListModal.open();
+                }}
+              >
+                <HugeiconsIcon icon={PlusSignIcon} size={16} strokeWidth={1.75} className="text-current" />
+              </button>
             </div>
           </DndContext>
-          <button
-            type="button"
-            className="ml-0.5 rounded-[12px] p-1 text-muted hover:bg-[#f3f3f3] hover:text-foreground"
-            aria-label="Add list"
-            onClick={() => {
-              setCreateListError(null);
-              setNewListTitle("");
-              createListModal.open();
-            }}
-          >
-            <HugeiconsIcon icon={PlusSignIcon} size={16} strokeWidth={1.75} className="text-current" />
-          </button>
         </nav>
 
         <div className="flex-shrink-0">
