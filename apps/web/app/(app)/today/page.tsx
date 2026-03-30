@@ -31,7 +31,7 @@ export default async function TodayPage() {
 
   const { data: todos, error } = await supabase
     .from("todos")
-    .select("id, title, is_completed, created_at")
+    .select("id, title, is_completed, list_id, created_at")
     .eq("user_id", user.id)
     .eq("list_id", todayList.id)
     .order("position", { ascending: true })
@@ -48,7 +48,7 @@ export default async function TodayPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 pt-4 sm:pt-6">
+    <main suppressHydrationWarning className="mx-auto w-full max-w-2xl px-4 pt-4 sm:pt-6">
       <h1 className="sr-only">Today</h1>
       <TodayClient
         initialTodos={todos ?? []}

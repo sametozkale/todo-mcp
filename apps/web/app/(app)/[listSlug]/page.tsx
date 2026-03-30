@@ -38,7 +38,7 @@ export default async function UserListPage({ params }: Props) {
 
   const { data: todos, error } = await supabase
     .from("todos")
-    .select("id, title, is_completed, created_at")
+    .select("id, title, is_completed, list_id, created_at")
     .eq("user_id", user.id)
     .eq("list_id", list.id)
     .order("position", { ascending: true, nullsFirst: true })
@@ -55,7 +55,7 @@ export default async function UserListPage({ params }: Props) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 pt-4 sm:pt-6">
+    <main suppressHydrationWarning className="mx-auto w-full max-w-2xl px-4 pt-4 sm:pt-6">
       <h1 className="sr-only">{list.title}</h1>
       <TodayClient
         initialTodos={todos ?? []}

@@ -8,6 +8,7 @@ import "./globals.css";
 
 const siteUrl = getSiteUrl();
 const siteName = "Yalp";
+const faviconVersion = "2026033022";
 const defaultDescription =
   "Yalp is a lightweight todo app with MCP connections for AI tools. Stay focused and get things done.";
 
@@ -22,43 +23,54 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/to-do-mcp-logo-black-48.svg",
-        type: "image/svg+xml",
+        url: `/to-do-mcp-logo-black-48.ico?v=${faviconVersion}`,
         sizes: "48x48",
+        type: "image/x-icon",
         media: "(prefers-color-scheme: light)",
       },
       {
-        url: "/to-do-mcp-logo-white-48.svg",
-        type: "image/svg+xml",
+        url: `/to-do-mcp-logo-white-48.ico?v=${faviconVersion}`,
         sizes: "48x48",
+        type: "image/x-icon",
         media: "(prefers-color-scheme: dark)",
+      },
+      {
+        url: `/favicon.ico?v=${faviconVersion}`,
+        sizes: "48x48",
+        type: "image/x-icon",
       },
     ],
     shortcut: [
       {
-        url: "/to-do-mcp-logo-black-48.svg",
-        type: "image/svg+xml",
+        url: `/to-do-mcp-logo-black-48.ico?v=${faviconVersion}`,
         sizes: "48x48",
+        type: "image/x-icon",
         media: "(prefers-color-scheme: light)",
       },
       {
-        url: "/to-do-mcp-logo-white-48.svg",
-        type: "image/svg+xml",
+        url: `/to-do-mcp-logo-white-48.ico?v=${faviconVersion}`,
         sizes: "48x48",
+        type: "image/x-icon",
         media: "(prefers-color-scheme: dark)",
       },
+      { url: `/favicon.ico?v=${faviconVersion}`, sizes: "48x48", type: "image/x-icon" },
     ],
     apple: [
       {
-        url: "/to-do-mcp-logo-black-48.svg",
-        type: "image/svg+xml",
+        url: `/to-do-mcp-logo-black-48.ico?v=${faviconVersion}`,
         sizes: "48x48",
+        type: "image/x-icon",
+      },
+      {
+        url: `/to-do-mcp-logo-black-48.ico?v=${faviconVersion}`,
+        sizes: "48x48",
+        type: "image/x-icon",
         media: "(prefers-color-scheme: light)",
       },
       {
-        url: "/to-do-mcp-logo-white-48.svg",
-        type: "image/svg+xml",
+        url: `/to-do-mcp-logo-white-48.ico?v=${faviconVersion}`,
         sizes: "48x48",
+        type: "image/x-icon",
         media: "(prefers-color-scheme: dark)",
       },
     ],
@@ -70,11 +82,20 @@ export const metadata: Metadata = {
     siteName,
     title: siteName,
     description: defaultDescription,
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Yalp — lightweight todo and MCP connections",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: siteName,
     description: defaultDescription,
+    images: ["/opengraph-image"],
   },
   ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
     ? {
@@ -96,7 +117,10 @@ export default function RootLayout({
       className={`light ${inter.variable} ${openRunde.variable}`}
       data-theme="light"
     >
-      <body className="light bg-[#fafafa] text-foreground font-sans antialiased">
+      <body
+        className="light bg-[#fafafa] text-foreground font-sans antialiased"
+        suppressHydrationWarning
+      >
         <OrganizationJsonLd />
         <SiteAnalytics />
         <Providers>{children}</Providers>

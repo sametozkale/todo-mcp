@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { AppHeader } from "./app-header";
 import { ListsProvider } from "./lists-shell";
+import { WeatherClockWidget } from "./weather-clock-widget";
 
 /** Authenticated app shell: not intended for search indexing (see app/robots.ts). */
 export const metadata: Metadata = {
@@ -92,6 +93,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <ListsProvider lists={listRows ?? []} counts={{ all: allCount, byListId }}>
           <div className="flex flex-1 flex-col px-4 pb-24 pt-2 sm:px-6">{children}</div>
         </ListsProvider>
+        <WeatherClockWidget />
       </SubscriptionProvider>
     </div>
   );

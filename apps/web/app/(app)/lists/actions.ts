@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { slugifyListTitle, validateListSlugForCreate } from "@/lib/list-slug";
-import { revalidateTodoListPaths } from "@/lib/revalidate-todo-pages";
+import { revalidateAppShell, revalidateTodoListPaths } from "@/lib/revalidate-todo-pages";
 import { isProPlan, type PlanType } from "@/lib/subscription";
 
 export type CreateListResult =
@@ -84,6 +84,53 @@ export async function createListAction(title: string): Promise<CreateListResult>
 
   revalidateTodoListPaths([slug]);
   return { ok: true, slug };
+}
+
+export type ReorderListsResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Persists left-to-right tab order. `orderedListIds` must be a permutation of the user's list ids.
+ */
+export async function reorderListsAction(orderedListIds: string[]): Promise<ReorderListsResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "Not signed in." };
+  }
+
+  const { data: rows, error: fetchErr } = await supabase
+    .from("lists")
+    .select("id")
+    .eq("user_id", user.id);
+
+  if (fetchErr) {
+    return { ok: false, error: fetchErr.message };
+  }
+
+  const serverIds = new Set((rows ?? []).map((r) => r.id));
+  if (orderedListIds.length !== serverIds.size) {
+    return { ok: false, error: "Invalid list order." };
+  }
+  for (const id of orderedListIds) {
+    if (!serverIds.has(id)) {
+      return { ok: false, error: "Invalid list order." };
+    }
+  }
+
+  const updates = orderedListIds.map((id, index) =>
+    supabase.from("lists").update({ position: index }).eq("id", id).eq("user_id", user.id),
+  );
+  const results = await Promise.all(updates);
+  for (const { error } of results) {
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+  }
+
+  revalidateAppShell();
+  return { ok: true };
 }
 
 export type DeleteListMode = "move_tasks_to_unassigned" | "delete_tasks";

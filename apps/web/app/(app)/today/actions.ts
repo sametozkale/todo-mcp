@@ -125,6 +125,34 @@ export async function addTodoAction(_prevState: AddTodoState, formData: FormData
   return { success: true as const };
 }
 
+export async function updateTodoTitleAction(id: string, title: string) {
+  const trimmed = title.trim().replace(/\s+/g, " ");
+  if (!trimmed) {
+    return { error: "Title cannot be empty." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Not signed in." };
+  }
+
+  const { error } = await supabase
+    .from("todos")
+    .update({ title: trimmed, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidateAppShell();
+  return { success: true as const };
+}
+
 export async function toggleTodoAction(id: string, completed: boolean) {
   const supabase = await createClient();
   const {
@@ -161,6 +189,170 @@ export async function deleteTodoAction(id: string) {
   }
 
   const { error } = await supabase.from("todos").delete().eq("id", id).eq("user_id", user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidateAppShell();
+  return { success: true as const };
+}
+
+export async function duplicateTodoAction(id: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Not signed in." };
+  }
+
+  const { data: source, error: sourceErr } = await supabase
+    .from("todos")
+    .select("id, user_id, title, list_id, is_completed, completed_at, position, all_position")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (sourceErr || !source) {
+    return { error: "Todo not found." };
+  }
+
+  const nextListPosition = (source.position ?? 0) + 1;
+  const nextAllPosition = (source.all_position ?? 0) + 1;
+
+  if (source.list_id == null) {
+    // Keep integer ordering stable by shifting items below source.
+    const { data: listRows } = await supabase
+      .from("todos")
+      .select("id, position")
+      .eq("user_id", user.id)
+      .is("list_id", null)
+      .gt("position", source.position ?? 0)
+      .order("position", { ascending: true });
+    if (listRows?.length) {
+      await Promise.all(
+        listRows.map((row) =>
+          supabase
+            .from("todos")
+            .update({ position: (row.position ?? 0) + 1 })
+            .eq("id", row.id)
+            .eq("user_id", user.id),
+        ),
+      );
+    }
+  } else {
+    const { data: listRows } = await supabase
+      .from("todos")
+      .select("id, position")
+      .eq("user_id", user.id)
+      .eq("list_id", source.list_id)
+      .gt("position", source.position ?? 0)
+      .order("position", { ascending: true });
+    if (listRows?.length) {
+      await Promise.all(
+        listRows.map((row) =>
+          supabase
+            .from("todos")
+            .update({ position: (row.position ?? 0) + 1 })
+            .eq("id", row.id)
+            .eq("user_id", user.id),
+        ),
+      );
+    }
+  }
+
+  const { data: allRows } = await supabase
+    .from("todos")
+    .select("id, all_position")
+    .eq("user_id", user.id)
+    .gt("all_position", source.all_position ?? 0)
+    .order("all_position", { ascending: true });
+  if (allRows?.length) {
+    await Promise.all(
+      allRows.map((row) =>
+        supabase
+          .from("todos")
+          .update({ all_position: (row.all_position ?? 0) + 1 })
+          .eq("id", row.id)
+          .eq("user_id", user.id),
+      ),
+    );
+  }
+
+  const { error } = await supabase.from("todos").insert({
+    user_id: user.id,
+    title: source.title,
+    list_id: source.list_id,
+    is_completed: source.is_completed,
+    completed_at: source.completed_at,
+    position: nextListPosition,
+    all_position: nextAllPosition,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidateAppShell();
+  return { success: true as const };
+}
+
+export async function moveTodoToListAction(id: string, targetListId: string | null) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Not signed in." };
+  }
+
+  const { data: source, error: sourceErr } = await supabase
+    .from("todos")
+    .select("id, list_id")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (sourceErr || !source) {
+    return { error: "Todo not found." };
+  }
+
+  if (targetListId === source.list_id) {
+    return { success: true as const };
+  }
+
+  if (targetListId) {
+    const { data: listRow, error: listErr } = await supabase
+      .from("lists")
+      .select("id")
+      .eq("id", targetListId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (listErr || !listRow) {
+      return { error: "Target list not found." };
+    }
+  }
+
+  const minListBase = supabase
+    .from("todos")
+    .select("position")
+    .eq("user_id", user.id)
+    .order("position", { ascending: true })
+    .limit(1);
+
+  const { data: minListPosRow } =
+    targetListId == null
+      ? await minListBase.is("list_id", null).maybeSingle()
+      : await minListBase.eq("list_id", targetListId).maybeSingle();
+
+  const nextListPosition = (minListPosRow?.position ?? 0) - 1;
+
+  const { error } = await supabase
+    .from("todos")
+    .update({ list_id: targetListId, position: nextListPosition })
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) {
     return { error: error.message };

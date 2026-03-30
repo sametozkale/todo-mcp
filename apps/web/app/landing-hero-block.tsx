@@ -20,7 +20,7 @@ export function LandingHeroBlock({
   pillOnlyLabel = false,
   title,
   description,
-  ctaLabel = "Get started",
+  ctaLabel = "Get started for free",
   ctaHref = "/signup",
 }: LandingHeroBlockProps) {
   return (

@@ -26,7 +26,7 @@ export function LandingHeader() {
             href="/why-i-built"
             className="hidden font-title text-[14px] leading-5 font-medium tracking-[-0.32px] text-[#bbbcc3] no-underline transition hover:text-white sm:inline"
           >
-            Why I built
+            Story
           </Link>
           <Link
             href="/roadmap"

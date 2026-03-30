@@ -3,24 +3,28 @@
 import {
   addTodoAction,
   deleteTodoAction,
+  duplicateTodoAction,
+  moveTodoToListAction,
   reorderAllTodosAction,
   reorderTodosAction,
   toggleTodoAction,
+  updateTodoTitleAction,
 } from "@/app/(app)/today/actions";
 import {
   createListAction,
   deleteListAction,
+  reorderListsAction,
   type DeleteListMode,
 } from "@/app/(app)/lists/actions";
-import { useListsShell } from "@/app/(app)/lists-shell";
+import { useListsShell, type UserListRow } from "@/app/(app)/lists-shell";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Delete02Icon,
   PlusSignIcon,
   ArrowDown01Icon,
   SlidersHorizontalIcon,
+  Delete02Icon,
 } from "@hugeicons/core-free-icons";
-import { GripVertical } from "lucide-react";
+import { ChevronRight, Copy, Ellipsis, Folder, GripVertical, X } from "lucide-react";
 import {
   closestCenter,
   DndContext,
@@ -33,9 +37,10 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { restrictToHorizontalAxis, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
   arrayMove,
+  horizontalListSortingStrategy,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
@@ -68,12 +73,21 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSubscription } from "@/hooks/useSubscription";
 import { isClientDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import type { CSSProperties, ChangeEvent, MutableRefObject, Ref } from "react";
+import type {
+  ChangeEvent,
+  ClipboardEvent,
+  CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent,
+  MutableRefObject,
+  Ref,
+} from "react";
 
 type TodoRow = {
   id: string;
   title: string;
   is_completed: boolean | null;
+  list_id: string | null;
 };
 
 /** Listeden çıkış: hafif sola kayma + küçülme + soldurma (FM’de silme için yaygın pattern). */
@@ -106,6 +120,56 @@ export type TodayClientProps = {
   composerListId: string | null;
   sectionHeaderLabel: string;
 };
+
+type SortableListTabChipProps = {
+  list: UserListRow;
+  href: string;
+  chipClassName: string;
+  isActive: boolean;
+  count: number;
+  onListContextMenu: (list: UserListRow, e: MouseEvent) => void;
+};
+
+function SortableListTabChip({
+  list,
+  href,
+  chipClassName,
+  isActive,
+  count,
+  onListContextMenu,
+}: SortableListTabChipProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: list.id,
+  });
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 2 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="inline-flex"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onListContextMenu(list, e);
+      }}
+    >
+      <div className="inline-flex touch-none cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
+        <Link href={href} className={chipClassName} aria-current={isActive ? "page" : undefined}>
+          {list.title}{" "}
+          {isActive ? (
+            <>
+              <span className="mx-[2px] text-muted/70">•</span> {count}
+            </>
+          ) : null}
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 function isTextTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -140,7 +204,10 @@ type TodoOptimisticAction =
   | { type: "toggle"; id: string; completed: boolean }
   | { type: "delete"; id: string }
   | { type: "add"; todo: TodoRow }
-  | { type: "reorder"; orderedIds: string[] };
+  | { type: "duplicateAfter"; afterId: string; todo: TodoRow }
+  | { type: "moveList"; id: string; list_id: string | null }
+  | { type: "reorder"; orderedIds: string[] }
+  | { type: "updateTitle"; id: string; title: string };
 
 function reorderTodosByIds(state: TodoRow[], orderedIds: string[]): TodoRow[] {
   const byId = new Map(state.map((t) => [t.id, t] as const));
@@ -190,8 +257,17 @@ function applyTodoOptimistic(state: TodoRow[], action: TodoOptimisticAction): To
       return state.filter((t) => t.id !== action.id);
     case "add":
       return [action.todo, ...state];
+    case "duplicateAfter": {
+      const idx = state.findIndex((t) => t.id === action.afterId);
+      if (idx < 0) return [...state, action.todo];
+      return [...state.slice(0, idx + 1), action.todo, ...state.slice(idx + 1)];
+    }
+    case "moveList":
+      return state.map((t) => (t.id === action.id ? { ...t, list_id: action.list_id } : t));
     case "reorder":
       return reorderTodosByIds(state, action.orderedIds);
+    case "updateTitle":
+      return state.map((t) => (t.id === action.id ? { ...t, title: action.title } : t));
   }
 }
 
@@ -249,6 +325,18 @@ function feedbackTodoMarkedComplete(): void {
   tryTodoCompleteVibrate();
 }
 
+function insertPlainTextIntoContentEditable(el: HTMLElement, text: string): void {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  if (!el.contains(sel.anchorNode)) return;
+  const range = sel.getRangeAt(0);
+  range.deleteContents();
+  range.insertNode(document.createTextNode(text));
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
 type TodoRowMeasuredSortable = Pick<
   ReturnType<typeof useSortable>,
   "setNodeRef" | "setActivatorNodeRef" | "attributes" | "listeners"
@@ -258,6 +346,9 @@ type TodoRowMeasuredSortable = Pick<
 };
 
 type TodoRowHandlers = {
+  lists: { id: string; title: string }[];
+  view?: "all" | "today" | "list";
+  composerListId: string | null;
   setSelectedTodoId: (id: string) => void;
   isTodoPending: boolean;
   startTodoTransition: (cb: () => void | Promise<void>) => void;
@@ -270,6 +361,9 @@ function TodoRowMeasured({
   sortable,
   rootRef,
   entranceDelay,
+  lists,
+  view,
+  composerListId,
   setSelectedTodoId,
   isTodoPending,
   startTodoTransition,
@@ -287,7 +381,19 @@ function TodoRowMeasured({
 } & TodoRowHandlers) {
   const titleRef = useRef<HTMLSpanElement>(null);
   const checkboxRef = useRef<HTMLInputElement>(null);
+  const isTitleFocusedRef = useRef(false);
+  const discardTitleEditRef = useRef(false);
   const [isMultiline, setIsMultiline] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMoveSubmenuOpen, setIsMoveSubmenuOpen] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = titleRef.current;
+    if (!el || isTitleFocusedRef.current) return;
+    if (el.textContent !== todo.title) {
+      el.textContent = todo.title;
+    }
+  }, [todo.title]);
 
   useLayoutEffect(() => {
     const el = titleRef.current;
@@ -314,6 +420,35 @@ function TodoRowMeasured({
     return () => ro.disconnect();
   }, [todo.title, todo.is_completed]);
 
+  const commitTitleFromDom = useCallback(() => {
+    const el = titleRef.current;
+    if (!el) return;
+    const next = (el.textContent ?? "")
+      .replace(/\u00a0/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (next === "") {
+      el.textContent = todo.title;
+      toast.danger("Title can't be empty.", { timeout: 2200 });
+      return;
+    }
+    if (next === todo.title) return;
+    const prevTitle = todo.title;
+    startTodoTransition(async () => {
+      addOptimistic({ type: "updateTitle", id: todo.id, title: next });
+      const res = await updateTodoTitleAction(todo.id, next);
+      if ("error" in res) {
+        addOptimistic({ type: "updateTitle", id: todo.id, title: prevTitle });
+        const cur = titleRef.current;
+        if (cur) cur.textContent = prevTitle;
+        toast.danger(res.error ?? "Could not update title.", { timeout: 4500 });
+        scheduleRefresh();
+        return;
+      }
+      scheduleRefresh();
+    });
+  }, [addOptimistic, scheduleRefresh, startTodoTransition, todo.id, todo.title]);
+
   const setNodeRefFromSortable = sortable?.setNodeRef;
   const mergedLiRef = useCallback(
     (node: HTMLLIElement | null) => {
@@ -328,9 +463,11 @@ function TodoRowMeasured({
 
   const rowInnerClass = [
     "flex min-w-0 flex-1 gap-3 rounded-[16px] px-3 transition-colors duration-150 ease-out",
-    "group-hover:bg-[#f4f4f4]",
+    isMenuOpen ? "bg-[#f4f4f4]" : "group-hover:bg-[#f4f4f4]",
     isMultiline ? "items-start py-2.5" : "items-center py-1.5",
   ].join(" ");
+
+  const moveTargets = lists.filter((list) => list.id !== todo.list_id);
 
   return (
     <motion.li
@@ -351,7 +488,7 @@ function TodoRowMeasured({
         layout: { duration: 0.2, ease: [0.32, 0.72, 0, 1] },
       }}
       exit={TODO_ROW_EXIT}
-      className="group relative w-full list-none"
+      className="group relative mb-[2px] w-full list-none last:mb-0"
       style={sortable?.style}
       data-todo-row="1"
       data-todo-id={todo.id}
@@ -359,6 +496,7 @@ function TodoRowMeasured({
         const el = e.target as HTMLElement;
         if (el.closest('input[type="checkbox"]')) return;
         if (el.closest("button")) return;
+        if (el.closest("[data-todo-title]")) return;
         setSelectedTodoId(todo.id);
       }}
     >
@@ -418,45 +556,187 @@ function TodoRowMeasured({
 
           <span
             ref={titleRef}
-            className={
-              todo.is_completed
-                ? "min-w-0 flex-1 text-[14px] leading-5 text-muted line-through"
-                : "min-w-0 flex-1 text-[14px] leading-5 text-foreground"
-            }
-          >
-            {todo.title}
-          </span>
+            data-todo-title=""
+            role="textbox"
+            tabIndex={isTodoPending ? -1 : 0}
+            contentEditable={!isTodoPending}
+            suppressContentEditableWarning
+            spellCheck={false}
+            className={[
+              "min-w-0 flex-1 cursor-text border-0 text-[14px] leading-5 shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none focus-visible:outline-none",
+              todo.is_completed ? "text-muted line-through" : "text-foreground",
+            ].join(" ")}
+            aria-label={`Edit task title: ${todo.title}`}
+            aria-multiline="false"
+            suppressHydrationWarning
+            onFocus={() => {
+              isTitleFocusedRef.current = true;
+            }}
+            onBlur={() => {
+              isTitleFocusedRef.current = false;
+              if (discardTitleEditRef.current) {
+                discardTitleEditRef.current = false;
+                return;
+              }
+              commitTitleFromDom();
+            }}
+            onKeyDown={(e: ReactKeyboardEvent<HTMLSpanElement>) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.currentTarget.blur();
+                return;
+              }
+              if (e.key === "Escape") {
+                e.preventDefault();
+                discardTitleEditRef.current = true;
+                e.currentTarget.textContent = todo.title;
+                e.currentTarget.blur();
+              }
+            }}
+            onPaste={(e: ClipboardEvent<HTMLSpanElement>) => {
+              e.preventDefault();
+              const text = e.clipboardData
+                .getData("text/plain")
+                .replace(/\r\n/g, "\n")
+                .replace(/\n/g, " ");
+              insertPlainTextIntoContentEditable(e.currentTarget, text);
+            }}
+          />
 
           <span
             className={[
-              "flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100",
+              "flex shrink-0 items-center gap-0.5 -mr-[6px] opacity-0 transition-opacity group-hover:opacity-100",
               isMultiline ? "self-start -mt-1" : "",
             ].join(" ").trim()}
           >
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="min-h-7 min-w-7 p-0 text-muted hover:text-foreground"
-              aria-label={`Delete ${todo.title}`}
-              onPress={() => {
-                startTodoTransition(async () => {
-                  try {
-                    addOptimistic({ type: "delete", id: todo.id });
-                    await deleteTodoAction(todo.id);
-                    toast.success("Todo deleted.", { timeout: 2500 });
-                  } catch {
-                    addOptimistic({ type: "add", todo });
-                    toast.danger("Could not delete todo.", { timeout: 4500 });
-                  } finally {
-                    scheduleRefresh();
-                  }
-                });
+            <Dropdown.Root
+              onOpenChange={(open) => {
+                setIsMenuOpen(open);
+                if (!open) setIsMoveSubmenuOpen(false);
               }}
-              isDisabled={isTodoPending}
             >
-              <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={1.75} />
-            </Button>
+              <Dropdown.Trigger
+                className="inline-flex min-h-7 min-w-7 items-center justify-center rounded-xl p-0 text-muted transition-colors hover:bg-[#eee] hover:text-foreground data-[hovered]:bg-[#eee] data-[hovered]:text-foreground data-[focused]:bg-[#eee] data-[focused]:text-foreground"
+                aria-label={`More actions for ${todo.title}`}
+                isDisabled={isTodoPending}
+              >
+                <Ellipsis size={16} />
+              </Dropdown.Trigger>
+
+              <Dropdown.Popover
+                placement="bottom end"
+                style={{ width: "max-content", minWidth: "0px", overflow: "visible" }}
+              >
+                <Dropdown.Menu
+                  className="w-fit max-w-max min-w-0 overflow-visible"
+                  aria-label={`Todo actions for ${todo.title}`}
+                >
+                  <Dropdown.Item
+                    textValue="Duplicate"
+                    onAction={() => {
+                      setIsMoveSubmenuOpen(false);
+                      startTodoTransition(async () => {
+                        const duplicated: TodoRow = {
+                          ...todo,
+                          id: `optimistic-dup-${crypto.randomUUID()}`,
+                        };
+                        addOptimistic({ type: "duplicateAfter", afterId: todo.id, todo: duplicated });
+                        const res = await duplicateTodoAction(todo.id);
+                        if ("error" in res) {
+                          toast.danger("Could not duplicate todo.", { timeout: 4500 });
+                          scheduleRefresh();
+                          return;
+                        }
+                        toast.success("Todo duplicated.", { timeout: 2200 });
+                        scheduleRefresh();
+                      });
+                    }}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Copy size={14} />
+                      <span>Duplicate</span>
+                    </span>
+                  </Dropdown.Item>
+
+                  <Dropdown.Item textValue="Move to list">
+                    <div
+                      className="relative -mx-1 overflow-visible"
+                      onMouseEnter={() => setIsMoveSubmenuOpen(true)}
+                      onMouseLeave={() => setIsMoveSubmenuOpen(false)}
+                    >
+                      <div className="flex w-full items-center justify-between gap-3 px-1 py-0.5">
+                        <span className="inline-flex items-center gap-2">
+                          <Folder size={14} />
+                          <span>Move to list</span>
+                        </span>
+                        <ChevronRight size={14} className="ml-2 shrink-0 text-muted" />
+                      </div>
+                      {isMoveSubmenuOpen ? (
+                        <div className="absolute top-0 left-[calc(100%-1px)] min-w-[200px] rounded-xl border border-[#e8e8e8] bg-white p-1 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+                          {moveTargets.length > 0 ? (
+                            moveTargets.map((list) => (
+                              <button
+                                key={list.id}
+                                type="button"
+                                className="block w-full rounded-lg px-2.5 py-2 text-left text-[13px] text-foreground hover:bg-[#f5f5f5]"
+                                onClick={() => {
+                                  setIsMoveSubmenuOpen(false);
+                                  startTodoTransition(async () => {
+                                    const prevListId = todo.list_id;
+                                    addOptimistic({ type: "moveList", id: todo.id, list_id: list.id });
+                                    if (view !== "all" && composerListId) {
+                                      addOptimistic({ type: "delete", id: todo.id });
+                                    }
+                                    const res = await moveTodoToListAction(todo.id, list.id);
+                                    if ("error" in res) {
+                                      addOptimistic({ type: "moveList", id: todo.id, list_id: prevListId });
+                                      toast.danger("Could not move todo.", { timeout: 4500 });
+                                      scheduleRefresh();
+                                      return;
+                                    }
+                                    toast.success(`Moved to ${list.title}.`, { timeout: 2200 });
+                                    scheduleRefresh();
+                                  });
+                                }}
+                              >
+                                {list.title}
+                              </button>
+                            ))
+                          ) : (
+                            <p className="px-2.5 py-2 text-[12px] text-muted">No other lists</p>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </Dropdown.Item>
+
+                  <Dropdown.Item
+                    textValue="Delete"
+                    className="text-[color:var(--color-danger)]"
+                    onAction={() => {
+                      setIsMoveSubmenuOpen(false);
+                      startTodoTransition(async () => {
+                        try {
+                          addOptimistic({ type: "delete", id: todo.id });
+                          await deleteTodoAction(todo.id);
+                          toast.success("Todo deleted.", { timeout: 2500 });
+                        } catch {
+                          addOptimistic({ type: "add", todo });
+                          toast.danger("Could not delete todo.", { timeout: 4500 });
+                        } finally {
+                          scheduleRefresh();
+                        }
+                      });
+                    }}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={1.75} />
+                      <span>Delete</span>
+                    </span>
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
           </span>
         </div>
       </div>
@@ -546,10 +826,34 @@ export function TodayClient({
   );
 
   const { lists, counts } = useListsShell();
+  const [listTabOrderIds, setListTabOrderIds] = useState<string[] | null>(null);
+  const listsSorted = useMemo(() => {
+    if (!listTabOrderIds) return lists;
+    const map = new Map(lists.map((l) => [l.id, l]));
+    return listTabOrderIds.map((id) => map.get(id)).filter((x): x is UserListRow => x != null);
+  }, [lists, listTabOrderIds]);
+
+  useEffect(() => {
+    const serverIds = lists.map((l) => l.id);
+    const serverSet = new Set(serverIds);
+    setListTabOrderIds((prev) => {
+      if (prev === null) return null;
+      if (prev.some((id) => !serverSet.has(id))) return null;
+      const missing = serverIds.filter((id) => !prev.includes(id));
+      if (missing.length) return [...prev, ...missing];
+      if (serverIds.length === prev.length && serverIds.every((id, i) => id === prev[i])) return null;
+      return prev;
+    });
+  }, [lists]);
+
   const subscription = useSubscription();
   const formRef = useRef<HTMLFormElement>(null);
   const composerInputRef = useRef<HTMLInputElement>(null);
   const [addError, setAddError] = useState<string | null>(null);
+  const [composerValue, setComposerValue] = useState("");
+  const [composerOverrideListId, setComposerOverrideListId] = useState<string | null>(null);
+  const [isComposerListMenuOpen, setIsComposerListMenuOpen] = useState(false);
+  const [composerListQuery, setComposerListQuery] = useState("");
   const displayPrefKey = composerListId
     ? `yalp:display:showCompleted:${composerListId}`
     : "yalp:display:showCompleted:all";
@@ -578,6 +882,13 @@ export function TodayClient({
       // Ignore write failures.
     }
   }, [displayPrefKey, showCompleted]);
+
+  useEffect(() => {
+    setComposerOverrideListId(null);
+    setComposerValue("");
+    setIsComposerListMenuOpen(false);
+    setComposerListQuery("");
+  }, [composerListId, pathname]);
   const [uiOrderIds, setUiOrderIds] = useState<string[] | null>(null);
   const [draggingTodoId, setDraggingTodoId] = useState<string | null>(null);
   const [optimisticTodos, addOptimistic] = useOptimistic(
@@ -586,6 +897,7 @@ export function TodayClient({
   );
   const [isAddPending, startAddTransition] = useTransition();
   const [isTodoPending, startTodoTransition] = useTransition();
+  const [, startListTabReorderTransition] = useTransition();
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null);
   const latestOrderRef = useRef<string[] | null>(null);
 
@@ -902,15 +1214,18 @@ export function TodayClient({
   function handleAddTodo(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setAddError(null);
-    const titleInput = formRef.current?.querySelector<HTMLInputElement>('input[name="title"]');
-    const title = (titleInput?.value ?? "").trim();
+    const title = composerValue.trim();
     if (!title) {
       setAddError("Enter a task title.");
       return;
     }
 
-    if (!subscription.isPro && !subscription.canAddTodo(composerListId)) {
-      const isInbox = !composerListId;
+    const effectiveComposerListId = composerOverrideListId ?? composerListId;
+    const shouldRenderOptimisticInCurrentView =
+      view === "all" || effectiveComposerListId === composerListId;
+
+    if (!subscription.isPro && !subscription.canAddTodo(effectiveComposerListId)) {
+      const isInbox = !effectiveComposerListId;
       toast.danger(
         isInbox
           ? "You've reached the 25 todo inbox limit (All). Upgrade to add more."
@@ -922,15 +1237,21 @@ export function TodayClient({
     }
 
     const tempId = `optimistic-${crypto.randomUUID()}`;
-    if (titleInput) titleInput.value = "";
+    const submittedOverrideListId = composerOverrideListId;
+    setComposerValue("");
+    setComposerOverrideListId(null);
+    setIsComposerListMenuOpen(false);
+    setComposerListQuery("");
     const fd = new FormData();
     fd.set("title", title);
-    if (composerListId) fd.set("list_id", composerListId);
+    if (effectiveComposerListId) fd.set("list_id", effectiveComposerListId);
     startAddTransition(async () => {
-      addOptimistic({
-        type: "add",
-        todo: { id: tempId, title, is_completed: false },
-      });
+      if (shouldRenderOptimisticInCurrentView) {
+        addOptimistic({
+          type: "add",
+          todo: { id: tempId, title, is_completed: false, list_id: effectiveComposerListId },
+        });
+      }
       const result = await addTodoAction(null, fd);
       if (result?.error) {
         setAddError(result.error);
@@ -946,6 +1267,9 @@ export function TodayClient({
           toast.danger(err, { timeout: 4500 });
           subscription.openPaymentModal({ dismissible: false });
         }
+      } else if (!shouldRenderOptimisticInCurrentView && submittedOverrideListId) {
+        const target = lists.find((l) => l.id === submittedOverrideListId);
+        toast.success(`Todo added to ${target?.title ?? "selected list"}.`, { timeout: 2200 });
       }
       scheduleRefresh();
     });
@@ -962,6 +1286,35 @@ export function TodayClient({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+
+  const listTabSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  function handleListTabsDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = listsSorted.findIndex((l) => l.id === String(active.id));
+    const newIndex = listsSorted.findIndex((l) => l.id === String(over.id));
+    if (oldIndex < 0 || newIndex < 0) return;
+    const nextLists = arrayMove(listsSorted, oldIndex, newIndex);
+    const nextIds = nextLists.map((l) => l.id);
+    setListTabOrderIds(nextIds);
+    startListTabReorderTransition(async () => {
+      const result = await reorderListsAction(nextIds);
+      if (!result.ok) {
+        toast.danger(result.error, { timeout: 4000 });
+        setListTabOrderIds(null);
+        return;
+      }
+      router.refresh();
+    });
+  }
 
   const draggedTodo = draggingTodoId
     ? orderedVisibleTodos.find((todo) => todo.id === draggingTodoId) ?? null
@@ -1005,14 +1358,55 @@ export function TodayClient({
 
   const todoRowHandlers = useMemo<TodoRowHandlers>(
     () => ({
+      lists: lists.map((list) => ({ id: list.id, title: list.title })),
+      view,
+      composerListId,
       setSelectedTodoId,
       isTodoPending,
       startTodoTransition,
       addOptimistic,
       scheduleRefresh,
     }),
-    [setSelectedTodoId, isTodoPending, startTodoTransition, addOptimistic, scheduleRefresh],
+    [
+      lists,
+      view,
+      composerListId,
+      setSelectedTodoId,
+      isTodoPending,
+      startTodoTransition,
+      addOptimistic,
+      scheduleRefresh,
+    ],
   );
+
+  const composerTargetList = listsSorted.find((list) => list.id === composerOverrideListId) ?? null;
+  const composerMentionMatches = useMemo(() => {
+    const q = composerListQuery.trim().toLowerCase();
+    if (!q) return listsSorted;
+    return listsSorted.filter((list) => list.title.toLowerCase().includes(q));
+  }, [listsSorted, composerListQuery]);
+
+  function handleComposerChange(next: string) {
+    setComposerValue(next);
+    const m = next.match(/(?:^|\s)@([^\s]*)$/);
+    if (!m) {
+      setIsComposerListMenuOpen(false);
+      setComposerListQuery("");
+      return;
+    }
+    setIsComposerListMenuOpen(true);
+    setComposerListQuery(m[1] ?? "");
+  }
+
+  function applyComposerTargetList(listId: string) {
+    const list = listsSorted.find((l) => l.id === listId);
+    if (!list) return;
+    setComposerOverrideListId(list.id === composerListId ? null : list.id);
+    setComposerValue((prev) => prev.replace(/(?:^|\s)@[^\s]*$/, " ").replace(/\s{2,}/g, " "));
+    setIsComposerListMenuOpen(false);
+    setComposerListQuery("");
+    queueMicrotask(() => composerInputRef.current?.focus());
+  }
 
   return (
     <div className="today-shell flex w-full flex-col text-foreground">
@@ -1033,7 +1427,7 @@ export function TodayClient({
                 <span className="truncate">
                   {pathname === "/all"
                     ? `All • ${counts.all}`
-                    : lists.find((l) => isTabActiveForList(l.slug))?.title ?? "Select list"}
+                    : listsSorted.find((l) => isTabActiveForList(l.slug))?.title ?? "Select list"}
                 </span>
                 <HugeiconsIcon icon={ArrowDown01Icon} size={16} strokeWidth={1.75} className="text-muted" />
               </span>
@@ -1046,7 +1440,7 @@ export function TodayClient({
                 >
                   All <span className="mx-[2px] text-muted/70">•</span> {counts.all}
                 </Dropdown.Item>
-                {lists.map((list) => (
+                {listsSorted.map((list) => (
                   <Dropdown.Item
                     key={list.id}
                     textValue={list.title}
@@ -1074,45 +1468,47 @@ export function TodayClient({
           </button>
         </div>
 
-        {/* Desktop: horizontal list chips. */}
+        {/* Desktop: horizontal list chips (drag tabs to reorder). */}
         <nav className="hidden min-w-0 flex-1 flex-wrap items-center gap-[2px] sm:flex" aria-label="List filters">
-          <Link href="/all" className={filterChipClass("/all")} aria-current={pathname === "/all" ? "page" : undefined}>
-            All{" "}
-            {chipActive("/all") ? (
-              <>
-                <span className="mx-[2px] text-muted/70">•</span> {counts.all}
-              </>
-            ) : null}
-          </Link>
-          {lists.map((list) => (
-            <div
-              key={list.id}
-              className="inline-flex"
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setContextMenu({
-                  listId: list.id,
-                  slug: list.slug,
-                  title: list.title,
-                  x: e.clientX,
-                  y: e.clientY,
-                });
-              }}
-            >
-              <Link
-                href={listHref(list.slug)}
-                className={filterChipClass(listHref(list.slug))}
-                aria-current={isTabActiveForList(list.slug) ? "page" : undefined}
-              >
-                {list.title}{" "}
-                {isTabActiveForList(list.slug) ? (
+          <DndContext
+            id="yalp-dnd-list-tabs"
+            sensors={listTabSensors}
+            collisionDetection={closestCenter}
+            modifiers={[restrictToHorizontalAxis]}
+            onDragEnd={handleListTabsDragEnd}
+          >
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-[2px]">
+              <Link href="/all" className={filterChipClass("/all")} aria-current={pathname === "/all" ? "page" : undefined}>
+                All{" "}
+                {chipActive("/all") ? (
                   <>
-                    <span className="mx-[2px] text-muted/70">•</span> {counts.byListId[list.id] ?? 0}
+                    <span className="mx-[2px] text-muted/70">•</span> {counts.all}
                   </>
                 ) : null}
               </Link>
+              <SortableContext items={listsSorted.map((l) => l.id)} strategy={horizontalListSortingStrategy}>
+                {listsSorted.map((list) => (
+                  <SortableListTabChip
+                    key={list.id}
+                    list={list}
+                    href={listHref(list.slug)}
+                    chipClassName={filterChipClass(listHref(list.slug))}
+                    isActive={isTabActiveForList(list.slug)}
+                    count={counts.byListId[list.id] ?? 0}
+                    onListContextMenu={(l, e) => {
+                      setContextMenu({
+                        listId: l.id,
+                        slug: l.slug,
+                        title: l.title,
+                        x: e.clientX,
+                        y: e.clientY,
+                      });
+                    }}
+                  />
+                ))}
+              </SortableContext>
             </div>
-          ))}
+          </DndContext>
           <button
             type="button"
             className="ml-0.5 rounded-[12px] p-1 text-muted hover:bg-[#f3f3f3] hover:text-foreground"
@@ -1309,8 +1705,19 @@ export function TodayClient({
           onSubmit={handleAddTodo}
           className="relative"
         >
-          {composerListId ? <input type="hidden" name="list_id" value={composerListId} /> : null}
-          <div className="flex min-h-10 items-center gap-4 rounded-[16px] border border-[#e4e4e4] bg-white pr-3 shadow-[0_2px_10px_rgba(0,0,0,0.022),0_1px_2px_rgba(0,0,0,0.016)]">
+          <div className="relative flex min-h-10 items-center gap-2 rounded-[16px] border border-[#e4e4e4] bg-white pr-3 shadow-[0_2px_10px_rgba(0,0,0,0.022),0_1px_2px_rgba(0,0,0,0.016)]">
+            {composerTargetList ? (
+              <button
+                type="button"
+                className="ml-3 inline-flex shrink-0 items-center gap-1 rounded-full bg-[#00b5e9]/12 px-2 py-1 font-title text-[12px] leading-4 font-medium text-[#00b5e9]"
+                onClick={() => setComposerOverrideListId(null)}
+                title="Clear selected list"
+                aria-label={`Clear selected list ${composerTargetList.title}`}
+              >
+                <span>@{composerTargetList.title}</span>
+                <X size={12} />
+              </button>
+            ) : null}
             <input
               ref={composerInputRef}
               name="title"
@@ -1318,11 +1725,35 @@ export function TodayClient({
               autoComplete="off"
               placeholder="New todo @list @2pm"
               disabled={isAddPending}
-              className="min-w-0 flex-1 border-0 bg-transparent pt-2.5 pb-[11px] pl-4 text-[13px] leading-5 text-foreground outline-none placeholder:text-muted"
+              value={composerValue}
+              onChange={(e) => handleComposerChange(e.target.value)}
+              className={[
+                "min-w-0 flex-1 border-0 bg-transparent pt-2.5 pb-[11px] text-[13px] leading-5 text-foreground outline-none placeholder:text-muted",
+                composerTargetList ? "pl-0" : "pl-4",
+              ].join(" ")}
             />
             <kbd className="hidden shrink-0 items-center justify-center rounded border border-[#e6e6e6] bg-[#fafafa] px-1.5 py-1 font-sans text-[11px] font-medium leading-none text-muted sm:inline-flex">
               N
             </kbd>
+
+            {isComposerListMenuOpen ? (
+              <div className="absolute top-[calc(100%+6px)] left-0 z-30 w-full rounded-xl border border-[#e8e8e8] bg-white p-1 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+                {composerMentionMatches.length > 0 ? (
+                  composerMentionMatches.map((list) => (
+                    <button
+                      key={list.id}
+                      type="button"
+                      className="block w-full rounded-lg px-2.5 py-2 text-left text-[13px] text-foreground hover:bg-[#f5f5f5]"
+                      onClick={() => applyComposerTargetList(list.id)}
+                    >
+                      {list.title}
+                    </button>
+                  ))
+                ) : (
+                  <p className="px-2.5 py-2 text-[12px] text-muted">No matching list</p>
+                )}
+              </div>
+            ) : null}
           </div>
           {addError ? (
             <p className="mt-2 text-sm text-[color:var(--color-danger)]" role="alert">
@@ -1341,6 +1772,7 @@ export function TodayClient({
           </ul>
         ) : canReorder ? (
           <DndContext
+            id="yalp-dnd-todos"
             sensors={sensors}
             collisionDetection={closestCenter}
             modifiers={[restrictToVerticalAxis]}
