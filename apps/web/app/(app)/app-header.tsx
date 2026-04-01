@@ -113,7 +113,7 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
   return (
     <>
       <header className="sticky top-0 z-10">
-        <div className="flex h-14 w-full items-center justify-between gap-3 px-12">
+        <div className="flex h-14 w-full items-center justify-between gap-3 px-4 sm:px-6">
           <Link href="/all" className="inline-flex shrink-0 items-center no-underline">
             <ToDoMcpLogo className="block h-6 w-6 max-w-none" />
           </Link>
