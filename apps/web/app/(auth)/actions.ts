@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
 import { getSiteUrl } from "@/lib/site-url";
+import { sanitizeInternalNextPath } from "@/lib/auth/redirect";
 
 async function getRequestOrigin(): Promise<string> {
   const h = await headers();
@@ -45,10 +46,7 @@ export async function loginAction(
   }
 
   const nextRaw = String(formData.get("next") ?? "").trim();
-  const next =
-    nextRaw.startsWith("/") && !nextRaw.startsWith("//") && !nextRaw.includes(":")
-      ? nextRaw
-      : PRODUCT_HOME;
+  const next = sanitizeInternalNextPath(nextRaw, PRODUCT_HOME);
   // #region debug login action next
   if (isServerDebugIngestEnabled()) {
     await sendDebugIngest({
@@ -63,6 +61,26 @@ export async function loginAction(
   }
   // #endregion
   redirect(next);
+}
+
+export async function signInWithGoogleAction(formData: FormData) {
+  const supabase = await createClient();
+  const origin = await getRequestOrigin();
+  const next = sanitizeInternalNextPath(String(formData.get("next") ?? ""), PRODUCT_HOME);
+  const callbackUrl = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: callbackUrl,
+    },
+  });
+
+  if (error || !data?.url) {
+    redirect(`/login?error=auth&next=${encodeURIComponent(next)}`);
+  }
+
+  redirect(data.url);
 }
 
 export async function signupAction(

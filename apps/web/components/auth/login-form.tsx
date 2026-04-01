@@ -11,7 +11,7 @@ import {
   TextField,
   toast,
 } from "@heroui/react";
-import { loginAction, type AuthActionState } from "@/app/(auth)/actions";
+import { loginAction, signInWithGoogleAction, type AuthActionState } from "@/app/(auth)/actions";
 
 type LoginFormProps = {
   searchParamsError?: string;
@@ -54,6 +54,17 @@ export function LoginForm({ searchParamsError, nextPath }: LoginFormProps) {
           variant="tertiary"
           className="w-full rounded-[32px] border border-[#f4f4f4] !bg-white p-8 shadow-[0_2px_16px_-4px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.03)]"
         >
+          <form action={signInWithGoogleAction} className="mb-6">
+            {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
+            <Button type="submit" variant="secondary" fullWidth>
+              Continue with Google
+            </Button>
+          </form>
+          <div className="mb-6 flex items-center gap-3 text-xs text-muted">
+            <div className="h-px flex-1 bg-[#ececec]" />
+            <span>or use email</span>
+            <div className="h-px flex-1 bg-[#ececec]" />
+          </div>
           <form
             action={formAction}
             className="flex flex-col gap-6"

@@ -22,6 +22,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function SignupPage() {
-  return <SignupForm />;
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const params = await searchParams;
+  return <SignupForm nextPath={params.next} />;
 }
