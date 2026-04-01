@@ -59,17 +59,6 @@ export function SignupForm({ nextPath }: SignupFormProps) {
           variant="tertiary"
           className="w-full rounded-[32px] border border-[#f4f4f4] !bg-white p-8 shadow-[0_2px_16px_-4px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.03)]"
         >
-          <form action={signInWithGoogleAction} className="mb-6">
-            {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
-            <Button type="submit" variant="secondary" fullWidth>
-              Create account with Google
-            </Button>
-          </form>
-          <div className="mb-6 flex items-center gap-3 text-xs text-muted">
-            <div className="h-px flex-1 bg-[#ececec]" />
-            <span>or sign up with email</span>
-            <div className="h-px flex-1 bg-[#ececec]" />
-          </div>
           <form action={formAction} className="flex flex-col gap-6" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <h1 className="font-title text-xl font-semibold text-foreground">Create account</h1>
@@ -154,6 +143,17 @@ export function SignupForm({ nextPath }: SignupFormProps) {
             </TextField>
             <Button type="submit" variant="primary" fullWidth isDisabled={isPending}>
               {isPending ? "Creating account…" : "Sign up"}
+            </Button>
+          </form>
+          <div className="mb-6 mt-6 flex items-center gap-3 text-xs text-muted">
+            <div className="h-px flex-1 bg-[#ececec]" />
+            <span>or</span>
+            <div className="h-px flex-1 bg-[#ececec]" />
+          </div>
+          <form action={signInWithGoogleAction}>
+            {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
+            <Button type="submit" variant="secondary" fullWidth>
+              Create account with Google
             </Button>
           </form>
         </Surface>
