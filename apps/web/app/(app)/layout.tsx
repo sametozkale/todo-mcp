@@ -1,6 +1,7 @@
 import { PRODUCT_HOME } from "@/lib/routes";
 import { SubscriptionProvider, type SubscriptionSnapshot, type UsageSnapshot } from "@/hooks/useSubscription";
 import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
+import { SessionKeepAliveMount } from "@/components/session-keepalive-mount";
 import { getCachedAuth } from "@/lib/supabase/cached-auth";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
@@ -84,6 +85,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col bg-[#fafafa]">
       <SubscriptionProvider initialSubscription={initialSubscription} initialUsage={initialUsage}>
+        <SessionKeepAliveMount />
         <AppHeader
           initialProfile={{
             fullName: profile?.full_name ?? "",

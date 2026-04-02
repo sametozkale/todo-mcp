@@ -18,6 +18,20 @@ The dev server is fixed to **port 3001** (see `package.json` → `dev`). Open [h
 
 From the monorepo root: `pnpm dev:web` (or `cd apps/web && pnpm dev`). If the server fails with `EADDRINUSE`, something else is already using 3001 — free it with `lsof -i :3001` then stop that process, or run `kill $(lsof -ti :3001)`.
 
+## Auth Session Policy (Supabase)
+
+Use these values to reduce unexpected logout while keeping security strong:
+
+- **Refresh token rotation**: enabled
+- **JWT expiry**: `60 minutes` (acceptable range: 60-120 minutes)
+- **Session inactivity timeout**: `7 days`
+- **Maximum session lifetime**: `7 days`
+
+Recommended rollout:
+1. Apply Supabase Auth settings in dashboard.
+2. Deploy web keep-alive client hook (already in app shell).
+3. Verify long-idle return flow on `/today` and `/all`.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
