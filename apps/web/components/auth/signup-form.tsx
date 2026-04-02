@@ -25,6 +25,8 @@ export function SignupForm({ nextPath }: SignupFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [confirmTouched, setConfirmTouched] = useState(false);
+  const [confirmTyping, setConfirmTyping] = useState(false);
 
   // Track whether user has edited fields since last submit,
   // so we don't keep showing stale server errors.
@@ -53,6 +55,17 @@ export function SignupForm({ nextPath }: SignupFormProps) {
     submitCounterRef.current += 1;
     lastSubmitEditCounterRef.current = editCounter;
   };
+
+  useEffect(() => {
+    if (!confirmTouched) return;
+    setConfirmTyping(true);
+    const id = window.setTimeout(() => setConfirmTyping(false), 500);
+    return () => window.clearTimeout(id);
+  }, [confirmPassword, confirmTouched]);
+
+  const passwordsMatch = password.length > 0 && password === confirmPassword;
+  const showPasswordMismatch =
+    confirmTouched && !confirmTyping && confirmPassword.length > 0 && !passwordsMatch;
 
   return (
     <div className="flex w-full flex-1 flex-col items-center">
@@ -134,8 +147,9 @@ export function SignupForm({ nextPath }: SignupFormProps) {
               name="confirmPassword"
               type="password"
               isRequired
-              isInvalid={!!state?.fieldErrors?.confirmPassword}
+              isInvalid={!!state?.fieldErrors?.confirmPassword || showPasswordMismatch}
               onChange={(v) => {
+                setConfirmTouched(true);
                 setConfirmPassword(String(v));
                 setEditCounter((c) => c + 1);
               }}
@@ -144,6 +158,10 @@ export function SignupForm({ nextPath }: SignupFormProps) {
               <Input placeholder="Re-enter your password" fullWidth value={confirmPassword} />
               {state?.fieldErrors?.confirmPassword ? (
                 <FieldError>{state.fieldErrors.confirmPassword}</FieldError>
+              ) : showPasswordMismatch ? (
+                <FieldError>Passwords do not match yet.</FieldError>
+              ) : passwordsMatch ? (
+                <p className="text-xs text-[#2a8f53]">Passwords match.</p>
               ) : (
                 <FieldError />
               )}

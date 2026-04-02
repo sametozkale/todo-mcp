@@ -43,11 +43,12 @@ const ROADMAP_ITEMS = [
   },
   {
     title: "Telegram Bot",
-    description: "Quick capture in Telegram with the same MCP-backed sync as the web app.",
+    description: "Create and complete todos from Telegram messages, synced to your Yalp lists.",
   },
   {
     title: "Widgets",
-    description: "Glanceable widgets for quick capture and today’s priorities—without opening the app.",
+    description:
+      "Build your own widgets page so you can see what matters most to you in a single screen.",
   },
   {
     title: "Gmail Integration",
