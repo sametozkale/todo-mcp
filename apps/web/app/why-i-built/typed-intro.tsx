@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { TypingAnimation } from "@/components/ui/typing-animation";
+import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 
 const intro =
   "I lost focus 12 times yesterday.\n"
@@ -50,26 +50,51 @@ const RESERVED_LINES = intro.split("\n").length;
 const RESERVED_TEXT_HEIGHT_PX = RESERVED_LINES * 24;
 // Reserve CTA space too (32px margin + ~44px button height).
 const RESERVED_CTA_HEIGHT_PX = 32 + 44;
+const LINE_STEP_MS = 420;
 
 export function WhyIBuiltTypedIntro() {
+  const lines = useMemo(() => intro.split("\n"), []);
+  const [visibleLineCount, setVisibleLineCount] = useState(0);
   const [showCta, setShowCta] = useState(false);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setVisibleLineCount((count) => {
+        if (count >= lines.length) {
+          window.clearInterval(id);
+          return count;
+        }
+        return count + 1;
+      });
+    }, LINE_STEP_MS);
+
+    return () => window.clearInterval(id);
+  }, [lines.length]);
+
+  useEffect(() => {
+    if (visibleLineCount >= lines.length) {
+      setShowCta(true);
+    }
+  }, [lines.length, visibleLineCount]);
 
   return (
     <div
       className="mx-auto w-full max-w-[400px]"
       style={{ minHeight: RESERVED_TEXT_HEIGHT_PX + RESERVED_CTA_HEIGHT_PX }}
     >
-      <TypingAnimation
-        as="p"
-        startOnView={false}
-        showCursor
-        cursorStyle="line"
-        typeSpeed={55}
-        className="w-full whitespace-pre-line text-center font-sans text-[15px] leading-6 text-[#777777]"
-        onComplete={() => setShowCta(true)}
-      >
-        {intro}
-      </TypingAnimation>
+      <p className="w-full text-center font-sans text-[15px] leading-6 text-[#777777]">
+        {lines.slice(0, visibleLineCount).map((line, index) => (
+          <motion.span
+            key={`${index}-${line}`}
+            className="block whitespace-pre-line"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.34, ease: "easeOut" }}
+          >
+            {line === "" ? "\u00A0" : line}
+          </motion.span>
+        ))}
+      </p>
 
       {showCta ? (
         <div className="mt-8 flex w-full justify-center">
