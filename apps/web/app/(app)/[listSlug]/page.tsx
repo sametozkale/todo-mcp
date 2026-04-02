@@ -12,14 +12,9 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { listSlug } = await params;
   const noIndex = { robots: { index: false, follow: false } } as const;
-  const { list } = await getCachedUserListBySlug(listSlug);
-
-  if (!list) {
-    return { title: "List", ...noIndex };
-  }
   return {
-    title: list.title,
-    description: `Tasks in ${list.title}.`,
+    title: listSlug === "today" ? "Today" : "List",
+    description: "Tasks in your list.",
     ...noIndex,
   };
 }

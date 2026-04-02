@@ -71,6 +71,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSubscription } from "@/hooks/useSubscription";
+import { getCachedTodos, prefetchTodosForPath, revalidateTodosForPath, setCachedTodos } from "@/hooks/useTodosStore";
 import { isClientDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type {
@@ -101,6 +102,8 @@ const TODO_ROW_EXIT = {
 /** Çok satırda toplam cascade süresini ~0,5s içinde tut; sıra değişince aynı id’ye aynı gecikme (ref ile). */
 const LIST_ENTRANCE_INDEX_CAP = 40;
 const LIST_ENTRANCE_TIME_BUDGET_SEC = 0.52;
+const FAST_RENDER_LIMIT = 240;
+const FAST_RENDER_STEP = 220;
 
 function computeTodoEntranceDelay(
   visualIndex: number,
@@ -128,6 +131,7 @@ type SortableListTabChipProps = {
   isActive: boolean;
   count: number;
   onListContextMenu: (list: UserListRow, e: MouseEvent) => void;
+  onPrefetch: (href: string) => void;
 };
 
 function SortableListTabChip({
@@ -137,6 +141,7 @@ function SortableListTabChip({
   isActive,
   count,
   onListContextMenu,
+  onPrefetch,
 }: SortableListTabChipProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: list.id,
@@ -158,7 +163,13 @@ function SortableListTabChip({
       }}
     >
       <div className="inline-flex touch-none cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
-        <Link href={href} className={chipClassName} aria-current={isActive ? "page" : undefined}>
+        <Link
+          href={href}
+          className={chipClassName}
+          aria-current={isActive ? "page" : undefined}
+          onMouseEnter={() => onPrefetch(href)}
+          onFocus={() => onPrefetch(href)}
+        >
           {list.title}{" "}
           {isActive ? (
             <>
@@ -804,6 +815,18 @@ export function TodayClient({
       setListNavGeneration((n) => n + 1);
     }
   }, [pathname]);
+  useEffect(() => {
+    const start = performance.now();
+    const id = window.requestAnimationFrame(() => {
+      const elapsed = performance.now() - start;
+      if (process.env.NODE_ENV !== "production" && elapsed > 220) {
+        // Guardrail for list-switch UX regressions during development.
+        // eslint-disable-next-line no-console
+        console.warn("[yalp] list-switch paint slower than target:", Math.round(elapsed), "ms", pathname);
+      }
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [pathname]);
   /** İlk yüklemede stagger korunur; /all ↔ liste ↔ /today arası geçişte satır girişi anında. */
   const skipListEntranceAnimations = listNavGeneration > 0;
   const prefersReducedMotion = useReducedMotion();
@@ -826,12 +849,36 @@ export function TodayClient({
   );
 
   const { lists, counts } = useListsShell();
+  const [baseTodos, setBaseTodos] = useState<TodoRow[]>(
+    () => (getCachedTodos(pathname) as TodoRow[] | null) ?? initialTodos,
+  );
   const [listTabOrderIds, setListTabOrderIds] = useState<string[] | null>(null);
   const listsSorted = useMemo(() => {
     if (!listTabOrderIds) return lists;
     const map = new Map(lists.map((l) => [l.id, l]));
     return listTabOrderIds.map((id) => map.get(id)).filter((x): x is UserListRow => x != null);
   }, [lists, listTabOrderIds]);
+
+  useEffect(() => {
+    const cached = getCachedTodos(pathname) as TodoRow[] | null;
+    setBaseTodos(cached ?? initialTodos);
+    setCachedTodos(pathname, initialTodos);
+  }, [initialTodos, pathname]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void revalidateTodosForPath(pathname).then((fresh) => {
+      if (!fresh || cancelled) return;
+      setBaseTodos(fresh as TodoRow[]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    setCachedTodos(pathname, baseTodos);
+  }, [pathname, baseTodos]);
 
   useEffect(() => {
     const serverIds = lists.map((l) => l.id);
@@ -891,10 +938,7 @@ export function TodayClient({
   }, [composerListId, pathname]);
   const [uiOrderIds, setUiOrderIds] = useState<string[] | null>(null);
   const [draggingTodoId, setDraggingTodoId] = useState<string | null>(null);
-  const [optimisticTodos, addOptimistic] = useOptimistic(
-    initialTodos,
-    applyTodoOptimistic,
-  );
+  const [optimisticTodos, addOptimistic] = useOptimistic(baseTodos, applyTodoOptimistic);
   const [isAddPending, startAddTransition] = useTransition();
   const [isTodoPending, startTodoTransition] = useTransition();
   const [, startListTabReorderTransition] = useTransition();
@@ -959,6 +1003,22 @@ export function TodayClient({
   }, [selectedTodoId, view]);
 
   const chipActive = (href: string) => pathname === href;
+  const prefetchRoute = useCallback(
+    (href: string) => {
+      void router.prefetch(href);
+      void prefetchTodosForPath(href);
+    },
+    [router],
+  );
+
+  useEffect(() => {
+    // Warm likely next navigations.
+    void prefetchTodosForPath("/all");
+    void prefetchTodosForPath("/today");
+    for (const l of lists.slice(0, 3)) {
+      void prefetchTodosForPath(`/${l.slug}`);
+    }
+  }, [lists]);
 
   const filterChipClass = (href: string) =>
     [
@@ -992,6 +1052,30 @@ export function TodayClient({
     uiOrderIds && uiOrderIds.length === visibleIds.length
       ? reorderTodosByIds(visibleTodos, uiOrderIds)
       : visibleTodos;
+  const [renderLimit, setRenderLimit] = useState(FAST_RENDER_LIMIT);
+
+  useEffect(() => {
+    setRenderLimit(FAST_RENDER_LIMIT);
+  }, [pathname, showCompleted]);
+
+  useEffect(() => {
+    if (orderedVisibleTodos.length <= renderLimit) return;
+    const id = window.setTimeout(() => {
+      setRenderLimit((n) => Math.min(n + FAST_RENDER_STEP, orderedVisibleTodos.length));
+    }, 80);
+    return () => window.clearTimeout(id);
+  }, [orderedVisibleTodos.length, renderLimit]);
+
+  const renderedOrderedTodos = useMemo(
+    () => orderedVisibleTodos.slice(0, renderLimit),
+    [orderedVisibleTodos, renderLimit],
+  );
+  const renderedVisibleTodos = useMemo(
+    () => visibleTodos.slice(0, renderLimit),
+    [visibleTodos, renderLimit],
+  );
+  const hasMoreRendered = orderedVisibleTodos.length > renderLimit;
+  const renderedVisibleIds = useMemo(() => renderedOrderedTodos.map((t) => t.id), [renderedOrderedTodos]);
 
   useEffect(() => {
     if (!uiOrderIds) return;
@@ -1478,7 +1562,13 @@ export function TodayClient({
             onDragEnd={handleListTabsDragEnd}
           >
             <div className="flex min-w-0 flex-wrap items-center gap-[2px]">
-              <Link href="/all" className={filterChipClass("/all")} aria-current={pathname === "/all" ? "page" : undefined}>
+              <Link
+                href="/all"
+                className={filterChipClass("/all")}
+                aria-current={pathname === "/all" ? "page" : undefined}
+                onMouseEnter={() => prefetchRoute("/all")}
+                onFocus={() => prefetchRoute("/all")}
+              >
                 All{" "}
                 {chipActive("/all") ? (
                   <>
@@ -1495,6 +1585,7 @@ export function TodayClient({
                     chipClassName={filterChipClass(listHref(list.slug))}
                     isActive={isTabActiveForList(list.slug)}
                     count={counts.byListId[list.id] ?? 0}
+                    onPrefetch={prefetchRoute}
                     onListContextMenu={(l, e) => {
                       setContextMenu({
                         listId: l.id,
@@ -1802,14 +1893,14 @@ export function TodayClient({
               },
             }}
           >
-            <SortableContext items={uiOrderIds ?? visibleIds} strategy={verticalListSortingStrategy}>
+            <SortableContext items={renderedVisibleIds} strategy={verticalListSortingStrategy}>
               <ul className="relative flex flex-col overflow-visible">
                 <AnimatePresence initial mode="popLayout">
-                  {orderedVisibleTodos.map((todo, index) => (
+                  {renderedOrderedTodos.map((todo, index) => (
                     <SortableTodoItem
                       key={todo.id}
                       todo={todo}
-                      entranceDelay={getEntranceDelay(todo.id, index, orderedVisibleTodos.length)}
+                      entranceDelay={getEntranceDelay(todo.id, index, renderedOrderedTodos.length)}
                       skipEntranceAnimation={skipListEntranceAnimations}
                       {...todoRowHandlers}
                     />
@@ -1828,11 +1919,11 @@ export function TodayClient({
         ) : (
           <ul className="flex flex-col">
             <AnimatePresence initial mode="popLayout">
-              {visibleTodos.map((todo, index) => (
+              {renderedVisibleTodos.map((todo, index) => (
                 <PresenceTodoRow
                   key={todo.id}
                   todo={todo}
-                  entranceDelay={getEntranceDelay(todo.id, index, visibleTodos.length)}
+                  entranceDelay={getEntranceDelay(todo.id, index, renderedVisibleTodos.length)}
                   skipEntranceAnimation={skipListEntranceAnimations}
                   {...todoRowHandlers}
                 />
@@ -1840,6 +1931,9 @@ export function TodayClient({
             </AnimatePresence>
           </ul>
         )}
+        {hasMoreRendered ? (
+          <div className="pt-3 text-center text-[12px] text-muted">Loading more tasks…</div>
+        ) : null}
       </section>
       </div>
   );

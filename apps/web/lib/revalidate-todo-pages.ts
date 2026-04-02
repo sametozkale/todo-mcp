@@ -1,11 +1,11 @@
 import { revalidatePath } from "next/cache";
 
 /**
- * Revalidates the shared `(app)` layout and main list routes in one pass — avoids
- * revalidating every `/{slug}` on each todo toggle (major latency win).
+ * Revalidates core list views directly (faster and more targeted than layout-level invalidation).
  */
 export function revalidateAppShell() {
-  revalidatePath("/all", "layout");
+  revalidatePath("/all");
+  revalidatePath("/today");
 }
 
 /**

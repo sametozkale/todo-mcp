@@ -51,10 +51,10 @@ export function LoginForm({ searchParamsError, nextPath }: LoginFormProps) {
 
   return (
     <div className="flex w-full flex-1 flex-col items-center">
-      <div className="w-full max-w-md pt-12">
+      <div className="w-full max-w-md pt-12 max-sm:mb-8">
         <ToDoMcpLogo className="mx-auto block h-6 w-6 max-w-none" />
       </div>
-      <div className="flex w-full max-w-md flex-1 flex-col justify-center">
+      <div className="flex w-full max-w-md flex-col sm:flex-1 sm:justify-center">
         <Surface
           variant="tertiary"
           className="w-full rounded-[32px] border border-[#f4f4f4] !bg-white p-8 shadow-[0_2px_16px_-4px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.03)]"
@@ -124,7 +124,7 @@ export function LoginForm({ searchParamsError, nextPath }: LoginFormProps) {
           </form>
         </Surface>
       </div>
-      <p className="w-full max-w-md shrink-0 pb-12 text-center text-sm text-muted">
+      <p className="w-full max-w-md shrink-0 mt-8 pb-12 text-center text-sm text-muted sm:mt-0">
         Don&apos;t have an account?{" "}
         <Link
           href="/signup"

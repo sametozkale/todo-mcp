@@ -244,8 +244,8 @@ export function WeatherClockWidget() {
   }, [weather, location]);
 
   return (
-    <div className="pointer-events-none relative mt-4 sm:fixed sm:bottom-4 sm:left-12 sm:z-30">
-      <div className="inline-flex h-6 items-center text-[11px] leading-4 text-[#777777]">
+    <div className="pointer-events-none relative max-sm:mt-0 max-sm:w-full sm:fixed sm:bottom-4 sm:left-12 sm:z-30">
+      <div className="inline-flex h-6 max-w-full min-w-0 items-center text-[11px] leading-4 text-[#777777]">
         <span className="inline-flex items-center gap-1">
           <span className="inline-flex h-5 w-5 items-center justify-center">
             <AnalogMiniClock now={displayNow} />
