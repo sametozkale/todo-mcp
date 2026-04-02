@@ -67,12 +67,19 @@ import {
   useState,
   useMemo,
   useTransition,
+  type Dispatch,
+  type SetStateAction,
 } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSubscription } from "@/hooks/useSubscription";
 import { getCachedTodos, prefetchTodosForPath, revalidateTodosForPath, setCachedTodos } from "@/hooks/useTodosStore";
 import { isClientDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
+import {
+  YALP_OPEN_KEYBOARD_SHORTCUTS,
+  YALP_OPEN_PROFILE,
+  YALP_OPEN_PLANS,
+} from "@/lib/yalp-shortcut-events";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type {
   ChangeEvent,
@@ -121,7 +128,8 @@ export type TodayClientProps = {
   /** Reserved for future view-specific behavior (All / Today / custom list). */
   view?: "all" | "today" | "list";
   composerListId: string | null;
-  sectionHeaderLabel: string;
+  /** Passed by pages for future header customization; currently unused in the client shell. */
+  sectionHeaderLabel?: string;
 };
 
 type SortableListTabChipProps = {
@@ -800,11 +808,7 @@ const SortableTodoItem = forwardRef<
     );
 });
 
-export function TodayClient({
-  initialTodos,
-  composerListId,
-  view,
-}: TodayClientProps) {
+export function TodayClient({ initialTodos, composerListId, view }: TodayClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [listNavGeneration, setListNavGeneration] = useState(0);
@@ -820,8 +824,6 @@ export function TodayClient({
     const id = window.requestAnimationFrame(() => {
       const elapsed = performance.now() - start;
       if (process.env.NODE_ENV !== "production" && elapsed > 220) {
-        // Guardrail for list-switch UX regressions during development.
-        // eslint-disable-next-line no-console
         console.warn("[yalp] list-switch paint slower than target:", Math.round(elapsed), "ms", pathname);
       }
     });
@@ -944,6 +946,29 @@ export function TodayClient({
   const [, startListTabReorderTransition] = useTransition();
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null);
   const latestOrderRef = useRef<string[] | null>(null);
+  const goSequenceRef = useRef<{ armed: boolean; timer: number | null }>({
+    armed: false,
+    timer: null,
+  });
+  const keyboardRef = useRef({
+    pathname: "",
+    listsSorted: [] as UserListRow[],
+    orderedVisibleTodos: [] as TodoRow[],
+    optimisticTodos: [] as TodoRow[],
+    selectedTodoId: null as string | null,
+    canReorder: false,
+    hasCompletedTodos: false,
+    markAllIncomplete: () => {},
+    moveCompletedToBottom: () => {},
+    openCreateListModal: () => {},
+    setShowCompleted: (() => {}) as Dispatch<SetStateAction<boolean>>,
+    setSelectedTodoId: (() => {}) as Dispatch<SetStateAction<string | null>>,
+    startTodoTransition: (() => {}) as typeof startTodoTransition,
+    addOptimistic: (() => {}) as typeof addOptimistic,
+    scheduleRefresh: () => {},
+    prefetchRoute: (() => {}) as (href: string) => void,
+    routerPush: (() => {}) as (href: string) => void,
+  });
 
   const createListModal = useOverlayState();
   const deleteTasksModal = useOverlayState();
@@ -976,31 +1001,6 @@ export function TodayClient({
     toast.danger(reorderError, { timeout: 4000 });
     setReorderError(null);
   }, [reorderError]);
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.defaultPrevented) return;
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-      if (isTextTypingTarget(e.target)) return;
-
-      if (e.key === "n" || e.key === "N") {
-        e.preventDefault();
-        composerInputRef.current?.focus();
-        return;
-      }
-
-      // Toggle hide/show completed tasks.
-      if (e.code === "KeyH") {
-        e.preventDefault();
-        setShowCompleted((v) => !v);
-        return;
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedTodoId, view]);
 
   const chipActive = (href: string) => pathname === href;
   const prefetchRoute = useCallback(
@@ -1076,6 +1076,24 @@ export function TodayClient({
   );
   const hasMoreRendered = orderedVisibleTodos.length > renderLimit;
   const renderedVisibleIds = useMemo(() => renderedOrderedTodos.map((t) => t.id), [renderedOrderedTodos]);
+
+  useEffect(() => {
+    if (!selectedTodoId) return;
+    const idx = orderedVisibleTodos.findIndex((t) => t.id === selectedTodoId);
+    if (idx >= renderLimit) {
+      setRenderLimit((prev) =>
+        Math.min(Math.max(prev, idx + 1), orderedVisibleTodos.length),
+      );
+    }
+    const raf = window.requestAnimationFrame(() => {
+      const idSel =
+        typeof globalThis.CSS !== "undefined" && typeof globalThis.CSS.escape === "function"
+          ? globalThis.CSS.escape(selectedTodoId)
+          : selectedTodoId.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      document.querySelector(`[data-todo-id="${idSel}"]`)?.scrollIntoView({ block: "nearest" });
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [selectedTodoId, orderedVisibleTodos, renderLimit]);
 
   useEffect(() => {
     if (!uiOrderIds) return;
@@ -1491,6 +1509,256 @@ export function TodayClient({
     setComposerListQuery("");
     queueMicrotask(() => composerInputRef.current?.focus());
   }
+
+  keyboardRef.current = {
+    pathname,
+    listsSorted,
+    orderedVisibleTodos,
+    optimisticTodos,
+    selectedTodoId,
+    canReorder,
+    hasCompletedTodos,
+    markAllIncomplete,
+    moveCompletedToBottom,
+    openCreateListModal: () => {
+      setCreateListError(null);
+      setNewListTitle("");
+      createListModal.open();
+    },
+    setShowCompleted,
+    setSelectedTodoId,
+    startTodoTransition,
+    addOptimistic,
+    scheduleRefresh,
+    prefetchRoute,
+    routerPush: (href: string) => {
+      router.push(href);
+      prefetchRoute(href);
+    },
+  };
+
+  useEffect(() => {
+    const disarmGo = () => {
+      const t = goSequenceRef.current.timer;
+      if (t != null) window.clearTimeout(t);
+      goSequenceRef.current = { armed: false, timer: null };
+    };
+    const armGo = () => {
+      disarmGo();
+      goSequenceRef.current.armed = true;
+      goSequenceRef.current.timer = window.setTimeout(disarmGo, 1200);
+    };
+
+    const normPath = (p: string) => {
+      const s = p.replace(/\/+$/, "").toLowerCase();
+      return s === "" ? "/" : s;
+    };
+
+    const navHrefs = () => {
+      const k = keyboardRef.current;
+      return ["/all", ...k.listsSorted.map((l) => `/${l.slug}`)];
+    };
+
+    const escapeTodoDomId = (id: string) =>
+      typeof globalThis.CSS !== "undefined" && typeof globalThis.CSS.escape === "function"
+        ? globalThis.CSS.escape(id)
+        : id.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+
+    const focusCheckboxForTodoId = (id: string) => {
+      queueMicrotask(() => {
+        const row = document.querySelector(`[data-todo-id="${escapeTodoDomId(id)}"]`);
+        row?.querySelector<HTMLInputElement>(".todo-checkbox-squircle")?.focus();
+      });
+    };
+
+    const navByDelta = (delta: number) => {
+      const hrefs = navHrefs();
+      const cur = normPath(keyboardRef.current.pathname);
+      let idx = hrefs.findIndex((h) => normPath(h) === cur);
+      if (idx < 0) idx = 0;
+      const next = (idx + delta + hrefs.length) % hrefs.length;
+      const href = hrefs[next];
+      if (href) keyboardRef.current.routerPush(href);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+
+      const typing = isTextTypingTarget(e.target);
+      const k = keyboardRef.current;
+
+      if (e.code === "Space" && e.target instanceof HTMLInputElement && e.target.type === "checkbox") {
+        return;
+      }
+
+      if (e.metaKey || e.ctrlKey) {
+        if (!e.altKey && e.key === "Enter" && document.activeElement === composerInputRef.current) {
+          e.preventDefault();
+          formRef.current?.requestSubmit();
+          return;
+        }
+        return;
+      }
+
+      if (typing) return;
+
+      if (e.code === "Space") {
+        const ae = document.activeElement;
+        if (ae instanceof HTMLElement && ae.closest("header")) {
+          e.preventDefault();
+          return;
+        }
+      }
+
+      if (e.key === "Escape") {
+        const composerEl = composerInputRef.current;
+        if (composerEl && document.activeElement === composerEl) {
+          composerEl.blur();
+          e.preventDefault();
+          return;
+        }
+        if (k.selectedTodoId) {
+          k.setSelectedTodoId(null);
+          e.preventDefault();
+        }
+        return;
+      }
+
+      if (e.key === "?") {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent(YALP_OPEN_KEYBOARD_SHORTCUTS));
+        return;
+      }
+
+      if (e.key === "[" && !e.shiftKey) {
+        e.preventDefault();
+        navByDelta(-1);
+        return;
+      }
+      if (e.key === "]" && !e.shiftKey) {
+        e.preventDefault();
+        navByDelta(1);
+        return;
+      }
+
+      if ((e.key === "g" || e.key === "G") && !e.shiftKey) {
+        if (goSequenceRef.current.armed) {
+          disarmGo();
+          e.preventDefault();
+          return;
+        }
+        armGo();
+        e.preventDefault();
+        return;
+      }
+
+      if (goSequenceRef.current.armed) {
+        const kn = e.key.toLowerCase();
+        if (kn === "a" || kn === "i" || kn === "u" || kn === "p") {
+          disarmGo();
+          e.preventDefault();
+          if (kn === "a") k.routerPush("/all");
+          else if (kn === "i") k.routerPush("/mcp");
+          else if (kn === "u") window.dispatchEvent(new CustomEvent(YALP_OPEN_PROFILE));
+          else if (kn === "p") window.dispatchEvent(new CustomEvent(YALP_OPEN_PLANS));
+          return;
+        }
+        disarmGo();
+      }
+
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        composerInputRef.current?.focus();
+        return;
+      }
+
+      if (e.code === "KeyH") {
+        e.preventDefault();
+        k.setShowCompleted((v) => !v);
+        return;
+      }
+
+      if (e.code === "KeyL") {
+        e.preventDefault();
+        k.openCreateListModal();
+        return;
+      }
+
+      if (e.code === "KeyM") {
+        e.preventDefault();
+        k.markAllIncomplete();
+        return;
+      }
+
+      if (e.code === "KeyB") {
+        if (k.canReorder && k.hasCompletedTodos) {
+          e.preventDefault();
+          k.moveCompletedToBottom();
+        }
+        return;
+      }
+
+      if (e.code === "KeyJ" || e.code === "KeyK") {
+        const ids = k.orderedVisibleTodos.map((t) => t.id);
+        if (ids.length === 0) return;
+        e.preventDefault();
+        const cur = k.selectedTodoId ? ids.indexOf(k.selectedTodoId) : -1;
+        let nextIdx: number;
+        if (e.code === "KeyK") {
+          nextIdx = cur <= 0 ? 0 : cur - 1;
+        } else {
+          nextIdx = cur < 0 ? 0 : Math.min(cur + 1, ids.length - 1);
+        }
+        const nextId = ids[nextIdx] ?? null;
+        k.setSelectedTodoId(nextId);
+        if (nextId) focusCheckboxForTodoId(nextId);
+        return;
+      }
+
+      if (e.code === "Space") {
+        const tid = k.selectedTodoId;
+        if (!tid) return;
+        const todo = k.optimisticTodos.find((t) => t.id === tid);
+        if (!todo) return;
+        e.preventDefault();
+        const next = !todo.is_completed;
+        k.startTodoTransition(async () => {
+          k.addOptimistic({ type: "toggle", id: todo.id, completed: next });
+          await toggleTodoAction(todo.id, next);
+          k.scheduleRefresh();
+        });
+        return;
+      }
+
+      if (e.key === "Delete" && e.shiftKey) {
+        const tid = k.selectedTodoId;
+        if (!tid) return;
+        const todo = k.optimisticTodos.find((t) => t.id === tid);
+        if (!todo) return;
+        e.preventDefault();
+        k.startTodoTransition(async () => {
+          try {
+            k.addOptimistic({ type: "delete", id: todo.id });
+            await deleteTodoAction(todo.id);
+            toast.success("Todo deleted.", { timeout: 2500 });
+            k.setSelectedTodoId(null);
+          } catch {
+            k.addOptimistic({ type: "add", todo });
+            toast.danger("Could not delete todo.", { timeout: 4500 });
+          } finally {
+            k.scheduleRefresh();
+          }
+        });
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      disarmGo();
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
 
   return (
     <div className="today-shell flex w-full flex-col text-foreground">
