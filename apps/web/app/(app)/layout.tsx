@@ -5,6 +5,7 @@ import { getCachedAuth } from "@/lib/supabase/cached-auth";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import { McpCtaRotator } from "@/components/mcp-cta-rotator";
 import { AppHeader } from "./app-header";
 import { ListsProvider } from "./lists-shell";
 import { WeatherClockWidget } from "./weather-clock-widget";
@@ -93,6 +94,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <ListsProvider lists={listRows ?? []} counts={{ all: allCount, byListId }}>
           <div className="flex flex-1 flex-col px-4 pb-24 pt-2 sm:px-6">{children}</div>
         </ListsProvider>
+        <McpCtaRotator userId={user.id} />
         <WeatherClockWidget />
       </SubscriptionProvider>
     </div>

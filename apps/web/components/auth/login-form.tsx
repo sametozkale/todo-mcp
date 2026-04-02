@@ -12,6 +12,8 @@ import {
   toast,
 } from "@heroui/react";
 import { loginAction, signInWithGoogleAction, type AuthActionState } from "@/app/(auth)/actions";
+import { GoogleIcon } from "@/components/auth/google-icon";
+import { ToDoMcpLogo } from "@/components/brand/to-do-mcp-logo";
 
 type LoginFormProps = {
   searchParamsError?: string;
@@ -49,6 +51,9 @@ export function LoginForm({ searchParamsError, nextPath }: LoginFormProps) {
 
   return (
     <div className="flex w-full flex-1 flex-col items-center">
+      <div className="w-full max-w-md pt-12">
+        <ToDoMcpLogo className="mx-auto block h-6 w-6 max-w-none" />
+      </div>
       <div className="flex w-full max-w-md flex-1 flex-col justify-center">
         <Surface
           variant="tertiary"
@@ -62,9 +67,11 @@ export function LoginForm({ searchParamsError, nextPath }: LoginFormProps) {
             }}
           >
             {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
-            <div className="space-y-2">
-              <h1 className="font-title text-xl font-semibold text-foreground">Log in</h1>
-              <p className="text-sm text-muted">Enter your details to continue to your account.</p>
+            <div>
+              <div className="space-y-2">
+                <h1 className="font-title text-xl font-semibold text-foreground">Log in</h1>
+                <p className="text-sm text-muted">Enter your details to continue to your account.</p>
+              </div>
             </div>
             {visibleError && (
               <p className="text-sm text-[color:var(--color-danger)]" role="alert">
@@ -101,15 +108,18 @@ export function LoginForm({ searchParamsError, nextPath }: LoginFormProps) {
               {isPending ? "Signing in…" : "Log in"}
             </Button>
           </form>
-          <div className="mb-6 mt-6 flex items-center gap-3 text-xs text-muted">
-            <div className="h-px flex-1 bg-[#ececec]" />
+          <div className="mb-6 mt-6 flex items-center gap-3 text-xs text-[#979797]">
+            <div className="h-px flex-1 bg-[#f4f4f4]" />
             <span>or</span>
-            <div className="h-px flex-1 bg-[#ececec]" />
+            <div className="h-px flex-1 bg-[#f4f4f4]" />
           </div>
           <form action={signInWithGoogleAction}>
             {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
             <Button type="submit" variant="secondary" fullWidth>
-              Continue with Google
+              <span className="inline-flex items-center gap-2.5">
+                <GoogleIcon className="size-3.5" />
+                <span>Continue with Google</span>
+              </span>
             </Button>
           </form>
         </Surface>

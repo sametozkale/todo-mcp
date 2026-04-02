@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/site-url";
 import { isPlatformId } from "@/lib/mcp-platform-guides";
 import { redirect } from "next/navigation";
+import { McpConnectionsVisitMarker } from "@/components/mcp-connections-visit-marker";
 import { IntegrationsClient } from "./integrations-client";
 import { listApiKeysAction } from "./actions";
 
@@ -34,6 +35,7 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
 
   return (
     <div className="mx-auto w-full max-w-3xl pt-6">
+      <McpConnectionsVisitMarker userId={user.id} />
       <Suspense
         fallback={
           <div className="rounded-[28px] border border-[#eaeaea] bg-white p-8 text-center text-sm text-muted">

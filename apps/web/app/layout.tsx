@@ -8,7 +8,7 @@ import "./globals.css";
 
 const siteUrl = getSiteUrl();
 const siteName = "Yalp";
-const faviconVersion = "2026033022";
+const faviconVersion = "2026040111";
 const defaultDescription =
   "Yalp is a lightweight todo app with MCP connections for AI tools. Stay focused and get things done.";
 
@@ -23,54 +23,46 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: `/to-do-mcp-logo-black-48.ico?v=${faviconVersion}`,
-        sizes: "48x48",
-        type: "image/x-icon",
+        url: `/to-do-mcp-logo-black-48.svg?v=${faviconVersion}`,
+        type: "image/svg+xml",
         media: "(prefers-color-scheme: light)",
       },
       {
-        url: `/to-do-mcp-logo-white-48.ico?v=${faviconVersion}`,
-        sizes: "48x48",
-        type: "image/x-icon",
+        url: `/to-do-mcp-logo-white-48.svg?v=${faviconVersion}`,
+        type: "image/svg+xml",
         media: "(prefers-color-scheme: dark)",
       },
       {
-        url: `/favicon.ico?v=${faviconVersion}`,
-        sizes: "48x48",
-        type: "image/x-icon",
+        url: `/to-do-mcp-logo.svg?v=${faviconVersion}`,
+        type: "image/svg+xml",
       },
     ],
     shortcut: [
       {
-        url: `/to-do-mcp-logo-black-48.ico?v=${faviconVersion}`,
-        sizes: "48x48",
-        type: "image/x-icon",
+        url: `/to-do-mcp-logo-black-48.svg?v=${faviconVersion}`,
+        type: "image/svg+xml",
         media: "(prefers-color-scheme: light)",
       },
       {
-        url: `/to-do-mcp-logo-white-48.ico?v=${faviconVersion}`,
-        sizes: "48x48",
-        type: "image/x-icon",
+        url: `/to-do-mcp-logo-white-48.svg?v=${faviconVersion}`,
+        type: "image/svg+xml",
         media: "(prefers-color-scheme: dark)",
       },
-      { url: `/favicon.ico?v=${faviconVersion}`, sizes: "48x48", type: "image/x-icon" },
+      { url: `/to-do-mcp-logo.svg?v=${faviconVersion}`, type: "image/svg+xml" },
     ],
     apple: [
       {
-        url: `/to-do-mcp-logo-black-48.ico?v=${faviconVersion}`,
-        sizes: "48x48",
-        type: "image/x-icon",
+        url: `/to-do-mcp-logo.svg?v=${faviconVersion}`,
+        type: "image/svg+xml",
       },
       {
-        url: `/to-do-mcp-logo-black-48.ico?v=${faviconVersion}`,
-        sizes: "48x48",
-        type: "image/x-icon",
+        url: `/to-do-mcp-logo-black-48.svg?v=${faviconVersion}`,
+        type: "image/svg+xml",
         media: "(prefers-color-scheme: light)",
       },
       {
-        url: `/to-do-mcp-logo-white-48.ico?v=${faviconVersion}`,
-        sizes: "48x48",
-        type: "image/x-icon",
+        url: `/to-do-mcp-logo-white-48.svg?v=${faviconVersion}`,
+        type: "image/svg+xml",
         media: "(prefers-color-scheme: dark)",
       },
     ],

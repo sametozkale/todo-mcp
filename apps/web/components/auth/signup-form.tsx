@@ -12,6 +12,8 @@ import {
   toast,
 } from "@heroui/react";
 import { signInWithGoogleAction, signupAction, type AuthActionState } from "@/app/(auth)/actions";
+import { GoogleIcon } from "@/components/auth/google-icon";
+import { ToDoMcpLogo } from "@/components/brand/to-do-mcp-logo";
 
 type SignupFormProps = {
   nextPath?: string;
@@ -54,15 +56,20 @@ export function SignupForm({ nextPath }: SignupFormProps) {
 
   return (
     <div className="flex w-full flex-1 flex-col items-center">
+      <div className="w-full max-w-md pt-12">
+        <ToDoMcpLogo className="mx-auto block h-6 w-6 max-w-none" />
+      </div>
       <div className="flex w-full max-w-md flex-1 flex-col justify-center">
         <Surface
           variant="tertiary"
           className="w-full rounded-[32px] border border-[#f4f4f4] !bg-white p-8 shadow-[0_2px_16px_-4px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.03)]"
         >
           <form action={formAction} className="flex flex-col gap-6" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <h1 className="font-title text-xl font-semibold text-foreground">Create account</h1>
-              <p className="text-sm text-muted">Get started with Yalp in a few quick fields.</p>
+            <div>
+              <div className="space-y-2">
+                <h1 className="font-title text-xl font-semibold text-foreground">Create account</h1>
+                <p className="text-sm text-muted">Get started with Yalp in a few quick fields.</p>
+              </div>
             </div>
             {state?.success && (
               <p className="text-sm text-muted" role="status">
@@ -145,15 +152,18 @@ export function SignupForm({ nextPath }: SignupFormProps) {
               {isPending ? "Creating account…" : "Sign up"}
             </Button>
           </form>
-          <div className="mb-6 mt-6 flex items-center gap-3 text-xs text-muted">
-            <div className="h-px flex-1 bg-[#ececec]" />
+          <div className="mb-6 mt-6 flex items-center gap-3 text-xs text-[#979797]">
+            <div className="h-px flex-1 bg-[#f4f4f4]" />
             <span>or</span>
-            <div className="h-px flex-1 bg-[#ececec]" />
+            <div className="h-px flex-1 bg-[#f4f4f4]" />
           </div>
           <form action={signInWithGoogleAction}>
             {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
             <Button type="submit" variant="secondary" fullWidth>
-              Create account with Google
+              <span className="inline-flex items-center gap-2.5">
+                <GoogleIcon className="size-3.5" />
+                <span>Continue with Google</span>
+              </span>
             </Button>
           </form>
         </Surface>
