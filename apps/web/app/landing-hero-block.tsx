@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { LandingRotatingTool } from "@/components/landing-rotating-tool";
 
 type LandingHeroBlockProps = {
   className?: string;
@@ -51,7 +52,7 @@ export function LandingHeroBlock({
             <>
               Manage your todos
               <br />
-              from Cursor, Claude &amp; more
+              <LandingRotatingTool />
             </>
           )}
         </h1>
