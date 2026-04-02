@@ -17,7 +17,7 @@ The web app (`apps/web`) uses **Next.js 15**, **Tailwind CSS v4**, and **[HeroUI
    - Project URL
    - `anon` public key
    - `service_role` secret key
-4. Add these values to your environment files as described in `.env.example`.
+4. Copy the repo root [`.env.example`](.env.example) to `apps/web/.env.local`, then fill in secrets (Next.js reads env files from `apps/web/` only).
 
 ## Public URL (`NEXT_PUBLIC_SITE_URL`)
 
