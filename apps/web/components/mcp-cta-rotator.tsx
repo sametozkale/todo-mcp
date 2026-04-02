@@ -109,7 +109,7 @@ export function McpCtaRotator({ userId }: Props) {
         type="button"
         size="sm"
         variant="secondary"
-        onPress={() => router.push(`/integrations?platform=${current.platform}`)}
+        onPress={() => router.push(`/mcp?platform=${current.platform}`)}
         className={
           "pointer-events-auto h-[30px] min-h-[30px] gap-1.5 rounded-2xl border !bg-white px-2.5 text-left text-[11px] font-medium " +
           "text-foreground max-sm:h-9 max-sm:min-h-9 max-sm:max-w-full max-sm:border-[#ebebeb] max-sm:px-3 max-sm:shadow-[0_1px_3px_rgba(0,0,0,0.06)] " +

@@ -28,7 +28,7 @@ Public marketing and auth: `/`, `/login`, `/signup`. Authenticated app routes un
 
 ## Official links
 
-Canonical production host: `https://yalp.ai` (set `NEXT_PUBLIC_SITE_URL` to match the URL users open, e.g. your Vercel URL, until DNS is configured).
+Canonical production host: `https://yalp.work` (set `NEXT_PUBLIC_SITE_URL` to match the URL users open).
 
 - Home: /
 - Login: /login

@@ -3,9 +3,9 @@
 Yalp is a focused todo app with MCP integration for AI-assisted workflows.
 
 ## Canonical pages
-- https://yalp.ai/
-- https://yalp.ai/why-i-built
-- https://yalp.ai/roadmap
+- https://yalp.work/
+- https://yalp.work/why-i-built
+- https://yalp.work/roadmap
 
 ## Product summary
 - Create and manage todos from the web app.

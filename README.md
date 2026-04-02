@@ -21,9 +21,9 @@ The web app (`apps/web`) uses **Next.js 15**, **Tailwind CSS v4**, and **[HeroUI
 
 ## Public URL (`NEXT_PUBLIC_SITE_URL`)
 
-Production will use **`https://yalp.ai`** as the canonical domain. Until DNS and SSL for `yalp.ai` are ready, set `NEXT_PUBLIC_SITE_URL` to your live deployment (for example `https://todo-mcp-web.vercel.app`). Local dev usually sets `NEXT_PUBLIC_SITE_URL=http://localhost:3001` so metadata and redirects match the dev server.
+Production canonical domain is **`https://yalp.work`**. Set `NEXT_PUBLIC_SITE_URL` to that value in Vercel Production once DNS and SSL are live. Local dev usually sets `NEXT_PUBLIC_SITE_URL=http://localhost:3001` so metadata and redirects match the dev server.
 
-After moving to `yalp.ai`, update: **Vercel** project domains, **Supabase** Auth redirect URLs and Site URL, **Stripe** success/cancel URLs if hardcoded anywhere outside the app, **MCP / Cursor** configs that embed the API base URL, and any **marketing or llms.txt** mirrors outside this repo.
+After changing domains, update: **Vercel** project domains and env, **Supabase** Auth redirect URLs and Site URL, **Stripe** webhook endpoint URL, **MCP / Cursor** configs that embed the API base URL, and any **marketing or llms.txt** mirrors outside this repo.
 
 ## Rebranding checklist (Flowdo → Yalp)
 

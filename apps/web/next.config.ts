@@ -11,7 +11,9 @@ const nextConfig: NextConfig = {
    * the combination can produce flaky module shapes in webpack dev.
    */
   experimental: {
-    optimizePackageImports: ["lucide-react", "@hugeicons/react"],
+    // lucide-react supports import narrowing. @hugeicons/react only exposes "." exports —
+    // enabling it here caused dev/runtime "__webpack_modules__[moduleId] is not a function".
+    optimizePackageImports: ["lucide-react"],
   },
   images: {
     remotePatterns: [
@@ -38,6 +40,11 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "code.visualstudio.com",
+        pathname: "/favicon.ico",
+      },
+      {
+        protocol: "https",
+        hostname: "www.whatsapp.com",
         pathname: "/favicon.ico",
       },
     ],

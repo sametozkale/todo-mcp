@@ -5,7 +5,13 @@ import { ToDoMcpLogo } from "@/components/brand/to-do-mcp-logo";
 import { PaymentModal } from "@/components/PaymentModal";
 import { useSubscription } from "@/hooks/useSubscription";
 import { createClient } from "@/lib/supabase/client";
-import { Logout02Icon, McpServerIcon, UserCircleIcon, KeyboardIcon } from "@hugeicons/core-free-icons";
+import {
+  LinkSquare02Icon,
+  Logout02Icon,
+  McpServerIcon,
+  UserCircleIcon,
+  KeyboardIcon,
+} from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Avatar,
@@ -229,6 +235,16 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                           </span>
                         )}
                       </span>
+                    </span>
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    onAction={() => {
+                      router.push("/integrations");
+                    }}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <HugeiconsIcon icon={LinkSquare02Icon} size={16} strokeWidth={1.75} />
+                      <span>Integrations</span>
                     </span>
                   </Dropdown.Item>
                   <Dropdown.Item

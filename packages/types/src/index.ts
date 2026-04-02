@@ -1,12 +1,14 @@
 export type TodoPriority = 0 | 1 | 2 | 3;
 
-export type TodoSource = 'app' | 'mcp' | 'api';
+export type TodoSource = 'app' | 'mcp' | 'api' | 'whatsapp';
 
 export interface Profile {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
   created_at: string;
+  whatsapp_phone?: string | null;
+  whatsapp_linked?: boolean;
 }
 
 export interface List {

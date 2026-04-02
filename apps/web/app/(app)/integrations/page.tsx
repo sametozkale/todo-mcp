@@ -1,24 +1,16 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { getSiteUrl } from "@/lib/site-url";
-import { isPlatformId } from "@/lib/mcp-platform-guides";
 import { redirect } from "next/navigation";
-import { McpConnectionsVisitMarker } from "@/components/mcp-connections-visit-marker";
-import { IntegrationsClient } from "./integrations-client";
-import { listApiKeysAction } from "./actions";
+import { IntegrationsHubClient } from "./integrations-hub-client";
 
 export const metadata: Metadata = {
-  title: "MCP Connections",
-  description: "Connect your AI tools to Yalp via MCP.",
+  title: "Integrations",
+  description: "Connect WhatsApp, MCP clients, and other tools to Yalp.",
   robots: { index: false, follow: false },
 };
 
-type PageProps = {
-  searchParams: Promise<{ platform?: string }>;
-};
-
-export default async function IntegrationsPage({ searchParams }: PageProps) {
+export default async function IntegrationsPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -28,14 +20,14 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
     redirect("/login?next=%2Fintegrations");
   }
 
-  const initialKeys = await listApiKeysAction();
-  const baseUrl = getSiteUrl();
-  const params = await searchParams;
-  const initialPlatform = isPlatformId(params.platform) ? params.platform : null;
+  const { data: waProfile } = await supabase
+    .from("profiles")
+    .select("whatsapp_phone, whatsapp_linked")
+    .eq("id", user.id)
+    .maybeSingle();
 
   return (
     <div className="mx-auto w-full max-w-3xl pt-6">
-      <McpConnectionsVisitMarker userId={user.id} />
       <Suspense
         fallback={
           <div className="rounded-[28px] border border-[#eaeaea] bg-white p-8 text-center text-sm text-muted">
@@ -43,11 +35,9 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
           </div>
         }
       >
-        <IntegrationsClient
-          userId={user.id}
-          initialKeys={initialKeys}
-          baseUrl={baseUrl}
-          initialPlatform={initialPlatform}
+        <IntegrationsHubClient
+          initialWhatsappLinked={Boolean(waProfile?.whatsapp_linked)}
+          initialWhatsappPhone={waProfile?.whatsapp_phone ?? null}
         />
       </Suspense>
     </div>

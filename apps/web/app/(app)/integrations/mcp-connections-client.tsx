@@ -40,7 +40,6 @@ const QUICK_INSTALL_STORAGE_KEY = "yalp_mcp_quick_install_v1";
 
 type QuickInstallStored = { userId: string; apiKey: string; keyId: string };
 
-/** Survives refresh; pairs with server action that only stores a hash (no plaintext in DB). */
 let quickInstallEnsureInFlight: Promise<CreateApiKeyResult> | null = null;
 
 function readQuickInstallSession(): QuickInstallStored | null {
@@ -109,7 +108,7 @@ function formatRelativeTime(iso: string | null): string {
   return new Date(iso).toLocaleString();
 }
 
-export function IntegrationsClient({ userId, initialKeys, baseUrl, initialPlatform }: Props) {
+export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlatform }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -451,7 +450,7 @@ export function IntegrationsClient({ userId, initialKeys, baseUrl, initialPlatfo
           MCP Connections
         </h1>
         <p className="text-pretty text-sm leading-relaxed text-muted">
-          Manage one-click MCP setup and active AI tool connections
+          One-click setup for Cursor, Claude, VS Code, and other MCP-ready clients
         </p>
       </header>
 

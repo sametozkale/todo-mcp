@@ -862,8 +862,9 @@ export function TodayClient({ initialTodos, composerListId, view }: TodayClientP
   }, [lists, listTabOrderIds]);
 
   useEffect(() => {
-    const cached = getCachedTodos(pathname) as TodoRow[] | null;
-    setBaseTodos(cached ?? initialTodos);
+    // Always apply RSC `initialTodos`. Preferring `getCachedTodos() ?? initialTodos` caused stale
+    // client cache to win after `router.refresh()` (add/delete flicker until manual reload).
+    setBaseTodos(initialTodos);
     setCachedTodos(pathname, initialTodos);
   }, [initialTodos, pathname]);
 
