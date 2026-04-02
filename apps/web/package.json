@@ -6,6 +6,7 @@
     "clean": "rm -rf .next .turbo ../../node_modules/.cache",
     "grant-lifetime": "node --env-file=.env.local scripts/grant-lifetime.mjs",
     "dev": "next dev -p 3001",
+    "dev:turbo": "next dev --turbo -p 3001",
     "dev:3002": "next dev -p 3002",
     "build": "next build",
     "start": "next start -p 3001",

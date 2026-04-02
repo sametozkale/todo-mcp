@@ -7,14 +7,11 @@ const nextConfig: NextConfig = {
    */
   transpilePackages: ["@heroui/react", "@heroui/styles", "framer-motion"],
   /**
-   * Do not include @heroui/react here while also using transpilePackages for HeroUI —
-   * the combination can produce flaky module shapes in webpack dev.
+   * Avoid `experimental.optimizePackageImports` here: with Webpack it has triggered
+   * `__webpack_modules__[moduleId] is not a function` (HMR / prod) together with
+   * `transpilePackages` and HeroUI. Use named `lucide-react` imports; optional dev
+   * bundler: `pnpm dev:turbo`.
    */
-  experimental: {
-    // lucide-react supports import narrowing. @hugeicons/react only exposes "." exports —
-    // enabling it here caused dev/runtime "__webpack_modules__[moduleId] is not a function".
-    optimizePackageImports: ["lucide-react"],
-  },
   images: {
     remotePatterns: [
       {

@@ -6,9 +6,9 @@ import { PaymentModal } from "@/components/PaymentModal";
 import { useSubscription } from "@/hooks/useSubscription";
 import { createClient } from "@/lib/supabase/client";
 import {
-  LinkSquare02Icon,
   Logout02Icon,
   McpServerIcon,
+  PuzzleIcon,
   UserCircleIcon,
   KeyboardIcon,
 } from "@hugeicons/core-free-icons";
@@ -243,7 +243,7 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                     }}
                   >
                     <span className="inline-flex items-center gap-2">
-                      <HugeiconsIcon icon={LinkSquare02Icon} size={16} strokeWidth={1.75} />
+                      <HugeiconsIcon icon={PuzzleIcon} size={16} strokeWidth={1.75} />
                       <span>Integrations</span>
                     </span>
                   </Dropdown.Item>

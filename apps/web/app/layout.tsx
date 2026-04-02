@@ -8,7 +8,6 @@ import "./globals.css";
 
 const siteUrl = getSiteUrl();
 const siteName = "Yalp";
-const faviconVersion = "2026040212";
 const defaultDescription =
   "Yalp is a lightweight todo app with MCP connections for AI tools. Stay focused and get things done.";
 
@@ -23,23 +22,28 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: `/to-do-mcp-logo-black-48.ico?v=${faviconVersion}`,
-        sizes: "48x48",
-        type: "image/x-icon",
+        url: "/to-do-mcp-logo-black-48.svg",
+        type: "image/svg+xml",
+        sizes: "any",
+      },
+      {
+        url: "/to-do-mcp-logo-white-48.svg",
+        type: "image/svg+xml",
+        sizes: "any",
+        media: "(prefers-color-scheme: dark)",
       },
     ],
     shortcut: [
       {
-        url: `/to-do-mcp-logo-black-48.ico?v=${faviconVersion}`,
+        url: "/to-do-mcp-logo-black-48.ico",
         sizes: "48x48",
         type: "image/x-icon",
       },
     ],
     apple: [
       {
-        url: `/to-do-mcp-logo-black-48.ico?v=${faviconVersion}`,
-        sizes: "48x48",
-        type: "image/x-icon",
+        url: "/to-do-mcp-logo-black-48.svg",
+        type: "image/svg+xml",
       },
     ],
   },
