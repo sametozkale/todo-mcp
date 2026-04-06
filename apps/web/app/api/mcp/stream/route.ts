@@ -33,14 +33,26 @@ function jsonRpcError(id: string | number | null, code: number, message: string,
   };
 }
 
+function normalizeApiKey(raw: string | null): string | null {
+  if (!raw) return null;
+  const v = raw.trim();
+  if (!v) return null;
+  if (v.toLowerCase().startsWith("bearer ")) {
+    const token = v.slice(7).trim();
+    return token || null;
+  }
+  return v;
+}
+
 function parseBearerApiKey(req: Request): string | null {
   const auth = req.headers.get("authorization");
-  if (auth?.toLowerCase().startsWith("bearer ")) {
-    const token = auth.slice(7).trim();
-    if (token) return token;
-  }
+  const authToken = normalizeApiKey(auth);
+  if (authToken) return authToken;
+
   const x = req.headers.get("x-api-key");
-  if (x?.trim()) return x.trim();
+  const xToken = normalizeApiKey(x);
+  if (xToken) return xToken;
+
   return null;
 }
 

@@ -6,7 +6,7 @@ import { isPlatformId } from "@/lib/mcp-platform-guides";
 import { redirect } from "next/navigation";
 import { McpConnectionsVisitMarker } from "@/components/mcp-connections-visit-marker";
 import { McpConnectionsClient } from "../integrations/mcp-connections-client";
-import { listApiKeysAction } from "../integrations/actions";
+import { listApiKeysForCurrentUser } from "@/lib/server/api-keys";
 
 export const metadata: Metadata = {
   title: "MCP Connections",
@@ -28,7 +28,7 @@ export default async function McpConnectionsPage({ searchParams }: PageProps) {
     redirect("/login?next=%2Fmcp");
   }
 
-  const initialKeys = await listApiKeysAction();
+  const initialKeys = await listApiKeysForCurrentUser();
   const baseUrl = getSiteUrl();
   const params = await searchParams;
   const initialPlatform = isPlatformId(params.platform) ? params.platform : null;

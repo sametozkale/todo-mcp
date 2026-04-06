@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import crypto from "node:crypto";
+import { listApiKeysForCurrentUser } from "@/lib/server/api-keys";
 
 export type ApiKeyRow = {
   id: string;
@@ -106,20 +107,7 @@ export async function ensureInstallKeyForSetupAction(): Promise<CreateApiKeyResu
 }
 
 export async function listApiKeysAction(): Promise<ApiKeyRow[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return [];
-
-  const { data } = await supabase
-    .from("api_keys")
-    .select("id, label, last_used_at, created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
-
-  return (data ?? []) as ApiKeyRow[];
+  return listApiKeysForCurrentUser();
 }
 
 export type RevokeApiKeyResult = { ok: true } | { ok: false; error: string };
