@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { toast as sonnerToast, type ExternalToast } from "sonner";
 

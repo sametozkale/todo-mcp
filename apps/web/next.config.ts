@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
    * HeroUI + framer-motion: compile with the app bundle to avoid webpack chunk/runtime
    * mismatches in dev (e.g. "__webpack_modules__[moduleId] is not a function" after HMR).
    */
-  transpilePackages: ["@heroui/react", "@heroui/styles", "framer-motion"],
+  transpilePackages: ["@heroui/react", "@heroui/styles", "framer-motion", "sonner"],
   /**
    * Avoid `experimental.optimizePackageImports` here: with Webpack it has triggered
    * `__webpack_modules__[moduleId] is not a function` (HMR / prod) together with
