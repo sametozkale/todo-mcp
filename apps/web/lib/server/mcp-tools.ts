@@ -536,4 +536,5 @@ export const MCP_REMOTE_TOOL_LIST: {
   };
 });
 
-export const MCP_PROTOCOL_VERSION = "2024-11-05";
+/** Matches Streamable HTTP era; initialize still echoes the client's protocolVersion when sent. */
+export const MCP_PROTOCOL_VERSION = "2025-03-26";

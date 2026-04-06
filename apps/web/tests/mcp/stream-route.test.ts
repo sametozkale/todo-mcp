@@ -10,7 +10,7 @@ vi.mock("@/lib/server/mcp-tools", () => ({
   executeMcpTool: (...args: unknown[]) => executeMcpToolMock(...args),
   touchApiKeyLastUsed: (...args: unknown[]) => touchApiKeyLastUsedMock(...args),
   isToolName: (value: string) => value === "create_todo" || value === "list_todos",
-  MCP_PROTOCOL_VERSION: "2024-11-05",
+  MCP_PROTOCOL_VERSION: "2025-03-26",
   MCP_REMOTE_TOOL_LIST: [
     {
       name: "create_todo",
@@ -41,7 +41,7 @@ describe("mcp stream route", () => {
         jsonrpc: "2.0",
         id: 1,
         method: "initialize",
-        params: { protocolVersion: "2024-11-05" },
+        params: { protocolVersion: "2025-03-26" },
       }),
     });
 
@@ -96,6 +96,31 @@ describe("mcp stream route", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(res.headers.get("Access-Control-Allow-Methods")).toContain("HEAD");
+  });
+
+  it("GET with Accept text/event-stream returns 405 per Streamable HTTP", async () => {
+    const mod = await import("@/app/api/mcp/stream/route");
+    const req = new Request("https://www.yalp.work/api/mcp/stream", {
+      method: "GET",
+      headers: { Accept: "application/json, text/event-stream" },
+    });
+    const res = mod.GET(req);
+    expect(res.status).toBe(405);
+    expect(res.headers.get("Allow")).toContain("POST");
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+  });
+
+  it("GET without event-stream returns discovery JSON", async () => {
+    const mod = await import("@/app/api/mcp/stream/route");
+    const req = new Request("https://www.yalp.work/api/mcp/stream", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+    const res = mod.GET(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.protocolVersion).toBe("2025-03-26");
   });
 
   it("returns invalid key error for bad auth", async () => {

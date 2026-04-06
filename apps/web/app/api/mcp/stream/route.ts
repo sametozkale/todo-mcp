@@ -74,12 +74,24 @@ export function OPTIONS() {
   return mergeCors(new NextResponse(null, { status: 204 }));
 }
 
-/** Lightweight reachability check (no body) — mirrors successful GET status for remote connectors. */
+/** Lightweight reachability check (no body). */
 export function HEAD() {
   return mergeCors(new NextResponse(null, { status: 200 }));
 }
 
-export function GET() {
+/**
+ * MCP Streamable HTTP (2025-03-26): GET with `Accept: text/event-stream` must get SSE or 405.
+ * Our server does not expose a server-push GET stream; return 405 so clients use POST.
+ * For browsers / curl without event-stream, keep JSON discovery.
+ */
+export function GET(request: Request) {
+  const accept = request.headers.get("accept") ?? "";
+  if (accept.includes("text/event-stream")) {
+    const res = new NextResponse(null, { status: 405 });
+    res.headers.set("Allow", "GET, HEAD, POST, OPTIONS");
+    return mergeCors(res);
+  }
+
   return mergeCors(
     NextResponse.json(
       {
@@ -333,7 +345,8 @@ export async function POST(req: Request) {
 
   const out = await handleJsonRpc(req, supabase, raw as JsonRpcRequest);
   if (out.isNotification) {
-    const empty = mergeCors(new NextResponse(null, { status: 204 }));
+    /** Streamable HTTP: notification-only POST → 202 Accepted, no body. */
+    const empty = mergeCors(new NextResponse(null, { status: 202 }));
     const sessionId = req.headers.get("mcp-session-id") ?? crypto.randomUUID();
     empty.headers.set("Mcp-Session-Id", sessionId);
     return empty;
