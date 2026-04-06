@@ -607,25 +607,103 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                   activityMessage={activityMessage}
                 />
                 {selectedPlatform === "claudeWeb" && installKey ? (
-                  <div className="rounded-2xl border border-[#e8e8e8] bg-[#fafafa] p-3 sm:p-4">
-                    <p className="mb-1 text-xs font-semibold text-foreground">Claude custom MCP auth header</p>
-                    <p className="mb-2 text-xs text-muted">
-                      If Claude asks for header/token format, use this exact value.
-                    </p>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <code className="min-h-10 min-w-0 flex-1 overflow-auto rounded-[12px] border border-[#e8e8e8] bg-white px-3 py-2.5 font-mono text-xs leading-snug text-foreground shadow-[inset_0_1px_0_rgba(0,0,0,0.03)]">
-                        {`Authorization: Bearer ${installKey}`}
-                      </code>
-                      <Button
-                        variant="secondary"
-                        className="shrink-0"
-                        onPress={() => copy(`Bearer ${installKey}`, "Bearer auth value copied")}
-                      >
-                        <span className="inline-flex items-center gap-2">
-                          <CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />
-                          Copy Bearer value
-                        </span>
-                      </Button>
+                  <div className="space-y-4 rounded-2xl border border-[#e8e8e8] bg-[#fafafa] p-3 sm:p-4">
+                    <div>
+                      <p className="mb-1 text-xs font-semibold text-foreground">Remote MCP server URL</p>
+                      <p className="mb-2 text-xs text-muted">
+                        Paste this exact URL in Claude (custom connector). Use{" "}
+                        <span className="font-medium text-foreground">https://www.yalp.work</span> — apex{" "}
+                        <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp.work</code> can redirect and break
+                        some clients.
+                      </p>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <code className="min-h-10 min-w-0 flex-1 overflow-auto rounded-[12px] border border-[#e8e8e8] bg-white px-3 py-2.5 font-mono text-xs leading-snug text-foreground shadow-[inset_0_1px_0_rgba(0,0,0,0.03)]">
+                          {mcpRemoteUrl}
+                        </code>
+                        <Button
+                          variant="secondary"
+                          className="shrink-0"
+                          onPress={() => copy(mcpRemoteUrl, "Remote MCP URL copied")}
+                        >
+                          <span className="inline-flex items-center gap-2">
+                            <CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />
+                            Copy URL
+                          </span>
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="mb-1 text-xs font-semibold text-foreground">Authentication (pick one)</p>
+                      <ul className="mb-2 list-disc space-y-1 pl-4 text-xs text-muted">
+                        <li>
+                          If Claude has an <span className="font-medium text-foreground">API key</span> field: paste only{" "}
+                          <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp_…</code> — do not add{" "}
+                          <code className="rounded bg-white px-1 py-0.5 text-[11px]">Bearer</code> (avoids double-prefix).
+                        </li>
+                        <li>
+                          If it asks for an <span className="font-medium text-foreground">Authorization</span> value:
+                          use <code className="rounded bg-white px-1 py-0.5 text-[11px]">Bearer yalp_…</code> below.
+                        </li>
+                      </ul>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <p className="mb-1 text-[11px] font-medium text-foreground">Raw API key only</p>
+                            <code className="block min-h-10 w-full overflow-auto rounded-[12px] border border-[#e8e8e8] bg-white px-3 py-2.5 font-mono text-xs leading-snug text-foreground shadow-[inset_0_1px_0_rgba(0,0,0,0.03)]">
+                              {installKey}
+                            </code>
+                          </div>
+                          <Button
+                            variant="secondary"
+                            className="shrink-0 self-start sm:self-end"
+                            onPress={() => copy(installKey, "API key copied")}
+                          >
+                            <span className="inline-flex items-center gap-2">
+                              <CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />
+                              Copy key
+                            </span>
+                          </Button>
+                        </div>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <p className="mb-1 text-[11px] font-medium text-foreground">Authorization header value</p>
+                            <code className="block min-h-10 w-full overflow-auto rounded-[12px] border border-[#e8e8e8] bg-white px-3 py-2.5 font-mono text-xs leading-snug text-foreground shadow-[inset_0_1px_0_rgba(0,0,0,0.03)]">
+                              {`Bearer ${installKey}`}
+                            </code>
+                          </div>
+                          <Button
+                            variant="secondary"
+                            className="shrink-0 self-start sm:self-end"
+                            onPress={() => copy(`Bearer ${installKey}`, "Bearer value copied")}
+                          >
+                            <span className="inline-flex items-center gap-2">
+                              <CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />
+                              Copy Bearer …
+                            </span>
+                          </Button>
+                        </div>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <p className="mb-1 text-[11px] font-medium text-foreground">Full header line (if required)</p>
+                            <code className="block min-h-10 w-full overflow-auto rounded-[12px] border border-[#e8e8e8] bg-white px-3 py-2.5 font-mono text-xs leading-snug text-foreground shadow-[inset_0_1px_0_rgba(0,0,0,0.03)]">
+                              {`Authorization: Bearer ${installKey}`}
+                            </code>
+                          </div>
+                          <Button
+                            variant="secondary"
+                            className="shrink-0 self-start sm:self-end"
+                            onPress={() =>
+                              copy(`Authorization: Bearer ${installKey}`, "Authorization header line copied")
+                            }
+                          >
+                            <span className="inline-flex items-center gap-2">
+                              <CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />
+                              Copy full line
+                            </span>
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ) : null}

@@ -1,6 +1,6 @@
 {
   "name": "yalp-mcp-server",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "MCP server for Yalp — manage todos and lists from Cursor, Claude, and other MCP clients.",
   "private": false,
   "type": "module",

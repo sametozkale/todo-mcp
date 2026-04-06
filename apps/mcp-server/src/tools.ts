@@ -45,7 +45,7 @@ function getBaseUrl(): string {
   return (
     process.env.YALP_API_BASE_URL ||
     process.env.YALP_BASE_URL ||
-    'https://yalp.work'
+    'https://www.yalp.work'
   ).replace(/\/+$/, '');
 }
 
