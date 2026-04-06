@@ -122,9 +122,9 @@ const guides: Record<PlatformId, InstallGuide> = {
           "Do not use apex yalp.work alone (it may redirect). Updating npm yalp-mcp-server does not affect Claude Web — that package talks to /api/mcp over stdio.",
       },
       {
-        title: "In claude.ai → Settings → Connectors (or Integrations) → add custom connector",
+        title: "In Claude → Add custom connector: paste the URL, then open Advanced settings",
         description:
-          "Paste the URL. For auth, use the API key field with yalp_… only, or Authorization Bearer yalp_… as shown on this page.",
+          "Name + URL alone are not enough. Expand Advanced settings and add your Yalp API key (raw yalp_…) or a custom Authorization header (Bearer yalp_…) exactly as on this page. Skipping this step causes an authorization error when Claude runs tools.",
       },
     ],
   },

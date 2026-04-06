@@ -386,7 +386,7 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
           bumpEngagement();
           copy(
             formatClaudeWebCopyText(baseUrl),
-            "Remote MCP URL copied — in Claude, set API key as Bearer or in the connector key field",
+            "URL copied — in Claude expand Advanced settings and paste your Yalp API key (or Bearer…)",
           );
           break;
         }
@@ -608,6 +608,18 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                 />
                 {selectedPlatform === "claudeWeb" && installKey ? (
                   <div className="space-y-4 rounded-2xl border border-[#e8e8e8] bg-[#fafafa] p-3 sm:p-4">
+                    <div
+                      className="rounded-xl border border-amber-200/90 bg-amber-50/95 px-3 py-2.5 text-xs text-amber-950"
+                      role="note"
+                    >
+                      <p className="font-semibold text-amber-950">Required in Claude</p>
+                      <p className="mt-1 text-pretty text-amber-950/95">
+                        After pasting the URL in <span className="font-medium">Add custom connector</span>, open{" "}
+                        <span className="font-medium">Advanced settings</span> and add your API key or Authorization header
+                        from below. <span className="font-medium">URL only will fail</span> with an authorization error when
+                        you ask Claude to create or list todos.
+                      </p>
+                    </div>
                     <div>
                       <p className="mb-1 text-xs font-semibold text-foreground">Remote MCP server URL</p>
                       <p className="mb-2 text-xs text-muted">
@@ -941,6 +953,11 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                   />
                 </summary>
                 <div className="mt-2 space-y-1 text-xs text-muted">
+                  <p>
+                    In Claude’s <span className="font-medium text-foreground">Add custom connector</span> flow you must
+                    expand <span className="font-medium text-foreground">Advanced settings</span> and add the API key or
+                    Authorization header — only pasting the URL causes auth errors on todo tools.
+                  </p>
                   <p>
                     Use the copied URL with <span className="font-medium text-foreground">https://www.yalp.work</span> and
                     path <code className="rounded bg-white px-1 py-0.5 text-[11px]">/api/mcp/stream</code>. Disconnect the

@@ -175,6 +175,8 @@ export function McpPlatformTroubleshooting() {
           break auth). The path must end with{" "}
           <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">/api/mcp/stream</code> — not{" "}
           <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">/api/mcp</code> (that is for the npm stdio client).
+          Always set the key under <span className="font-medium text-foreground">Advanced settings</span> in Claude — URL
+          only is not enough.
         </li>
         <li>
           If the app still reports an invalid key after a deploy, generate a new key here — especially if your server
