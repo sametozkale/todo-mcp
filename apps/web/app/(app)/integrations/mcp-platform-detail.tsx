@@ -170,13 +170,17 @@ export function McpPlatformTroubleshooting() {
         <li>If copy fails, allow clipboard permissions and try again.</li>
         <li>If tools do not run, confirm your current API key is active in the Active connections tab.</li>
         <li>
-          For Claude Web, use <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">https://www.yalp.work</code> in
-          the remote URL (apex <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">yalp.work</code> redirects can
-          break auth). The path must end with{" "}
-          <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">/api/mcp/stream</code> — not{" "}
-          <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">/api/mcp</code> (that is for the npm stdio client).
-          Always set the key under <span className="font-medium text-foreground">Advanced settings</span> in Claude — URL
-          only is not enough.
+          <span className="font-medium text-foreground">claude.ai custom connector:</span> Advanced settings only has OAuth
+          fields — not a Bearer/API key. Use Claude Desktop or Claude Code (stdio) on this page for Yalp with your key. See{" "}
+          <a
+            href="https://github.com/anthropics/claude-ai-mcp/issues/112"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-foreground underline underline-offset-2 hover:no-underline"
+          >
+            claude-ai-mcp#112
+          </a>
+          .
         </li>
         <li>
           If the app still reports an invalid key after a deploy, generate a new key here — especially if your server

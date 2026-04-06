@@ -386,7 +386,7 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
           bumpEngagement();
           copy(
             formatClaudeWebCopyText(baseUrl),
-            "URL copied — in Claude expand Advanced settings and paste your Yalp API key (or Bearer…)",
+            "URL copied — Claude Web has no Bearer/API key field; use Desktop or Claude Code for Yalp",
           );
           break;
         }
@@ -458,9 +458,9 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
           "Confirm “Looks connected” appears after tool usage.",
         ],
         claudeWeb: [
-          "Connector URL uses https://www.yalp.work/.../api/mcp/stream (www, not apex) and your Yalp API key.",
-          "Run a prompt that triggers tools/list or tools/call.",
-          "Confirm “Looks connected” appears after tool usage.",
+          "claude.ai cannot attach your yalp_ API key to remote MCP today — use Claude Desktop or Claude Code (stdio) for real tool auth.",
+          "If experimenting with the Web URL only: expect auth errors on create/list todos until Anthropic adds Bearer/header fields.",
+          "After switching to Desktop/Code, run a todo prompt and check Looks connected on this page.",
         ],
       }[selectedPlatform]
     : null;
@@ -609,15 +609,26 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                 {selectedPlatform === "claudeWeb" && installKey ? (
                   <div className="space-y-4 rounded-2xl border border-[#e8e8e8] bg-[#fafafa] p-3 sm:p-4">
                     <div
-                      className="rounded-xl border border-amber-200/90 bg-amber-50/95 px-3 py-2.5 text-xs text-amber-950"
+                      className="rounded-xl border border-sky-200/90 bg-sky-50/95 px-3 py-2.5 text-xs text-sky-950"
                       role="note"
                     >
-                      <p className="font-semibold text-amber-950">Required in Claude</p>
-                      <p className="mt-1 text-pretty text-amber-950/95">
-                        After pasting the URL in <span className="font-medium">Add custom connector</span>, open{" "}
-                        <span className="font-medium">Advanced settings</span> and add your API key or Authorization header
-                        from below. <span className="font-medium">URL only will fail</span> with an authorization error when
-                        you ask Claude to create or list todos.
+                      <p className="font-semibold text-sky-950">Claude Web — Advanced settings</p>
+                      <p className="mt-1 text-pretty text-sky-950/95">
+                        That panel only shows <span className="font-medium">OAuth Client ID / Secret</span>. Those are for
+                        OAuth apps, <span className="font-medium">not</span> your Yalp <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp_…</code> key.
+                        Putting the API key there will not send <code className="rounded bg-white px-1 py-0.5 text-[11px]">Authorization: Bearer …</code>, so tool
+                        calls fail. For a working setup with your key, go back and choose{" "}
+                        <span className="font-medium">Claude Desktop</span> or <span className="font-medium">Claude Code</span>{" "}
+                        (stdio). Follow:{" "}
+                        <a
+                          href="https://github.com/anthropics/claude-ai-mcp/issues/112"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-sky-950 underline underline-offset-2 hover:no-underline"
+                        >
+                          claude-ai-mcp#112
+                        </a>
+                        .
                       </p>
                     </div>
                     <div>
@@ -660,16 +671,18 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                     </div>
 
                     <div>
-                      <p className="mb-1 text-xs font-semibold text-foreground">Authentication (pick one)</p>
+                      <p className="mb-1 text-xs font-semibold text-foreground">
+                        API key copies (Desktop / Claude Code / Cursor — not claude.ai remote connector)
+                      </p>
                       <ul className="mb-2 list-disc space-y-1 pl-4 text-xs text-muted">
                         <li>
-                          If Claude has an <span className="font-medium text-foreground">API key</span> field: paste only{" "}
-                          <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp_…</code> — do not add{" "}
-                          <code className="rounded bg-white px-1 py-0.5 text-[11px]">Bearer</code> (avoids double-prefix).
+                          <span className="font-medium text-foreground">Claude Desktop &amp; Claude Code:</span> use the stdio
+                          config or command on this page — it passes your key in env to{" "}
+                          <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp-mcp-server</code>.
                         </li>
                         <li>
-                          If it asks for an <span className="font-medium text-foreground">Authorization</span> value:
-                          use <code className="rounded bg-white px-1 py-0.5 text-[11px]">Bearer yalp_…</code> below.
+                          <span className="font-medium text-foreground">Cursor / other clients:</span> Bearer or raw key as
+                          each client documents.
                         </li>
                       </ul>
                       <div className="flex flex-col gap-3">
@@ -750,9 +763,18 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                 {verifyFlowBlock}
                 {selectedPlatform === "claudeWeb" ? (
                   <p className="text-xs text-muted">
-                    The npm command below is for stdio clients (Cursor, Claude Desktop, Claude Code).{" "}
-                    <span className="font-medium text-foreground">Claude Web</span> uses the remote HTTPS URL only — it does
-                    not run <code className="rounded bg-white px-1 py-0.5 text-[11px]">npx</code> or the published npm bridge.
+                    To use your API key with Claude, switch to <span className="font-medium text-foreground">Claude Desktop</span>{" "}
+                    or <span className="font-medium text-foreground">Claude Code</span> in Connect — claude.ai remote connectors
+                    do not expose a Bearer/API key field yet (
+                    <a
+                      href="https://github.com/anthropics/claude-ai-mcp/issues/112"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-foreground underline underline-offset-2 hover:no-underline"
+                    >
+                      #112
+                    </a>
+                    ). The npm line below is for those stdio paths.
                   </p>
                 ) : null}
                 {verifyNpmBlock}
@@ -905,13 +927,11 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                     (macOS).
                   </p>
                   <p>
-                    <span className="font-medium text-foreground">Claude Web</span>: Remote MCP URL{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpRemoteUrl}</code> — authenticate with
-                    your Yalp API key (Bearer or <code className="rounded bg-white px-1 py-0.5 text-[11px]">X-Api-Key</code>
-                    ). Use <span className="font-medium text-foreground">www</span> in the host; apex-only redirects can
-                    break connector auth. The legacy JSON tool endpoint{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpApiUrl}</code> is for the npm stdio
-                    bridge only, not for Claude Web.
+                    <span className="font-medium text-foreground">Claude Web</span>: you can paste{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpRemoteUrl}</code>, but the custom-connector
+                    UI only offers OAuth in Advanced settings — it cannot send your <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp_…</code>{" "}
+                    as Bearer yet; use Desktop or Claude Code for that. Stdio bridge URL:{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpApiUrl}</code>.
                   </p>
                   <p>
                     <span className="font-medium text-foreground">Other clients</span>: use universal JSON; some clients use{" "}
@@ -944,7 +964,7 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
 
               <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
                 <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
-                  <span>Invalid API key or “refresh connection” in Claude Web</span>
+                  <span>Auth errors on claude.ai (Claude Web custom connector)</span>
                   <HugeiconsIcon
                     icon={ArrowDown01Icon}
                     size={16}
@@ -954,21 +974,27 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                 </summary>
                 <div className="mt-2 space-y-1 text-xs text-muted">
                   <p>
-                    In Claude’s <span className="font-medium text-foreground">Add custom connector</span> flow you must
-                    expand <span className="font-medium text-foreground">Advanced settings</span> and add the API key or
-                    Authorization header — only pasting the URL causes auth errors on todo tools.
+                    Advanced settings on claude.ai only show <span className="font-medium text-foreground">OAuth Client ID / Secret</span>.
+                    Do not put your Yalp API key there — OAuth client credentials are not the same as{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">Authorization: Bearer yalp_…</code>.
                   </p>
                   <p>
-                    Use the copied URL with <span className="font-medium text-foreground">https://www.yalp.work</span> and
-                    path <code className="rounded bg-white px-1 py-0.5 text-[11px]">/api/mcp/stream</code>. Disconnect the
-                    connector, create a <span className="font-medium text-foreground">new Yalp API key</span> on this page,
-                    reconnect, and paste the key once (raw <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp_…</code>{" "}
-                    in the key field, or <code className="rounded bg-white px-1 py-0.5 text-[11px]">Bearer yalp_…</code> where
-                    asked).
+                    For Yalp + API key today, use <span className="font-medium text-foreground">Claude Desktop</span> or{" "}
+                    <span className="font-medium text-foreground">Claude Code</span> from this Integrations page (stdio).
+                    Anthropic is tracking Bearer/header support for web connectors:{" "}
+                    <a
+                      href="https://github.com/anthropics/claude-ai-mcp/issues/112"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-foreground underline underline-offset-2 hover:no-underline"
+                    >
+                      claude-ai-mcp#112
+                    </a>
+                    .
                   </p>
                   <p>
-                    If your project recently changed the <code className="rounded bg-white px-1 py-0.5 text-[11px]">YALP_API_KEY_PEPPER</code>{" "}
-                    server setting, old keys stop working until you generate new ones.
+                    If keys work in curl or Desktop but not elsewhere, regenerate a key after any{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">YALP_API_KEY_PEPPER</code> change on the server.
                   </p>
                 </div>
               </details>

@@ -109,22 +109,22 @@ const guides: Record<PlatformId, InstallGuide> = {
     headline: "Claude Web",
     pickerTitle: "Claude Web",
     subline:
-      "Remote MCP over HTTPS only — not the npm stdio bridge. Use the URL ending with /api/mcp/stream on https://www.yalp.work (not /api/mcp).",
-    pickerBlurb: "Remote MCP URL + API key",
+      "Limited today: claude.ai custom connectors only show OAuth fields in Advanced settings — not a Bearer/API key. Yalp tools need an API key header, so use Claude Desktop or Claude Code (stdio) on this page instead. See GitHub issue anthropics/claude-ai-mcp#112.",
+    pickerBlurb: "Remote URL (OAuth UI only on Claude)",
     primaryLabel: "Copy remote MCP URL",
     primaryKind: "copy_claude_web_url",
     needsInstallContext: false,
     steps: [
-      { title: "Create or copy a Yalp API key (Advanced → API keys on this page if needed)" },
+      { title: "Prefer Claude Desktop or Claude Code in the picker — they support your Yalp API key via stdio" },
       {
-        title: "Copy the remote MCP URL (must be https://www.yalp.work/.../api/mcp/stream)",
+        title: "If you still use claude.ai → Add custom connector",
         description:
-          "Do not use apex yalp.work alone (it may redirect). Updating npm yalp-mcp-server does not affect Claude Web — that package talks to /api/mcp over stdio.",
+          "Paste https://www.yalp.work/api/mcp/stream. Do not put your yalp_ key into OAuth Client ID or Client Secret — those are for OAuth apps, not static API keys.",
       },
       {
-        title: "In Claude → Add custom connector: paste the URL, then open Advanced settings",
+        title: "Why tools fail on Web today",
         description:
-          "Name + URL alone are not enough. Expand Advanced settings and add your Yalp API key (raw yalp_…) or a custom Authorization header (Bearer yalp_…) exactly as on this page. Skipping this step causes an authorization error when Claude runs tools.",
+          "Anthropic’s connector UI has no field for Authorization: Bearer or X-Api-Key yet (open request: claude-ai-mcp issue #112). Until that ships, remote Yalp + API key on claude.ai will keep failing at tool calls.",
       },
     ],
   },
