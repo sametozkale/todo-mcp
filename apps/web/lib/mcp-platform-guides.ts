@@ -58,39 +58,45 @@ const guides: Record<PlatformId, InstallGuide> = {
   cursor: {
     headline: "Connect Cursor",
     pickerTitle: "Cursor",
-    subline: "Open Cursor and confirm the install. If deeplink fails, copy the universal JSON and add manually.",
+    subline:
+      "Local stdio MCP — your Yalp API key is passed in env (not OAuth). Deeplink opens Cursor to add the server in one step.",
     pickerBlurb: "One-click install in Cursor",
     primaryLabel: "Add to Cursor",
     primaryKind: "deeplink_cursor",
     needsInstallContext: true,
     steps: [
       { title: "Click “Add to Cursor” below" },
-      { title: "When Cursor opens, choose Install (or Open Cursor first if prompted)" },
-      { title: "Ask a quick test prompt (for example: list my todos)" },
+      { title: "When Cursor opens, choose Install (or open Cursor first if prompted)" },
+      {
+        title: "Run a test prompt",
+        description: "Example: list my todos — confirms tools are wired.",
+      },
     ],
   },
   vscode: {
     headline: "Connect VS Code",
     pickerTitle: "VS Code",
-    subline: "Add Yalp MCP to your project with .vscode/mcp.json (MCP-enabled Copilot build required).",
+    subline:
+      "Project-level stdio MCP (Copilot MCP). Your API key lives in .vscode/mcp.json env — not Claude Web OAuth.",
     pickerBlurb: "Copilot MCP — add project mcp.json",
     primaryLabel: "Copy VS Code config",
     primaryKind: "copy_vscode",
     needsInstallContext: true,
     steps: [
-      { title: "Click the button below to copy the JSON" },
+      { title: "Click below to copy the JSON" },
       {
-        title: "Create .vscode/mcp.json in your project root",
-        description: "If the folder doesn’t exist, create it, then paste and save.",
+        title: "Create or edit .vscode/mcp.json in your project root",
+        description: "Create the folder if needed, then paste and save.",
       },
-      { title: "Open MCP/Copilot tools, trust the workspace, and start the yalp server if prompted" },
-      { title: "Run a quick test prompt (for example: list my todos)" },
+      { title: "Open MCP / Copilot tools, trust the workspace, start yalp if prompted" },
+      { title: "Run a test prompt (e.g. list my todos)" },
     ],
   },
   claudeDesktop: {
     headline: "Connect Claude Desktop",
     pickerTitle: "Claude Desktop",
-    subline: "Stdio MCP via npx — paste the block into Claude’s developer config (most reliable).",
+    subline:
+      "Local stdio via npx — API key in env. Claude Web uses OAuth; this path does not. Merge only the yalp block into your config.",
     pickerBlurb: "Developer config JSON",
     primaryLabel: "Copy Claude config",
     primaryKind: "copy_claude_desktop",
@@ -99,39 +105,42 @@ const guides: Record<PlatformId, InstallGuide> = {
       { title: "Click below to copy the mcpServers JSON" },
       {
         title: "Claude Desktop → Settings → Developer → Edit Config",
-        description: `On macOS the file often lives at ${CLAUDE_DESKTOP_CONFIG_HINT}. On Windows the path differs — use Settings to open it.`,
+        description: `macOS path is often ${CLAUDE_DESKTOP_CONFIG_HINT}. On Windows, use Settings to open the correct file.`,
       },
-      { title: "Merge only mcpServers.yalp (do not overwrite other existing servers)" },
+      { title: "Merge only mcpServers.yalp — do not remove other servers" },
       { title: "Restart Claude Desktop" },
+      { title: "Run a test prompt (e.g. list my todos)" },
     ],
   },
   claudeWeb: {
-    headline: "Claude Web",
+    headline: "Claude Web (claude.ai)",
     pickerTitle: "Claude Web",
     subline:
-      "Limited today: claude.ai custom connectors only show OAuth fields in Advanced settings — not a Bearer/API key. Yalp tools need an API key header, so use Claude Desktop or Claude Code (stdio) on this page instead. See GitHub issue anthropics/claude-ai-mcp#112.",
-    pickerBlurb: "Remote URL (OAuth UI only on Claude)",
+      "Remote HTTPS MCP with OAuth. Create a Client ID + Secret below, paste them in Advanced settings on claude.ai, then Connect — do not put your yalp_ API key in OAuth fields.",
+    pickerBlurb: "OAuth + remote URL",
     primaryLabel: "Copy remote MCP URL",
     primaryKind: "copy_claude_web_url",
     needsInstallContext: false,
     steps: [
-      { title: "Prefer Claude Desktop or Claude Code in the picker — they support your Yalp API key via stdio" },
       {
-        title: "If you still use claude.ai → Add custom connector",
-        description:
-          "Paste https://www.yalp.work/api/mcp/stream. Do not put your yalp_ key into OAuth Client ID or Client Secret — those are for OAuth apps, not static API keys.",
+        title: "Create OAuth credentials on this page",
+        description: "Use “Create Claude Web OAuth client” in the box below. Copy the Client ID and Client Secret once — the secret is shown only at creation.",
       },
       {
-        title: "Why tools fail on Web today",
-        description:
-          "Anthropic’s connector UI has no field for Authorization: Bearer or X-Api-Key yet (open request: claude-ai-mcp issue #112). Until that ships, remote Yalp + API key on claude.ai will keep failing at tool calls.",
+        title: "In claude.ai → Add custom connector",
+        description: "Paste the remote MCP URL. Open Advanced and paste OAuth Client ID and Client Secret (from Yalp, not your yalp_ API key).",
+      },
+      { title: "Click Connect in Claude and sign in to Yalp when the browser opens" },
+      {
+        title: "Test with a short prompt",
+        description: "Example: list my todos. Tool calls use the OAuth access token automatically.",
       },
     ],
   },
   windsurf: {
     headline: "Connect Windsurf",
     pickerTitle: "Windsurf",
-    subline: "Paste MCP JSON into Windsurf settings (stdio via npx). If labels differ by version, use the closest MCP server import flow.",
+    subline: "Stdio MCP JSON — same pattern as Claude Desktop. Labels may vary slightly by Windsurf version.",
     pickerBlurb: "MCP settings JSON",
     primaryLabel: "Copy Windsurf config",
     primaryKind: "copy_windsurf",
@@ -139,28 +148,28 @@ const guides: Record<PlatformId, InstallGuide> = {
     steps: [
       { title: "Copy the config below" },
       { title: "Windsurf → Settings → MCP → Add server" },
-      { title: "Paste the JSON and save" },
-      { title: "Run a quick test prompt in Windsurf assistant" },
+      { title: "Paste JSON and save" },
+      { title: "Run a test prompt in the assistant" },
     ],
   },
   claudeCode: {
     headline: "Claude Code (CLI)",
     pickerTitle: "Claude Code",
-    subline: "Stdio MCP via npx — run the one-liner in Terminal (requires the claude CLI).",
+    subline: "Terminal stdio — API key via env. Separate from Claude Web OAuth (remote HTTP).",
     pickerBlurb: "Terminal command",
     primaryLabel: "Copy command",
     primaryKind: "copy_claude_code",
     needsInstallContext: true,
     steps: [
-      { title: "Copy the command bundle below (bash/zsh, fish, PowerShell)" },
+      { title: "Copy the command bundle (bash/zsh, fish, or PowerShell)" },
       { title: "Paste into Terminal and run" },
-      { title: "Run one test prompt (for example: list my todos)" },
+      { title: "Run one test prompt (e.g. list my todos)" },
     ],
   },
   manual: {
     headline: "Other MCP client",
     pickerTitle: "Other",
-    subline: "Universal stdio JSON you can adapt to any client’s schema (mcpServers or servers).",
+    subline: "Universal stdio JSON — adapt field names (mcpServers vs servers) per your client docs.",
     pickerBlurb: "Generic mcpServers JSON",
     primaryLabel: "Copy universal config",
     primaryKind: "copy_universal",
@@ -168,7 +177,10 @@ const guides: Record<PlatformId, InstallGuide> = {
     steps: [
       { title: "Copy the JSON below" },
       { title: "Open your client’s MCP / tools settings" },
-      { title: "Paste following that client’s documentation (map mcpServers ↔ servers if required)" },
+      {
+        title: "Paste following that client’s documentation",
+        description: "Map mcpServers ↔ servers if your client uses a different top-level key.",
+      },
     ],
   },
 };
@@ -203,7 +215,7 @@ export function getTryToolGuide(id: PlatformId): TryToolGuide {
     },
     claudeWeb: {
       title: "Connected - Try these tool calls",
-      subtitle: "Use one short instruction in Claude Web after connector auth is set.",
+      subtitle: "After Connect completes in Claude Web, try one short instruction.",
       examples: shared,
     },
     windsurf: {

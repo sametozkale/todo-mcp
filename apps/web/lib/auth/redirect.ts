@@ -8,6 +8,10 @@ export function sanitizeInternalNextPath(raw: string | null | undefined, fallbac
   if (!value) return fallback;
   if (!value.startsWith("/")) return fallback;
   if (value.startsWith("//")) return fallback;
-  if (value.includes(":")) return fallback;
+  const q = value.indexOf("?");
+  const pathname = q === -1 ? value : value.slice(0, q);
+  if (pathname.includes(":")) return fallback;
+  /** Allow `:` only in query (e.g. redirect_uri=https://...) for OAuth return paths. */
+  if (value.includes(":") && !pathname.startsWith("/oauth/")) return fallback;
   return value;
 }

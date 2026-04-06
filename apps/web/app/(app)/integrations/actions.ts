@@ -3,6 +3,15 @@
 import { createClient } from "@/lib/supabase/server";
 import crypto from "node:crypto";
 import { listApiKeysForCurrentUser } from "@/lib/server/api-keys";
+import {
+  generateOAuthClientId,
+  generateOAuthClientSecret,
+  hashOAuthClientSecret,
+} from "@/lib/server/oauth-internal";
+import type { OAuthClientRow } from "@/lib/server/oauth-clients";
+import { listOAuthClientsForCurrentUser } from "@/lib/server/oauth-clients";
+
+export type { OAuthClientRow } from "@/lib/server/oauth-clients";
 
 export type ApiKeyRow = {
   id: string;
@@ -123,6 +132,75 @@ export async function revokeApiKeyAction(id: string): Promise<RevokeApiKeyResult
   const { error } = await supabase
     .from("api_keys")
     .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export type CreateOAuthClientResult =
+  | { ok: true; clientId: string; clientSecret: string; row: OAuthClientRow }
+  | { ok: false; error: string };
+
+export async function listOAuthClientsAction(): Promise<OAuthClientRow[]> {
+  return listOAuthClientsForCurrentUser();
+}
+
+/**
+ * One-time display of `clientSecret` — same pattern as API keys (store hash only).
+ */
+export async function createClaudeWebOAuthClientAction(name?: string): Promise<CreateOAuthClientResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { ok: false, error: "Not signed in." };
+  }
+
+  const trimmedName = (name ?? "").trim() || "Claude Web";
+  const clientId = generateOAuthClientId();
+  const clientSecret = generateOAuthClientSecret();
+  const secretHash = hashOAuthClientSecret(clientSecret);
+
+  const { data, error } = await supabase
+    .from("oauth_clients")
+    .insert({
+      user_id: user.id,
+      public_id: clientId,
+      secret_hash: secretHash,
+      name: trimmedName,
+    })
+    .select("id, public_id, name, created_at, revoked_at")
+    .single();
+
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? "Could not create OAuth client." };
+  }
+
+  return {
+    ok: true,
+    clientId: data.public_id as string,
+    clientSecret,
+    row: data as OAuthClientRow,
+  };
+}
+
+export type RevokeOAuthClientResult = { ok: true } | { ok: false; error: string };
+
+export async function revokeOAuthClientAction(id: string): Promise<RevokeOAuthClientResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const { error } = await supabase
+    .from("oauth_clients")
+    .update({ revoked_at: new Date().toISOString() })
     .eq("id", id)
     .eq("user_id", user.id);
 

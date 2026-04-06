@@ -11,6 +11,9 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/login") ||
     path.startsWith("/signup") ||
     path.startsWith("/auth/callback") ||
+    path.startsWith("/oauth") ||
+    path.startsWith("/.well-known") ||
+    path.startsWith("/api/oauth") ||
     // Debug endpoints should be reachable without auth.
     path.startsWith("/api/debug") ||
     // MCP endpoint uses API key auth (not Supabase session cookies).

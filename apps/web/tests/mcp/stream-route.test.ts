@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authUserIdFromApiKeyMock = vi.fn();
+const authUserIdFromOAuthAccessTokenMock = vi.fn();
 const executeMcpToolMock = vi.fn();
 const touchApiKeyLastUsedMock = vi.fn();
+
+vi.mock("@/lib/server/oauth-token-service", () => ({
+  authUserIdFromOAuthAccessToken: (...args: unknown[]) => authUserIdFromOAuthAccessTokenMock(...args),
+}));
 
 vi.mock("@/lib/server/mcp-tools", () => ({
   getServiceSupabase: () => ({}) as object,
@@ -10,7 +15,7 @@ vi.mock("@/lib/server/mcp-tools", () => ({
   executeMcpTool: (...args: unknown[]) => executeMcpToolMock(...args),
   touchApiKeyLastUsed: (...args: unknown[]) => touchApiKeyLastUsedMock(...args),
   isToolName: (value: string) => value === "create_todo" || value === "list_todos",
-  MCP_PROTOCOL_VERSION: "2025-03-26",
+  MCP_PROTOCOL_VERSION: "2025-06-18",
   MCP_REMOTE_TOOL_LIST: [
     {
       name: "create_todo",
@@ -29,6 +34,7 @@ describe("mcp stream route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authUserIdFromApiKeyMock.mockResolvedValue({ userId: "u1", keyRowId: "k1" });
+    authUserIdFromOAuthAccessTokenMock.mockResolvedValue({ userId: null, tokenRowId: null });
     executeMcpToolMock.mockResolvedValue({ status: 200, body: { ok: true } });
   });
 
@@ -85,7 +91,7 @@ describe("mcp stream route", () => {
     const res = await mod.POST(req);
     const body = await res.json();
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(401);
     expect(String(body.error?.message ?? "")).toContain("Unauthorized");
     expect(res.headers.get("WWW-Authenticate")).toContain("Bearer");
   });
@@ -120,7 +126,7 @@ describe("mcp stream route", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    expect(body.protocolVersion).toBe("2025-03-26");
+    expect(body.protocolVersion).toBe("2025-06-18");
   });
 
   it("returns invalid key error for bad auth", async () => {
@@ -143,8 +149,8 @@ describe("mcp stream route", () => {
     const res = await mod.POST(req);
     const body = await res.json();
 
-    expect(res.status).toBe(200);
-    expect(String(body.error?.message ?? "")).toContain("Invalid API key");
+    expect(res.status).toBe(401);
+    expect(String(body.error?.message ?? "")).toContain("Unauthorized");
     expect(res.headers.get("WWW-Authenticate")).toContain("Bearer");
   });
 });

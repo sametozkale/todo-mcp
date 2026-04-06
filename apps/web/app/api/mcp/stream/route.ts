@@ -10,6 +10,8 @@ import {
   touchApiKeyLastUsed,
   type ToolName,
 } from "@/lib/server/mcp-tools";
+import { authUserIdFromOAuthAccessToken } from "@/lib/server/oauth-token-service";
+import { getMcpResourceUrl, getOAuthIssuerBase, OAUTH_ACCESS_TOKEN_PREFIX } from "@/lib/server/oauth-internal";
 
 const SERVER_NAME = "yalp";
 const SERVER_VERSION = "0.1.0";
@@ -50,17 +52,49 @@ function normalizeApiKey(raw: string | null): string | null {
   return v;
 }
 
-function parseBearerApiKey(req: Request): string | null {
-  const auth = req.headers.get("authorization");
-  const authToken = normalizeApiKey(auth);
-  if (authToken) return authToken;
+type McpAuthContext =
+  | { kind: "api_key"; userId: string; keyRowId: string }
+  | { kind: "oauth"; userId: string; tokenRowId: string };
 
-  for (const name of ["x-api-key", "api-key"]) {
-    const xToken = normalizeApiKey(req.headers.get(name));
-    if (xToken) return xToken;
+async function resolveMcpAuth(
+  req: Request,
+  supabase: ReturnType<typeof getServiceSupabase>,
+): Promise<McpAuthContext | null> {
+  const auth = normalizeApiKey(req.headers.get("authorization"));
+  const xApi = normalizeApiKey(req.headers.get("x-api-key"));
+  const apiHdr = normalizeApiKey(req.headers.get("api-key"));
+
+  if (auth?.startsWith(OAUTH_ACCESS_TOKEN_PREFIX)) {
+    const { userId, tokenRowId } = await authUserIdFromOAuthAccessToken(supabase, auth);
+    if (userId && tokenRowId) return { kind: "oauth", userId, tokenRowId };
+    return null;
   }
 
+  const oauthFromAux =
+    xApi?.startsWith(OAUTH_ACCESS_TOKEN_PREFIX) ? xApi : apiHdr?.startsWith(OAUTH_ACCESS_TOKEN_PREFIX) ? apiHdr : null;
+  if (oauthFromAux) {
+    const { userId, tokenRowId } = await authUserIdFromOAuthAccessToken(supabase, oauthFromAux);
+    if (userId && tokenRowId) return { kind: "oauth", userId, tokenRowId };
+  }
+
+  const apiKeyCandidate = auth ?? xApi ?? apiHdr;
+  if (!apiKeyCandidate) return null;
+
+  const { userId, keyRowId } = await authUserIdFromApiKey(supabase, apiKeyCandidate);
+  if (userId && keyRowId) return { kind: "api_key", userId, keyRowId };
   return null;
+}
+
+/** When true, tools/call auth errors return HTTP 200 + JSON-RPC (legacy). Default: HTTP 401. */
+function mcpAuthHttpFailureStatus(): number {
+  return process.env.YALP_MCP_LEGACY_AUTH_HTTP200 === "true" ? 200 : 401;
+}
+
+function mcpResourceMetadataWwwAuthenticateValue(): string {
+  const issuer = getOAuthIssuerBase();
+  const resource = getMcpResourceUrl();
+  const rm = `${issuer}/.well-known/oauth-protected-resource?resource=${encodeURIComponent(resource)}`;
+  return `Bearer realm="yalp", error="invalid_token", resource_metadata="${rm}"`;
 }
 
 function mergeCors(res: NextResponse): NextResponse {
@@ -104,17 +138,20 @@ export function GET(request: Request) {
           requiredFor: ["tools/call"],
           optionalFor: ["initialize", "notifications/initialized", "ping", "tools/list"],
           accepted: [
-            "Authorization: Bearer <yalp_api_key>",
-            "X-Api-Key: <yalp_api_key>",
-            "Api-Key: <yalp_api_key>",
+            "Authorization: Bearer <oauth_access_token> (Claude Web / custom connector OAuth)",
+            "Authorization: Bearer <yalp_api_key> or X-Api-Key (stdio bridge / API keys)",
           ],
+          oauth: {
+            protectedResourceMetadata: `${getOAuthIssuerBase()}/.well-known/oauth-protected-resource?resource=${encodeURIComponent(getMcpResourceUrl())}`,
+            authorizationServer: `${getOAuthIssuerBase()}/.well-known/oauth-authorization-server`,
+          },
         },
         compatibilityChecklist: [
           "Use POST with JSON-RPC 2.0 payload",
           "Use URL ending with /api/mcp/stream",
-          "Send Bearer or X-Api-Key for tools/call",
+          "tools/call: OAuth Bearer (yalp_at_…) after connector login, or Yalp API key (yalp_…)",
         ],
-        hint: "POST JSON-RPC 2.0 messages. tools/list is public metadata; tools/call requires auth.",
+        hint: "POST JSON-RPC 2.0 messages. tools/list is public metadata; tools/call requires OAuth access token or API key.",
       },
       { status: 200 },
     ),
@@ -205,31 +242,25 @@ async function handleJsonRpc(
     };
   }
 
-  const apiKey = parseBearerApiKey(req);
-  if (!apiKey) {
+  const authCtx = await resolveMcpAuth(req, supabase);
+  if (!authCtx) {
     return {
-      status: 200,
+      status: mcpAuthHttpFailureStatus(),
       body: jsonRpcError(
         id,
         -32000,
-        "Unauthorized: send Authorization: Bearer <yalp_api_key>, X-Api-Key, or Api-Key.",
+        "Unauthorized: use OAuth access token (Authorization: Bearer yalp_at_…) or Yalp API key (yalp_…) via Bearer or X-Api-Key.",
       ),
       isNotification: false,
       addBearerAuthHint: true,
     };
   }
 
-  const { userId, keyRowId } = await authUserIdFromApiKey(supabase, apiKey);
-  if (!userId || !keyRowId) {
-    return {
-      status: 200,
-      body: jsonRpcError(id, -32000, "Invalid API key."),
-      isNotification: false,
-      addBearerAuthHint: true,
-    };
+  if (authCtx.kind === "api_key") {
+    touchApiKeyLastUsed(supabase, authCtx.keyRowId);
   }
 
-  touchApiKeyLastUsed(supabase, keyRowId);
+  const userId = authCtx.userId;
 
   if (method === "tools/call") {
     const params = (typeof rpc.params === "object" && rpc.params !== null ? rpc.params : null) as Record<
@@ -356,7 +387,7 @@ export async function POST(req: Request) {
   const sessionId = req.headers.get("mcp-session-id") ?? crypto.randomUUID();
   response.headers.set("Mcp-Session-Id", sessionId);
   if (out.addBearerAuthHint) {
-    response.headers.set("WWW-Authenticate", 'Bearer realm="yalp", error="invalid_token"');
+    response.headers.set("WWW-Authenticate", mcpResourceMetadataWwwAuthenticateValue());
   }
   return response;
 }

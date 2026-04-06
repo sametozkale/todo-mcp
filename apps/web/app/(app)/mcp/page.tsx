@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { McpConnectionsVisitMarker } from "@/components/mcp-connections-visit-marker";
 import { McpConnectionsClient } from "../integrations/mcp-connections-client";
 import { listApiKeysForCurrentUser } from "@/lib/server/api-keys";
+import { listOAuthClientsForCurrentUser } from "@/lib/server/oauth-clients";
 
 export const metadata: Metadata = {
   title: "MCP Connections",
@@ -29,6 +30,7 @@ export default async function McpConnectionsPage({ searchParams }: PageProps) {
   }
 
   const initialKeys = await listApiKeysForCurrentUser();
+  const initialOAuthClients = await listOAuthClientsForCurrentUser();
   const baseUrl = getSiteUrl();
   const params = await searchParams;
   const initialPlatform = isPlatformId(params.platform) ? params.platform : null;
@@ -46,6 +48,7 @@ export default async function McpConnectionsPage({ searchParams }: PageProps) {
         <McpConnectionsClient
           userId={user.id}
           initialKeys={initialKeys}
+          initialOAuthClients={initialOAuthClients}
           baseUrl={baseUrl}
           initialPlatform={initialPlatform}
         />

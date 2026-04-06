@@ -30,12 +30,15 @@ import {
   sortPlatformsForUserAgent,
   type PlatformId,
 } from "@/lib/mcp-platform-guides";
-import type { ApiKeyRow, CreateApiKeyResult } from "./actions";
+import type { ApiKeyRow, CreateApiKeyResult, OAuthClientRow } from "./actions";
 import {
   createApiKeyAction,
+  createClaudeWebOAuthClientAction,
   ensureInstallKeyForSetupAction,
   listApiKeysAction,
+  listOAuthClientsAction,
   revokeApiKeyAction,
+  revokeOAuthClientAction,
 } from "./actions";
 import { McpPlatformDetail, McpPlatformTroubleshooting, McpTryToolExamples } from "./mcp-platform-detail";
 import { McpPlatformPicker } from "./mcp-platform-picker";
@@ -80,6 +83,7 @@ function clearQuickInstallSession() {
 type Props = {
   userId: string;
   initialKeys: ApiKeyRow[];
+  initialOAuthClients: OAuthClientRow[];
   baseUrl: string;
   initialPlatform: PlatformId | null;
 };
@@ -112,12 +116,14 @@ function formatRelativeTime(iso: string | null): string {
   return new Date(iso).toLocaleString();
 }
 
-export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlatform }: Props) {
+export function McpConnectionsClient({ userId, initialKeys, initialOAuthClients, baseUrl, initialPlatform }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const [keys, setKeys] = useState<ApiKeyRow[]>(initialKeys);
+  const [oauthClients, setOauthClients] = useState<OAuthClientRow[]>(initialOAuthClients);
+  const [oauthSecretOnce, setOauthSecretOnce] = useState<{ clientId: string; secret: string } | null>(null);
   const [installKey, setInstallKey] = useState<string | null>(null);
   const [installKeyId, setInstallKeyId] = useState<string | null>(null);
   const [label, setLabel] = useState("MCP Key");
@@ -139,6 +145,8 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
     () => (installKey ? { apiKey: installKey, baseUrl } : null),
     [installKey, baseUrl],
   );
+
+  const activeOAuthClients = useMemo(() => oauthClients.filter((c) => !c.revoked_at), [oauthClients]);
 
   const [platformOrder, setPlatformOrder] = useState<PlatformId[]>(() => [
     ...DEFAULT_PLATFORM_ORDER,
@@ -204,6 +212,10 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
       setupDetailRef.current = false;
       return;
     }
+    if (selectedPlatform === "claudeWeb") {
+      setupDetailRef.current = true;
+      return;
+    }
     if (installKey) return;
 
     const stored = readQuickInstallSession();
@@ -267,6 +279,17 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
   }, [phase, selectedPlatform, installKey, userId, startTransition]);
 
   useEffect(() => {
+    if (phase !== "detail" || selectedPlatform !== "claudeWeb") return;
+    let cancelled = false;
+    void listOAuthClientsAction().then((rows) => {
+      if (!cancelled) setOauthClients(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, selectedPlatform]);
+
+  useEffect(() => {
     if (!installKeyId) return;
     const stillThere = keys.some((k) => k.id === installKeyId);
     if (!stillThere) {
@@ -276,6 +299,12 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
       clearQuickInstallSession();
     }
   }, [keys, installKeyId]);
+
+  useEffect(() => {
+    if (activeTab === "active") {
+      void listOAuthClientsAction().then((rows) => setOauthClients(rows));
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     pollMountedRef.current = true;
@@ -326,6 +355,41 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
     setActiveTab("connect");
     router.replace(pathname, { scroll: false });
   }, [pathname, router]);
+
+  const runCreateOAuthClient = useCallback(() => {
+    setError(null);
+    startTransition(async () => {
+      const result = await createClaudeWebOAuthClientAction();
+      if (!result.ok) {
+        setError(result.error);
+        toast.danger(result.error, { timeout: 4500 });
+        return;
+      }
+      setOauthClients((prev) => [result.row, ...prev]);
+      setOauthSecretOnce({ clientId: result.clientId, secret: result.clientSecret });
+      bumpEngagement();
+      toast.success("OAuth client created — copy the secret now; it is only shown once.", { timeout: 5200 });
+    });
+  }, [bumpEngagement, startTransition]);
+
+  const revokeOauthClient = useCallback(
+    (id: string) => {
+      setError(null);
+      startTransition(async () => {
+        const result = await revokeOAuthClientAction(id);
+        if (!result.ok) {
+          setError(result.error);
+          toast.danger(result.error, { timeout: 4500 });
+          return;
+        }
+        setOauthClients((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, revoked_at: new Date().toISOString() } : c)),
+        );
+        toast.success("OAuth client revoked.", { timeout: 2500 });
+      });
+    },
+    [startTransition],
+  );
 
   function runCreateKeyAdvanced() {
     setError(null);
@@ -386,7 +450,7 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
           bumpEngagement();
           copy(
             formatClaudeWebCopyText(baseUrl),
-            "URL copied — Claude Web has no Bearer/API key field; use Desktop or Claude Code for Yalp",
+            "Remote MCP URL copied — paste in claude.ai custom connector (use OAuth ID/secret from below)",
           );
           break;
         }
@@ -458,9 +522,9 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
           "Confirm “Looks connected” appears after tool usage.",
         ],
         claudeWeb: [
-          "claude.ai cannot attach your yalp_ API key to remote MCP today — use Claude Desktop or Claude Code (stdio) for real tool auth.",
-          "If experimenting with the Web URL only: expect auth errors on create/list todos until Anthropic adds Bearer/header fields.",
-          "After switching to Desktop/Code, run a todo prompt and check Looks connected on this page.",
+          "Create OAuth credentials here and paste Client ID + Secret into claude.ai Advanced settings.",
+          "Add the remote MCP URL, click Connect, and complete sign-in to Yalp in the browser.",
+          "Run “list my todos” (or similar) — you should see Looks connected update on this page.",
         ],
       }[selectedPlatform]
     : null;
@@ -606,38 +670,126 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                   showActivity={showActivity}
                   activityMessage={activityMessage}
                 />
-                {selectedPlatform === "claudeWeb" && installKey ? (
+                {selectedPlatform === "claudeWeb" ? (
                   <div className="space-y-4 rounded-2xl border border-[#e8e8e8] bg-[#fafafa] p-3 sm:p-4">
                     <div
-                      className="rounded-xl border border-sky-200/90 bg-sky-50/95 px-3 py-2.5 text-xs text-sky-950"
+                      className="rounded-xl border border-emerald-200/90 bg-emerald-50/95 px-3 py-2.5 text-xs text-emerald-950"
                       role="note"
                     >
-                      <p className="font-semibold text-sky-950">Claude Web — Advanced settings</p>
-                      <p className="mt-1 text-pretty text-sky-950/95">
-                        That panel only shows <span className="font-medium">OAuth Client ID / Secret</span>. Those are for
-                        OAuth apps, <span className="font-medium">not</span> your Yalp <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp_…</code> key.
-                        Putting the API key there will not send <code className="rounded bg-white px-1 py-0.5 text-[11px]">Authorization: Bearer …</code>, so tool
-                        calls fail. For a working setup with your key, go back and choose{" "}
-                        <span className="font-medium">Claude Desktop</span> or <span className="font-medium">Claude Code</span>{" "}
-                        (stdio). Follow:{" "}
-                        <a
-                          href="https://github.com/anthropics/claude-ai-mcp/issues/112"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium text-sky-950 underline underline-offset-2 hover:no-underline"
-                        >
-                          claude-ai-mcp#112
-                        </a>
-                        .
+                      <p className="font-semibold text-emerald-950">OAuth for Claude Web</p>
+                      <p className="mt-1 text-pretty text-emerald-950/95">
+                        In claude.ai Advanced settings, paste the <span className="font-medium">Client ID</span> and{" "}
+                        <span className="font-medium">Client Secret</span> you create here — not your{" "}
+                        <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp_…</code> API key. After Connect, Claude
+                        calls Yalp with an OAuth access token.
                       </p>
                     </div>
+
+                    {oauthSecretOnce ? (
+                      <div className="rounded-xl border border-amber-200/90 bg-amber-50/95 px-3 py-2.5 text-xs text-amber-950">
+                        <p className="font-semibold text-amber-950">Copy your new client secret now</p>
+                        <p className="mt-1 text-pretty text-amber-950/95">We only show it once. Store it somewhere safe.</p>
+                        <div className="mt-3 space-y-3">
+                          <div>
+                            <p className="mb-1 text-[10px] font-medium text-amber-950/90">Client ID</p>
+                            <code className="block break-all rounded-lg border border-amber-200/80 bg-white px-2.5 py-2 font-mono text-[11px] text-foreground">
+                              {oauthSecretOnce.clientId}
+                            </code>
+                            <Button
+                              variant="secondary"
+                              className="mt-2 h-8 min-h-8 text-xs"
+                              onPress={() => copy(oauthSecretOnce.clientId, "Client ID copied")}
+                            >
+                              <span className="inline-flex items-center gap-2">
+                                <CopyIcon size={14} strokeWidth={2} className="text-current" aria-hidden="true" />
+                                Copy Client ID
+                              </span>
+                            </Button>
+                          </div>
+                          <div>
+                            <p className="mb-1 text-[10px] font-medium text-amber-950/90">Client Secret</p>
+                            <code className="block break-all rounded-lg border border-amber-200/80 bg-white px-2.5 py-2 font-mono text-[11px] text-foreground">
+                              {oauthSecretOnce.secret}
+                            </code>
+                            <Button
+                              variant="secondary"
+                              className="mt-2 h-8 min-h-8 text-xs"
+                              onPress={() => copy(oauthSecretOnce.secret, "Client Secret copied")}
+                            >
+                              <span className="inline-flex items-center gap-2">
+                                <CopyIcon size={14} strokeWidth={2} className="text-current" aria-hidden="true" />
+                                Copy Client Secret
+                              </span>
+                            </Button>
+                          </div>
+                        </div>
+                        <Button variant="ghost" className="mt-3 h-8 px-2 text-xs text-amber-950" onPress={() => setOauthSecretOnce(null)}>
+                          Dismiss
+                        </Button>
+                      </div>
+                    ) : null}
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <Button
+                        variant="secondary"
+                        className="h-10 min-h-10 w-full shrink-0 sm:w-auto"
+                        isDisabled={isPending}
+                        onPress={runCreateOAuthClient}
+                      >
+                        {isPending ? "Working…" : "Create Claude Web OAuth client"}
+                      </Button>
+                      <p className="text-xs text-muted">
+                        Revoke unused clients under <span className="font-medium text-foreground">Active connections</span>.
+                      </p>
+                    </div>
+
+                    {activeOAuthClients.length > 0 ? (
+                      <div>
+                        <p className="mb-2 text-xs font-semibold text-foreground">Active OAuth clients</p>
+                        <ul className="flex flex-col gap-2">
+                          {activeOAuthClients.map((c) => (
+                            <li
+                              key={c.id}
+                              className="flex flex-col justify-between gap-2 rounded-[14px] border border-[#ececec] bg-white p-3 sm:flex-row sm:items-center"
+                            >
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-foreground">{c.name}</p>
+                                <p className="mt-0.5 break-all font-mono text-[11px] text-muted">{c.public_id}</p>
+                                <p className="mt-1 text-[11px] text-muted">
+                                  Created {c.created_at ? new Date(c.created_at).toLocaleString() : "—"}
+                                </p>
+                              </div>
+                              <div className="flex shrink-0 flex-wrap gap-2">
+                                <Button
+                                  variant="secondary"
+                                  className="h-8 min-h-8 text-xs"
+                                  onPress={() => copy(c.public_id, "Client ID copied")}
+                                >
+                                  Copy ID
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  className="h-8 min-h-8 text-xs"
+                                  isDisabled={isPending}
+                                  onPress={() => revokeOauthClient(c.id)}
+                                >
+                                  Revoke
+                                </Button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted">No active OAuth client yet — create one to connect Claude Web.</p>
+                    )}
+
                     <div>
                       <p className="mb-1 text-xs font-semibold text-foreground">Remote MCP server URL</p>
                       <p className="mb-2 text-xs text-muted">
-                        Paste this exact URL in Claude (custom connector). Use{" "}
-                        <span className="font-medium text-foreground">https://www.yalp.work</span> — apex{" "}
-                        <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp.work</code> can redirect and break
-                        some clients.
+                        Paste this URL in the claude.ai custom connector. Prefer{" "}
+                        <span className="font-medium text-foreground">https://www.</span> on production — apex redirects can
+                        break some clients.
                       </p>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <code className="min-h-10 min-w-0 flex-1 overflow-auto rounded-[12px] border border-[#e8e8e8] bg-white px-3 py-2.5 font-mono text-xs leading-snug text-foreground shadow-[inset_0_1px_0_rgba(0,0,0,0.03)]">
@@ -662,87 +814,19 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                           rel="noopener noreferrer"
                           className="font-medium text-foreground underline underline-offset-2 hover:no-underline"
                         >
-                          Open this URL in a new tab
+                          Open in a new tab
                         </a>{" "}
-                        — you should see JSON with <code className="rounded bg-white px-1 py-0.5 text-[11px]">ok</code> and{" "}
-                        <code className="rounded bg-white px-1 py-0.5 text-[11px]">mcp-stream-http</code>. If not, fix DNS or
-                        URL before pasting into Claude.
+                        — JSON should include <code className="rounded bg-white px-1 py-0.5 text-[11px]">ok</code> and{" "}
+                        <code className="rounded bg-white px-1 py-0.5 text-[11px]">mcp-stream-http</code>.
                       </p>
                     </div>
 
-                    <div>
-                      <p className="mb-1 text-xs font-semibold text-foreground">
-                        API key copies (Desktop / Claude Code / Cursor — not claude.ai remote connector)
+                    <div className="rounded-xl border border-[#e8e8e8] bg-white px-3 py-2.5 text-xs text-muted">
+                      <p className="font-medium text-foreground">Stdio (API key) vs Web (OAuth)</p>
+                      <p className="mt-1 text-pretty">
+                        Claude Desktop, Claude Code, and Cursor use your <code className="rounded bg-[#fafafa] px-1 py-0.5 text-[11px]">yalp_</code> API
+                        key in environment variables. Claude Web uses the OAuth client above — keep those flows separate.
                       </p>
-                      <ul className="mb-2 list-disc space-y-1 pl-4 text-xs text-muted">
-                        <li>
-                          <span className="font-medium text-foreground">Claude Desktop &amp; Claude Code:</span> use the stdio
-                          config or command on this page — it passes your key in env to{" "}
-                          <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp-mcp-server</code>.
-                        </li>
-                        <li>
-                          <span className="font-medium text-foreground">Cursor / other clients:</span> Bearer or raw key as
-                          each client documents.
-                        </li>
-                      </ul>
-                      <div className="flex flex-col gap-3">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0 flex-1">
-                            <p className="mb-1 text-[11px] font-medium text-foreground">Raw API key only</p>
-                            <code className="block min-h-10 w-full overflow-auto rounded-[12px] border border-[#e8e8e8] bg-white px-3 py-2.5 font-mono text-xs leading-snug text-foreground shadow-[inset_0_1px_0_rgba(0,0,0,0.03)]">
-                              {installKey}
-                            </code>
-                          </div>
-                          <Button
-                            variant="secondary"
-                            className="shrink-0 self-start sm:self-end"
-                            onPress={() => copy(installKey, "API key copied")}
-                          >
-                            <span className="inline-flex items-center gap-2">
-                              <CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />
-                              Copy key
-                            </span>
-                          </Button>
-                        </div>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0 flex-1">
-                            <p className="mb-1 text-[11px] font-medium text-foreground">Authorization header value</p>
-                            <code className="block min-h-10 w-full overflow-auto rounded-[12px] border border-[#e8e8e8] bg-white px-3 py-2.5 font-mono text-xs leading-snug text-foreground shadow-[inset_0_1px_0_rgba(0,0,0,0.03)]">
-                              {`Bearer ${installKey}`}
-                            </code>
-                          </div>
-                          <Button
-                            variant="secondary"
-                            className="shrink-0 self-start sm:self-end"
-                            onPress={() => copy(`Bearer ${installKey}`, "Bearer value copied")}
-                          >
-                            <span className="inline-flex items-center gap-2">
-                              <CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />
-                              Copy Bearer …
-                            </span>
-                          </Button>
-                        </div>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0 flex-1">
-                            <p className="mb-1 text-[11px] font-medium text-foreground">Full header line (if required)</p>
-                            <code className="block min-h-10 w-full overflow-auto rounded-[12px] border border-[#e8e8e8] bg-white px-3 py-2.5 font-mono text-xs leading-snug text-foreground shadow-[inset_0_1px_0_rgba(0,0,0,0.03)]">
-                              {`Authorization: Bearer ${installKey}`}
-                            </code>
-                          </div>
-                          <Button
-                            variant="secondary"
-                            className="shrink-0 self-start sm:self-end"
-                            onPress={() =>
-                              copy(`Authorization: Bearer ${installKey}`, "Authorization header line copied")
-                            }
-                          >
-                            <span className="inline-flex items-center gap-2">
-                              <CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />
-                              Copy full line
-                            </span>
-                          </Button>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 ) : null}
@@ -763,18 +847,9 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                 {verifyFlowBlock}
                 {selectedPlatform === "claudeWeb" ? (
                   <p className="text-xs text-muted">
-                    To use your API key with Claude, switch to <span className="font-medium text-foreground">Claude Desktop</span>{" "}
-                    or <span className="font-medium text-foreground">Claude Code</span> in Connect — claude.ai remote connectors
-                    do not expose a Bearer/API key field yet (
-                    <a
-                      href="https://github.com/anthropics/claude-ai-mcp/issues/112"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-foreground underline underline-offset-2 hover:no-underline"
-                    >
-                      #112
-                    </a>
-                    ). The npm line below is for those stdio paths.
+                    Claude Web uses <span className="font-medium text-foreground">OAuth clients</span> from the Connect tab — not
+                    your <code className="rounded bg-[#fafafa] px-1 py-0.5 text-[11px]">yalp_</code> key. Revoke OAuth clients
+                    in the list below if you rotate credentials.
                   </p>
                 ) : null}
                 {verifyNpmBlock}
@@ -819,6 +894,41 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                 </Button>
               </div>
             ) : null}
+
+            <div>
+              <p className="mb-2 text-xs font-medium text-foreground">Claude Web OAuth clients</p>
+              <p className="mb-2 text-[11px] text-muted">
+                Used in claude.ai Advanced settings. Secret is only shown once at creation — revoke and create a new client to
+                rotate.
+              </p>
+              {oauthClients.filter((c) => !c.revoked_at).length === 0 ? (
+                <p className="text-xs text-muted">No active OAuth clients.</p>
+              ) : (
+                <ul className="mb-6 flex flex-col gap-2">
+                  {oauthClients
+                    .filter((c) => !c.revoked_at)
+                    .map((c) => (
+                      <li
+                        key={c.id}
+                        className="flex flex-col justify-between gap-2 rounded-[14px] border border-[#ececec] bg-white p-3 sm:flex-row sm:items-center"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground">{c.name}</p>
+                          <p className="mt-0.5 break-all font-mono text-[11px] text-muted">{c.public_id}</p>
+                        </div>
+                        <Button
+                          variant="secondary"
+                          className="h-8 min-h-8 shrink-0 text-xs"
+                          isDisabled={isPending}
+                          onPress={() => revokeOauthClient(c.id)}
+                        >
+                          Revoke
+                        </Button>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
 
             <div>
               <p className="mb-2 text-xs font-medium text-muted">Your API keys</p>
@@ -927,10 +1037,9 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                     (macOS).
                   </p>
                   <p>
-                    <span className="font-medium text-foreground">Claude Web</span>: you can paste{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpRemoteUrl}</code>, but the custom-connector
-                    UI only offers OAuth in Advanced settings — it cannot send your <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp_…</code>{" "}
-                    as Bearer yet; use Desktop or Claude Code for that. Stdio bridge URL:{" "}
+                    <span className="font-medium text-foreground">Claude Web</span>: remote URL{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpRemoteUrl}</code> plus OAuth Client ID and
+                    Secret from this page (Connect → Claude Web). Stdio legacy URL:{" "}
                     <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpApiUrl}</code>.
                   </p>
                   <p>
@@ -974,14 +1083,18 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                 </summary>
                 <div className="mt-2 space-y-1 text-xs text-muted">
                   <p>
-                    Advanced settings on claude.ai only show <span className="font-medium text-foreground">OAuth Client ID / Secret</span>.
-                    Do not put your Yalp API key there — OAuth client credentials are not the same as{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">Authorization: Bearer yalp_…</code>.
+                    Create an OAuth client on this page (Connect → Claude Web), then paste{" "}
+                    <span className="font-medium text-foreground">Client ID</span> and{" "}
+                    <span className="font-medium text-foreground">Client Secret</span> into claude.ai Advanced settings. Your
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]"> yalp_</code> API key is for stdio clients only.
                   </p>
                   <p>
-                    For Yalp + API key today, use <span className="font-medium text-foreground">Claude Desktop</span> or{" "}
-                    <span className="font-medium text-foreground">Claude Code</span> from this Integrations page (stdio).
-                    Anthropic is tracking Bearer/header support for web connectors:{" "}
+                    If Connect fails, confirm you are signed into the same Yalp account that owns the OAuth client, and that
+                    redirect URIs on the server include Anthropic&apos;s callback (
+                    <code className="rounded bg-white px-1 py-0.5 text-[10px]">YALP_OAUTH_ALLOWED_REDIRECT_URIS</code>).
+                  </p>
+                  <p>
+                    Optional future: static Bearer for Web without OAuth is tracked in{" "}
                     <a
                       href="https://github.com/anthropics/claude-ai-mcp/issues/112"
                       target="_blank"
@@ -993,8 +1106,8 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                     .
                   </p>
                   <p>
-                    If keys work in curl or Desktop but not elsewhere, regenerate a key after any{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">YALP_API_KEY_PEPPER</code> change on the server.
+                    If API keys fail after a deploy, regenerate them after any{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">YALP_API_KEY_PEPPER</code> change.
                   </p>
                 </div>
               </details>
