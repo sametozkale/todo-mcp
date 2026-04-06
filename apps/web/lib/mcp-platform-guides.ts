@@ -1,12 +1,13 @@
 import { CLAUDE_DESKTOP_CONFIG_HINT } from "./mcp-platform-configs";
 
+/** Grid is 2 columns on sm+; order places all Claude options in the right column. */
 export const DEFAULT_PLATFORM_ORDER = [
   "cursor",
   "claudeDesktop",
-  "claudeWeb",
   "windsurf",
-  "claudeCode",
+  "claudeWeb",
   "vscode",
+  "claudeCode",
   "manual",
 ] as const;
 

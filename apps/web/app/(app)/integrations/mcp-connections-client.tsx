@@ -9,7 +9,6 @@ import { Copy as CopyIcon } from "lucide-react";
 import { toast } from "@/lib/app-toast";
 import {
   buildCursorMcpInstallDeeplink,
-  buildMcpApiUrl,
   buildRemoteMcpUrl,
   CLAUDE_DESKTOP_CONFIG_HINT,
   formatClaudeDesktopConfigJson,
@@ -336,7 +335,6 @@ export function McpConnectionsClient({ userId, initialKeys, initialOAuthClients,
     lastUsed !== null && Date.now() - new Date(lastUsed).getTime() < 10 * 60 * 1000;
   const activityMessage = `Last MCP tool use ${formatRelativeTime(lastUsed)} (any client using your keys).`;
 
-  const mcpApiUrl = buildMcpApiUrl(baseUrl);
   const mcpRemoteUrl = buildRemoteMcpUrl(baseUrl);
 
   const selectPlatform = useCallback(
@@ -687,10 +685,14 @@ export function McpConnectionsClient({ userId, initialKeys, initialOAuthClients,
         ) : null}
 
         {activeTab === "active" ? (
-          <div className="space-y-4 text-sm">
-            <div>
-              <h2 className="text-sm font-semibold leading-snug text-foreground sm:text-[15px]">API keys & security</h2>
-              <p className="mt-0.5 text-[11px] text-muted sm:text-xs">Keys, revoke, developer checks</p>
+          <div className="space-y-6 text-sm">
+            <div className="space-y-1.5">
+              <h2 className="font-title text-lg font-semibold leading-snug text-foreground sm:text-xl">Manage access</h2>
+              <p className="text-pretty text-sm leading-relaxed text-muted">
+                <span className="font-medium text-foreground">MCP API keys</span> are for editors and terminals (Cursor, VS
+                Code, Claude Desktop, etc.). <span className="font-medium text-foreground">OAuth clients</span> are only for
+                claude.ai — create them on the Connect tab. Revoke anything you no longer trust.
+              </p>
             </div>
 
             {phase === "detail" ? (
@@ -698,93 +700,37 @@ export function McpConnectionsClient({ userId, initialKeys, initialOAuthClients,
                 {verifyFlowBlock}
                 {selectedPlatform === "claudeWeb" ? (
                   <p className="text-xs text-muted">
-                    Claude Web uses <span className="font-medium text-foreground">OAuth clients</span> from the Connect tab — not
-                    your <code className="rounded bg-[#fafafa] px-1 py-0.5 text-[11px]">yalp_</code> key. Revoke OAuth clients
-                    in the list below if you rotate credentials.
+                    You&apos;re viewing Claude Web setup: use <span className="font-medium text-foreground">OAuth clients</span>{" "}
+                    below (not <code className="rounded bg-[#fafafa] px-1 py-0.5 text-[11px]">yalp_</code> keys). Revoke a client
+                    here if you need a new Client Secret.
                   </p>
                 ) : null}
                 {verifyNpmBlock}
               </div>
             ) : null}
 
-            <p className="text-xs text-muted">
-              On Windows, Claude Desktop’s config file path differs from macOS — use Settings → Developer → Edit Config to
-              open the correct file.
-            </p>
-
-            <div className="space-y-2">
-              <Label htmlFor="advanced-mcp-key-input" className="text-sm font-medium text-foreground">
-                Label for new key
-              </Label>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-3">
-                <TextField
-                  name="label"
-                  value={label}
-                  onChange={(v) => setLabel(String(v))}
-                  className="min-w-0 flex-1 sm:max-w-xs"
-                >
-                  <Input id="advanced-mcp-key-input" placeholder="MCP Key" fullWidth />
-                </TextField>
-                <Button
-                  variant="secondary"
-                  isDisabled={isPending}
-                  onPress={runCreateKeyAdvanced}
-                  className="h-10 min-h-10 w-full shrink-0 sm:w-auto sm:min-w-[10.5rem]"
-                >
-                  {isPending ? "Generating…" : "Generate another key"}
-                </Button>
-              </div>
-            </div>
-
             {installKey ? (
-              <div className="rounded-xl border border-[#e8e8e8] bg-white p-3">
-                <p className="text-xs font-medium text-foreground">Current session install key</p>
-                <p className="mt-1 break-all font-mono text-[11px] text-muted">{installKey}</p>
+              <div className="rounded-xl border border-amber-200/90 bg-amber-50/90 p-3">
+                <p className="text-xs font-semibold text-amber-950">Key from your recent Connect flow</p>
+                <p className="mt-1 text-xs text-amber-900/90">
+                  Copy it now if you still need it for install. It stays here until you revoke this key or leave the session.
+                </p>
+                <p className="mt-2 break-all font-mono text-[11px] text-amber-950">{installKey}</p>
                 <Button variant="secondary" className="mt-2 h-8 min-h-8 text-xs" onPress={() => copy(installKey, "Key copied")}>
                   Copy key
                 </Button>
               </div>
             ) : null}
 
-            <div>
-              <p className="mb-2 text-xs font-medium text-foreground">Claude Web OAuth clients</p>
-              <p className="mb-2 text-[11px] text-muted">
-                Used in claude.ai Advanced settings. Secret is only shown once at creation — revoke and create a new client to
-                rotate.
-              </p>
-              {oauthClients.filter((c) => !c.revoked_at).length === 0 ? (
-                <p className="text-xs text-muted">No active OAuth clients.</p>
-              ) : (
-                <ul className="mb-6 flex flex-col gap-2">
-                  {oauthClients
-                    .filter((c) => !c.revoked_at)
-                    .map((c) => (
-                      <li
-                        key={c.id}
-                        className="flex flex-col justify-between gap-2 rounded-[14px] border border-[#ececec] bg-white p-3 sm:flex-row sm:items-center"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground">{c.name}</p>
-                          <p className="mt-0.5 break-all font-mono text-[11px] text-muted">{c.public_id}</p>
-                        </div>
-                        <Button
-                          variant="secondary"
-                          className="h-8 min-h-8 shrink-0 text-xs"
-                          isDisabled={isPending}
-                          onPress={() => revokeOauthClient(c.id)}
-                        >
-                          Revoke
-                        </Button>
-                      </li>
-                    ))}
-                </ul>
-              )}
-            </div>
-
-            <div>
-              <p className="mb-2 text-xs font-medium text-muted">Your API keys</p>
+            <section className="space-y-2">
+              <h3 className="text-sm font-semibold text-foreground">Your MCP API keys</h3>
               {keys.length === 0 ? (
-                <p className="text-xs text-muted">No keys yet.</p>
+                <p className="text-xs leading-relaxed text-muted">
+                  None yet. Use the <span className="font-medium text-foreground">Connect</span> tab and pick a tool — we create
+                  a setup key for you. Need a <span className="font-medium text-foreground">second device</span> or a named key
+                  without going through Connect again? Expand <span className="font-medium text-foreground">Add another MCP key</span>{" "}
+                  below.
+                </p>
               ) : (
                 <ul className="flex flex-col gap-2">
                   {keys.map((k) => (
@@ -797,7 +743,7 @@ export function McpConnectionsClient({ userId, initialKeys, initialOAuthClients,
                         <p className="text-[11px] text-muted">
                           Created {k.created_at ? new Date(k.created_at).toLocaleString() : "—"}
                           {" · "}
-                          Last used {k.last_used_at ? new Date(k.last_used_at).toLocaleString() : "—"}
+                          Last used {k.last_used_at ? new Date(k.last_used_at).toLocaleString() : "never"}
                         </p>
                       </div>
                       <Button
@@ -830,7 +776,104 @@ export function McpConnectionsClient({ userId, initialKeys, initialOAuthClients,
                   ))}
                 </ul>
               )}
-            </div>
+            </section>
+
+            <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
+                <span>Add another MCP key</span>
+                <HugeiconsIcon
+                  icon={ArrowDown01Icon}
+                  size={16}
+                  strokeWidth={1.75}
+                  className="shrink-0 text-muted transition-transform duration-200 group-open:rotate-180"
+                />
+              </summary>
+              <div className="mt-3 space-y-3 border-t border-[#e8e8e8] pt-3">
+                <p className="text-xs leading-relaxed text-muted">
+                  The <span className="font-medium text-foreground">Connect</span> flow refreshes a single auto-labeled setup key
+                  when you open a client. Use this if you need a <span className="font-medium text-foreground">named key</span>{" "}
+                  for another machine so the first one keeps working. The plaintext is shown once — save it in that
+                  client&apos;s env.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="advanced-mcp-key-input" className="text-xs font-medium text-foreground">
+                    Key name
+                  </Label>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-3">
+                    <TextField
+                      name="label"
+                      value={label}
+                      onChange={(v) => setLabel(String(v))}
+                      className="min-w-0 flex-1 sm:max-w-xs"
+                    >
+                      <Input id="advanced-mcp-key-input" placeholder="e.g. Work laptop" fullWidth />
+                    </TextField>
+                    <Button
+                      variant="secondary"
+                      isDisabled={isPending}
+                      onPress={runCreateKeyAdvanced}
+                      className="h-10 min-h-10 w-full shrink-0 sm:w-auto sm:min-w-[10.5rem]"
+                    >
+                      {isPending ? "Generating…" : "Generate key"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <hr className="border-0 border-t border-[#eaeaea]" aria-hidden />
+
+            <section className="space-y-2">
+              <h3 className="text-sm font-semibold text-foreground">Claude Web — OAuth clients</h3>
+              <p className="text-xs leading-relaxed text-muted">
+                Paste the Client ID in claude.ai Advanced; the secret is shown only when you create the client. To rotate,
+                revoke here and generate a new client on Connect → Claude Web.
+              </p>
+              {oauthClients.filter((c) => !c.revoked_at).length === 0 ? (
+                <p className="text-xs text-muted">No active OAuth clients. Create one from the Connect tab → Claude Web.</p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {oauthClients
+                    .filter((c) => !c.revoked_at)
+                    .map((c) => (
+                      <li
+                        key={c.id}
+                        className="flex flex-col justify-between gap-2 rounded-[14px] border border-[#ececec] bg-white p-3 sm:flex-row sm:items-center"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground">{c.name}</p>
+                          <p className="mt-0.5 break-all font-mono text-[11px] text-muted">{c.public_id}</p>
+                        </div>
+                        <Button
+                          variant="secondary"
+                          className="h-8 min-h-8 shrink-0 text-xs"
+                          isDisabled={isPending}
+                          onPress={() => revokeOauthClient(c.id)}
+                        >
+                          Revoke
+                        </Button>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </section>
+
+            <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-medium text-foreground [&::-webkit-details-marker]:hidden">
+                <span>Claude Desktop on Windows — where is the config file?</span>
+                <HugeiconsIcon
+                  icon={ArrowDown01Icon}
+                  size={14}
+                  strokeWidth={1.75}
+                  className="shrink-0 text-muted transition-transform duration-200 group-open:rotate-180"
+                />
+              </summary>
+              <p className="mt-2 text-xs leading-relaxed text-muted">
+                Paths differ from macOS. In Claude Desktop use{" "}
+                <span className="font-medium text-foreground">Settings → Developer → Edit Config</span> so the app opens the
+                correct file for your system.
+              </p>
+            </details>
           </div>
         ) : null}
 
@@ -838,13 +881,13 @@ export function McpConnectionsClient({ userId, initialKeys, initialOAuthClients,
           <div className="space-y-4">
             <div className="space-y-1">
               <h2 className="font-title text-lg font-semibold leading-snug text-foreground sm:text-xl">FAQ</h2>
-              <p className="text-sm text-muted">Quick answers for MCP setup.</p>
+              <p className="text-sm text-muted">Short answers about connecting Yalp over MCP.</p>
             </div>
 
             <div className="space-y-2">
               <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
                 <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
-                  <span>What is MCP?</span>
+                  <span>What does connecting MCP let my AI app do?</span>
                   <HugeiconsIcon
                     icon={ArrowDown01Icon}
                     size={16}
@@ -853,14 +896,14 @@ export function McpConnectionsClient({ userId, initialKeys, initialOAuthClients,
                   />
                 </summary>
                 <p className="mt-2 text-xs text-muted">
-                  MCP (Model Context Protocol) lets AI clients call your Yalp tools securely. After you connect with an
-                  API key, clients can manage todos and lists without wiring custom endpoints.
+                  It lets the client call Yalp&apos;s todo tools (create, list, update) on your behalf, using the setup you add
+                  here — no custom API work on your side.
                 </p>
               </details>
 
               <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
                 <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
-                  <span>Where do I paste configs?</span>
+                  <span>Where do I install or paste Yalp for each app?</span>
                   <HugeiconsIcon
                     icon={ArrowDown01Icon}
                     size={16}
@@ -868,42 +911,44 @@ export function McpConnectionsClient({ userId, initialKeys, initialOAuthClients,
                     className="text-muted transition-transform duration-200 group-open:rotate-180"
                   />
                 </summary>
-                <div className="mt-2 space-y-1 text-xs text-muted">
+                <div className="mt-2 space-y-1.5 text-xs text-muted">
                   <p>
-                    <span className="font-medium text-foreground">Cursor</span>: Use Add to Cursor from the Cursor setup
-                    screen.
+                    <span className="font-medium text-foreground">Cursor</span> — Use{" "}
+                    <span className="font-medium text-foreground">Add to Cursor</span> on the Connect screen.
                   </p>
                   <p>
-                    <span className="font-medium text-foreground">VS Code</span>: paste into{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">.vscode/mcp.json</code> and start the yalp
-                    server in MCP/Copilot tools.
+                    <span className="font-medium text-foreground">VS Code</span> — Paste the copied JSON into{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">.vscode/mcp.json</code>, then start the yalp
+                    server from MCP / Copilot tools.
                   </p>
                   <p>
-                    <span className="font-medium text-foreground">Windsurf</span>: paste the copied JSON in MCP settings; if
-                    labels differ, map to server command/args/env fields.
+                    <span className="font-medium text-foreground">Windsurf</span> — Paste the JSON in MCP settings (field
+                    names may differ slightly by version).
                   </p>
                   <p>
-                    <span className="font-medium text-foreground">Claude Desktop</span>:{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">{CLAUDE_DESKTOP_CONFIG_HINT}</code>{" "}
-                    (macOS).
+                    <span className="font-medium text-foreground">Claude Desktop</span> — Merge the snippet into the developer
+                    config file (on macOS that is often{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">{CLAUDE_DESKTOP_CONFIG_HINT}</code>
+                    ); on Windows open it via Settings → Developer.
                   </p>
                   <p>
-                    <span className="font-medium text-foreground">Claude Web</span>: remote URL{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpRemoteUrl}</code> plus OAuth Client ID and
-                    Secret from this page (Connect → Claude Web). Stdio legacy URL:{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpApiUrl}</code>.
+                    <span className="font-medium text-foreground">Claude Web (claude.ai)</span> — Use{" "}
+                    <span className="font-medium text-foreground">Connect → Claude Web</span>: copy the remote URL{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpRemoteUrl}</code>, create OAuth credentials
+                    here, then paste Client ID and Secret in the connector&apos;s Advanced fields. Do not put your{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp_</code> API key there.
                   </p>
                   <p>
-                    <span className="font-medium text-foreground">Other clients</span>: use universal JSON; some clients use{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">mcpServers</code>, some use{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">servers</code>.
+                    <span className="font-medium text-foreground">Other clients</span> — Use the universal JSON; your
+                    client&apos;s docs may call the root <code className="rounded bg-white px-1 py-0.5 text-[11px]">mcpServers</code>{" "}
+                    or <code className="rounded bg-white px-1 py-0.5 text-[11px]">servers</code>.
                   </p>
                 </div>
               </details>
 
               <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
                 <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
-                  <span>Friendly tool aliases</span>
+                  <span>Why don&apos;t I see tools, or why do calls fail?</span>
                   <HugeiconsIcon
                     icon={ArrowDown01Icon}
                     size={16}
@@ -911,61 +956,27 @@ export function McpConnectionsClient({ userId, initialKeys, initialOAuthClients,
                     className="text-muted transition-transform duration-200 group-open:rotate-180"
                   />
                 </summary>
-                <div className="mt-2 space-y-1 text-xs text-muted">
+                <div className="mt-2 space-y-1.5 text-xs text-muted">
                   <p>
-                    Examples: <code className="rounded bg-white px-1 py-0.5 text-[11px]">list_todos</code> /{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">todo_list</code>,{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">create_todo</code> /{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">todo_create</code>.
-                  </p>
-                  <p>If tools don’t appear, confirm the client is connected and the API key matches this page.</p>
-                </div>
-              </details>
-
-              <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
-                <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
-                  <span>Auth errors on claude.ai (Claude Web custom connector)</span>
-                  <HugeiconsIcon
-                    icon={ArrowDown01Icon}
-                    size={16}
-                    strokeWidth={1.75}
-                    className="text-muted transition-transform duration-200 group-open:rotate-180"
-                  />
-                </summary>
-                <div className="mt-2 space-y-1 text-xs text-muted">
-                  <p>
-                    Create an OAuth client on this page (Connect → Claude Web), then paste{" "}
-                    <span className="font-medium text-foreground">Client ID</span> and{" "}
-                    <span className="font-medium text-foreground">Client Secret</span> into claude.ai Advanced settings. Your
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]"> yalp_</code> API key is for stdio clients only.
+                    Confirm the client finished setup and is using the same key or OAuth client you created on this page.
                   </p>
                   <p>
-                    If Connect fails, confirm you are signed into the same Yalp account that owns the OAuth client, and that
-                    redirect URIs on the server include Anthropic&apos;s callback (
-                    <code className="rounded bg-white px-1 py-0.5 text-[10px]">YALP_OAUTH_ALLOWED_REDIRECT_URIS</code>).
+                    Canonical tool names are{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">create_todo</code>,{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">list_todos</code>, and{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">update_todo</code>. Some UIs show aliases (e.g.{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">todo_list</code>).
                   </p>
                   <p>
-                    Optional future: static Bearer for Web without OAuth is tracked in{" "}
-                    <a
-                      href="https://github.com/anthropics/claude-ai-mcp/issues/112"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-foreground underline underline-offset-2 hover:no-underline"
-                    >
-                      claude-ai-mcp#112
-                    </a>
-                    .
-                  </p>
-                  <p>
-                    If API keys fail after a deploy, regenerate them after any{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">YALP_API_KEY_PEPPER</code> change.
+                    After a successful tool call from the client,{" "}
+                    <span className="font-medium text-foreground">Looks connected</span> on this page should update.
                   </p>
                 </div>
               </details>
 
               <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
                 <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
-                  <span>Endpoint works in curl but Claude still errors</span>
+                  <span>Claude Web OAuth or Connect fails — what should I check?</span>
                   <HugeiconsIcon
                     icon={ArrowDown01Icon}
                     size={16}
@@ -973,43 +984,50 @@ export function McpConnectionsClient({ userId, initialKeys, initialOAuthClients,
                     className="text-muted transition-transform duration-200 group-open:rotate-180"
                   />
                 </summary>
-                <div className="mt-2 space-y-1 text-xs text-muted">
+                <div className="mt-2 space-y-1.5 text-xs text-muted">
                   <p>
-                    If a direct <code className="rounded bg-white px-1 py-0.5 text-[11px]">POST</code> to{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">/api/mcp/stream</code> with your key succeeds
-                    but Claude.ai still fails, capture the failing request in the browser Network tab (URL + status) and report
-                    it to Anthropic’s MCP integration hub:{" "}
+                    Use <span className="font-medium text-foreground">Client ID</span> and{" "}
+                    <span className="font-medium text-foreground">Client Secret</span> from this app in claude.ai Advanced — not
+                    a <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp_</code> API key.
+                  </p>
+                  <p>
+                    Complete browser sign-in with the same Yalp account that owns those OAuth credentials.
+                  </p>
+                  <p>
+                    If you self-host, allowed OAuth redirect URLs on the server must include your provider&apos;s callbacks
+                    (configure via environment; see project docs).
+                  </p>
+                  <p>
+                    If stdio/API keys stop working after a deploy, create new keys — especially if server-side key pepper
+                    settings changed.
+                  </p>
+                </div>
+              </details>
+
+              <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
+                <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
+                  <span>The MCP URL works elsewhere but Claude Web still shows an error — why?</span>
+                  <HugeiconsIcon
+                    icon={ArrowDown01Icon}
+                    size={16}
+                    strokeWidth={1.75}
+                    className="text-muted transition-transform duration-200 group-open:rotate-180"
+                  />
+                </summary>
+                <div className="mt-2 space-y-1.5 text-xs text-muted">
+                  <p>
+                    The browser path can differ from a manual <code className="rounded bg-white px-1 py-0.5 text-[11px]">curl</code>{" "}
+                    test. In DevTools → Network, note the failing request URL and status, then report it where Claude Web MCP
+                    issues are tracked:{" "}
                     <a
                       href="https://github.com/anthropics/claude-ai-mcp/issues"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-medium text-foreground underline underline-offset-2 hover:no-underline"
                     >
-                      anthropics/claude-ai-mcp (Issues)
+                      anthropics/claude-ai-mcp
                     </a>
                     .
-                  </p>
-                </div>
-              </details>
-
-              <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
-                <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
-                  <span>Claude Web says connected — what should I try first?</span>
-                  <HugeiconsIcon
-                    icon={ArrowDown01Icon}
-                    size={16}
-                    strokeWidth={1.75}
-                    className="text-muted transition-transform duration-200 group-open:rotate-180"
-                  />
-                </summary>
-                <div className="mt-2 space-y-1 text-xs text-muted">
-                  <p>After connector auth is set, send one short instruction first.</p>
-                  <p>
-                    Example: <code className="rounded bg-white px-1 py-0.5 text-[11px]">List my todos</code>
-                  </p>
-                  <p>
-                    If this succeeds, you should see <span className="font-medium text-foreground">Looks connected</span>{" "}
-                    update on this page.
                   </p>
                 </div>
               </details>
