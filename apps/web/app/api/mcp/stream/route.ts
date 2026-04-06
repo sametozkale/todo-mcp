@@ -17,36 +17,10 @@ const SERVER_VERSION = "0.1.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Api-Key, Mcp-Session-Id, Accept",
+  "Access-Control-Allow-Headers":
+    "Authorization, Content-Type, X-Api-Key, Api-Key, Mcp-Session-Id, Accept",
   "Access-Control-Max-Age": "86400",
 };
-
-function debugLog(
-  runId: string,
-  hypothesisId: string,
-  location: string,
-  message: string,
-  data: Record<string, unknown>,
-) {
-  // #region agent log
-  fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Debug-Session-Id": "08e9cb",
-    },
-    body: JSON.stringify({
-      sessionId: "08e9cb",
-      runId,
-      hypothesisId,
-      location,
-      message,
-      data,
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-}
 
 function jsonRpcSuccess(id: string | number | null, result: unknown) {
   return { jsonrpc: "2.0" as const, id, result };
@@ -62,7 +36,11 @@ function jsonRpcError(id: string | number | null, code: number, message: string,
 
 function normalizeApiKey(raw: string | null): string | null {
   if (!raw) return null;
-  const v = raw.trim();
+  let v = raw.trim();
+  if (!v) return null;
+  if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+    v = v.slice(1, -1).trim();
+  }
   if (!v) return null;
   if (v.toLowerCase().startsWith("bearer ")) {
     const token = v.slice(7).trim();
@@ -76,9 +54,10 @@ function parseBearerApiKey(req: Request): string | null {
   const authToken = normalizeApiKey(auth);
   if (authToken) return authToken;
 
-  const x = req.headers.get("x-api-key");
-  const xToken = normalizeApiKey(x);
-  if (xToken) return xToken;
+  for (const name of ["x-api-key", "api-key"]) {
+    const xToken = normalizeApiKey(req.headers.get(name));
+    if (xToken) return xToken;
+  }
 
   return null;
 }
@@ -91,16 +70,10 @@ function mergeCors(res: NextResponse): NextResponse {
 }
 
 export function OPTIONS() {
-  // #region agent log
-  debugLog("pre-fix", "H1", "api/mcp/stream/route.ts:OPTIONS", "OPTIONS hit", {});
-  // #endregion
   return mergeCors(new NextResponse(null, { status: 204 }));
 }
 
 export function GET() {
-  // #region agent log
-  debugLog("pre-fix", "H1", "api/mcp/stream/route.ts:GET", "GET health hit", {});
-  // #endregion
   return mergeCors(
     NextResponse.json(
       {
@@ -112,7 +85,11 @@ export function GET() {
         auth: {
           requiredFor: ["tools/call"],
           optionalFor: ["initialize", "notifications/initialized", "ping", "tools/list"],
-          accepted: ["Authorization: Bearer <yalp_api_key>", "X-Api-Key: <yalp_api_key>"],
+          accepted: [
+            "Authorization: Bearer <yalp_api_key>",
+            "X-Api-Key: <yalp_api_key>",
+            "Api-Key: <yalp_api_key>",
+          ],
         },
         compatibilityChecklist: [
           "Use POST with JSON-RPC 2.0 payload",
@@ -144,13 +121,6 @@ async function handleJsonRpc(
   addBearerAuthHint?: boolean;
 }> {
   const isNotification = !("id" in rpc);
-  // #region agent log
-  debugLog("pre-fix", "H2", "api/mcp/stream/route.ts:handleJsonRpc", "RPC received", {
-    method: typeof rpc.method === "string" ? rpc.method : null,
-    hasId: "id" in rpc,
-    jsonrpc: typeof rpc.jsonrpc === "string" ? rpc.jsonrpc : null,
-  });
-  // #endregion
 
   if (rpc.jsonrpc !== "2.0") {
     if (isNotification) return { status: 204, body: null, isNotification: true };
@@ -218,29 +188,20 @@ async function handleJsonRpc(
   }
 
   const apiKey = parseBearerApiKey(req);
-  // #region agent log
-  debugLog("pre-fix", "H3", "api/mcp/stream/route.ts:auth-parse", "Auth headers parsed", {
-    hasAuthorizationHeader: Boolean(req.headers.get("authorization")),
-    hasXApiKeyHeader: Boolean(req.headers.get("x-api-key")),
-    apiKeyParsed: Boolean(apiKey),
-  });
-  // #endregion
   if (!apiKey) {
     return {
       status: 200,
-      body: jsonRpcError(id, -32000, "Unauthorized: send Authorization: Bearer <yalp_api_key> or X-Api-Key."),
+      body: jsonRpcError(
+        id,
+        -32000,
+        "Unauthorized: send Authorization: Bearer <yalp_api_key>, X-Api-Key, or Api-Key.",
+      ),
       isNotification: false,
       addBearerAuthHint: true,
     };
   }
 
   const { userId, keyRowId } = await authUserIdFromApiKey(supabase, apiKey);
-  // #region agent log
-  debugLog("pre-fix", "H4", "api/mcp/stream/route.ts:auth-lookup", "API key lookup result", {
-    userResolved: Boolean(userId),
-    keyRowResolved: Boolean(keyRowId),
-  });
-  // #endregion
   if (!userId || !keyRowId) {
     return {
       status: 200,
@@ -326,23 +287,10 @@ async function handleJsonRpc(
 }
 
 export async function POST(req: Request) {
-  // #region agent log
-  debugLog("pre-fix", "H1", "api/mcp/stream/route.ts:POST", "POST hit", {
-    contentType: req.headers.get("content-type"),
-    hasAuthorizationHeader: Boolean(req.headers.get("authorization")),
-    hasXApiKeyHeader: Boolean(req.headers.get("x-api-key")),
-    hasMcpSessionIdHeader: Boolean(req.headers.get("mcp-session-id")),
-  });
-  // #endregion
   let supabase: ReturnType<typeof getServiceSupabase>;
   try {
     supabase = getServiceSupabase();
   } catch (err: unknown) {
-    // #region agent log
-    debugLog("pre-fix", "H5", "api/mcp/stream/route.ts:POST", "Supabase config init failed", {
-      errorMessage: err instanceof Error ? err.message : "unknown",
-    });
-    // #endregion
     return mergeCors(
       NextResponse.json(
         {
@@ -362,9 +310,6 @@ export async function POST(req: Request) {
   try {
     raw = await req.json();
   } catch {
-    // #region agent log
-    debugLog("pre-fix", "H2", "api/mcp/stream/route.ts:POST", "JSON parse failed", {});
-    // #endregion
     return mergeCors(
       NextResponse.json(jsonRpcError(null, -32700, "Parse error"), { status: 400 }),
     );
@@ -381,13 +326,6 @@ export async function POST(req: Request) {
   }
 
   const out = await handleJsonRpc(req, supabase, raw as JsonRpcRequest);
-  // #region agent log
-  debugLog("pre-fix", "H2", "api/mcp/stream/route.ts:POST", "RPC handled", {
-    status: out.status,
-    isNotification: out.isNotification,
-    addBearerAuthHint: Boolean(out.addBearerAuthHint),
-  });
-  // #endregion
   if (out.isNotification) {
     const empty = mergeCors(new NextResponse(null, { status: 204 }));
     const sessionId = req.headers.get("mcp-session-id") ?? crypto.randomUUID();
