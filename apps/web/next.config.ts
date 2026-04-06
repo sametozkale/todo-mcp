@@ -5,7 +5,17 @@ const nextConfig: NextConfig = {
    * HeroUI + framer-motion: compile with the app bundle to avoid webpack chunk/runtime
    * mismatches in dev (e.g. "__webpack_modules__[moduleId] is not a function" after HMR).
    */
-  transpilePackages: ["@heroui/react", "@heroui/styles", "framer-motion", "sonner"],
+  transpilePackages: [
+    "@heroui/react",
+    "@heroui/styles",
+    "framer-motion",
+    "sonner",
+    /** Drag-and-drop: prebundle with app to reduce Webpack chunk/runtime drift in dev. */
+    "@dnd-kit/core",
+    "@dnd-kit/sortable",
+    "@dnd-kit/utilities",
+    "@dnd-kit/modifiers",
+  ],
   /**
    * Avoid `experimental.optimizePackageImports` here: with Webpack it has triggered
    * `__webpack_modules__[moduleId] is not a function` (HMR / prod) together with

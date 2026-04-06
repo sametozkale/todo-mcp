@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Toaster } from "sonner";
+import { SonnerToaster } from "@/components/sonner-toaster";
 
 /**
  * HeroUI v3 uses CSS (`@import "@heroui/styles"`) for theming; there is no root `HeroUIProvider`.
@@ -11,7 +11,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <>
       {children}
-      <Toaster
+      <SonnerToaster
         position="bottom-right"
         visibleToasts={5}
         closeButton

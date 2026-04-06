@@ -109,18 +109,22 @@ const guides: Record<PlatformId, InstallGuide> = {
     headline: "Claude Web",
     pickerTitle: "Claude Web",
     subline:
-      "Remote MCP over HTTPS. Use the URL ending with /api/mcp/stream (not /api/mcp), then authenticate with your API key.",
+      "Remote MCP over HTTPS only — not the npm stdio bridge. Use the URL ending with /api/mcp/stream on https://www.yalp.work (not /api/mcp).",
     pickerBlurb: "Remote MCP URL + API key",
     primaryLabel: "Copy remote MCP URL",
     primaryKind: "copy_claude_web_url",
     needsInstallContext: false,
     steps: [
       { title: "Create or copy a Yalp API key (Advanced → API keys on this page if needed)" },
-      { title: "Click below to copy the remote MCP URL (ends with /api/mcp/stream)" },
+      {
+        title: "Copy the remote MCP URL (must be https://www.yalp.work/.../api/mcp/stream)",
+        description:
+          "Do not use apex yalp.work alone (it may redirect). Updating npm yalp-mcp-server does not affect Claude Web — that package talks to /api/mcp over stdio.",
+      },
       {
         title: "In claude.ai → Settings → Connectors (or Integrations) → add custom connector",
         description:
-          "Paste the URL. For auth, use Authorization: Bearer yalp_... (or paste the key in API key field if shown).",
+          "Paste the URL. For auth, use the API key field with yalp_… only, or Authorization Bearer yalp_… as shown on this page.",
       },
     ],
   },

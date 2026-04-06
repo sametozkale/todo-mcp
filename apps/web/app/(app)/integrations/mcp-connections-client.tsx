@@ -458,7 +458,7 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
           "Confirm “Looks connected” appears after tool usage.",
         ],
         claudeWeb: [
-          "Connector is added with /api/mcp/stream and API key auth.",
+          "Connector URL uses https://www.yalp.work/.../api/mcp/stream (www, not apex) and your Yalp API key.",
           "Run a prompt that triggers tools/list or tools/call.",
           "Confirm “Looks connected” appears after tool usage.",
         ],
@@ -631,6 +631,20 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                           </span>
                         </Button>
                       </div>
+                      <p className="mt-2 text-xs text-muted">
+                        Quick check:{" "}
+                        <a
+                          href={mcpRemoteUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-foreground underline underline-offset-2 hover:no-underline"
+                        >
+                          Open this URL in a new tab
+                        </a>{" "}
+                        — you should see JSON with <code className="rounded bg-white px-1 py-0.5 text-[11px]">ok</code> and{" "}
+                        <code className="rounded bg-white px-1 py-0.5 text-[11px]">mcp-stream-http</code>. If not, fix DNS or
+                        URL before pasting into Claude.
+                      </p>
                     </div>
 
                     <div>
@@ -719,7 +733,19 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
               <p className="mt-0.5 text-[11px] text-muted sm:text-xs">Keys, revoke, developer checks</p>
             </div>
 
-            {phase === "detail" ? <div className="space-y-4">{verifyFlowBlock}{verifyNpmBlock}</div> : null}
+            {phase === "detail" ? (
+              <div className="space-y-4">
+                {verifyFlowBlock}
+                {selectedPlatform === "claudeWeb" ? (
+                  <p className="text-xs text-muted">
+                    The npm command below is for stdio clients (Cursor, Claude Desktop, Claude Code).{" "}
+                    <span className="font-medium text-foreground">Claude Web</span> uses the remote HTTPS URL only — it does
+                    not run <code className="rounded bg-white px-1 py-0.5 text-[11px]">npx</code> or the published npm bridge.
+                  </p>
+                ) : null}
+                {verifyNpmBlock}
+              </div>
+            ) : null}
 
             <p className="text-xs text-muted">
               On Windows, Claude Desktop’s config file path differs from macOS — use Settings → Developer → Edit Config to
@@ -870,8 +896,10 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                     <span className="font-medium text-foreground">Claude Web</span>: Remote MCP URL{" "}
                     <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpRemoteUrl}</code> — authenticate with
                     your Yalp API key (Bearer or <code className="rounded bg-white px-1 py-0.5 text-[11px]">X-Api-Key</code>
-                    ). The legacy JSON tool endpoint <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpApiUrl}</code>{" "}
-                    is for the npm stdio bridge only.
+                    ). Use <span className="font-medium text-foreground">www</span> in the host; apex-only redirects can
+                    break connector auth. The legacy JSON tool endpoint{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpApiUrl}</code> is for the npm stdio
+                    bridge only, not for Claude Web.
                   </p>
                   <p>
                     <span className="font-medium text-foreground">Other clients</span>: use universal JSON; some clients use{" "}
@@ -899,6 +927,61 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                     <code className="rounded bg-white px-1 py-0.5 text-[11px]">todo_create</code>.
                   </p>
                   <p>If tools don’t appear, confirm the client is connected and the API key matches this page.</p>
+                </div>
+              </details>
+
+              <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
+                <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
+                  <span>Invalid API key or “refresh connection” in Claude Web</span>
+                  <HugeiconsIcon
+                    icon={ArrowDown01Icon}
+                    size={16}
+                    strokeWidth={1.75}
+                    className="text-muted transition-transform duration-200 group-open:rotate-180"
+                  />
+                </summary>
+                <div className="mt-2 space-y-1 text-xs text-muted">
+                  <p>
+                    Use the copied URL with <span className="font-medium text-foreground">https://www.yalp.work</span> and
+                    path <code className="rounded bg-white px-1 py-0.5 text-[11px]">/api/mcp/stream</code>. Disconnect the
+                    connector, create a <span className="font-medium text-foreground">new Yalp API key</span> on this page,
+                    reconnect, and paste the key once (raw <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp_…</code>{" "}
+                    in the key field, or <code className="rounded bg-white px-1 py-0.5 text-[11px]">Bearer yalp_…</code> where
+                    asked).
+                  </p>
+                  <p>
+                    If your project recently changed the <code className="rounded bg-white px-1 py-0.5 text-[11px]">YALP_API_KEY_PEPPER</code>{" "}
+                    server setting, old keys stop working until you generate new ones.
+                  </p>
+                </div>
+              </details>
+
+              <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
+                <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
+                  <span>Endpoint works in curl but Claude still errors</span>
+                  <HugeiconsIcon
+                    icon={ArrowDown01Icon}
+                    size={16}
+                    strokeWidth={1.75}
+                    className="text-muted transition-transform duration-200 group-open:rotate-180"
+                  />
+                </summary>
+                <div className="mt-2 space-y-1 text-xs text-muted">
+                  <p>
+                    If a direct <code className="rounded bg-white px-1 py-0.5 text-[11px]">POST</code> to{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">/api/mcp/stream</code> with your key succeeds
+                    but Claude.ai still fails, capture the failing request in the browser Network tab (URL + status) and report
+                    it to Anthropic’s MCP integration hub:{" "}
+                    <a
+                      href="https://github.com/anthropics/claude-ai-mcp/issues"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-foreground underline underline-offset-2 hover:no-underline"
+                    >
+                      anthropics/claude-ai-mcp (Issues)
+                    </a>
+                    .
+                  </p>
                 </div>
               </details>
 

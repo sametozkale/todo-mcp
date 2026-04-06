@@ -169,7 +169,17 @@ export function McpPlatformTroubleshooting() {
       <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-muted">
         <li>If copy fails, allow clipboard permissions and try again.</li>
         <li>If tools do not run, confirm your current API key is active in the Active connections tab.</li>
-        <li>For Claude Web, ensure the URL ends with <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">/api/mcp/stream</code>.</li>
+        <li>
+          For Claude Web, use <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">https://www.yalp.work</code> in
+          the remote URL (apex <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">yalp.work</code> redirects can
+          break auth). The path must end with{" "}
+          <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">/api/mcp/stream</code> — not{" "}
+          <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">/api/mcp</code> (that is for the npm stdio client).
+        </li>
+        <li>
+          If the app still reports an invalid key after a deploy, generate a new key here — especially if your server
+          admin changed the API key pepper env var.
+        </li>
       </ul>
     </details>
   );
