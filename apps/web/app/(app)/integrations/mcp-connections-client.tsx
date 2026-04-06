@@ -7,16 +7,18 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Copy as CopyIcon } from "lucide-react";
 import {
-  buildClaudeCodeMcpCommand,
   buildCursorMcpInstallDeeplink,
   buildMcpApiUrl,
+  buildRemoteMcpUrl,
   CLAUDE_DESKTOP_CONFIG_HINT,
   formatClaudeDesktopConfigJson,
+  formatClaudeCodeCommandBundle,
   formatClaudeWebCopyText,
   formatUniversalConfigJson,
   formatVsCodeMcpJson,
   formatWindsurfMcpJson,
   SYNC_VERIFY_NPX_COMMAND,
+  validateInstallContext,
 } from "@/lib/mcp-platform-configs";
 import {
   DEFAULT_PLATFORM_ORDER,
@@ -303,6 +305,7 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
   const activityMessage = `Last MCP tool use ${formatRelativeTime(lastUsed)} (any client using your keys).`;
 
   const mcpApiUrl = buildMcpApiUrl(baseUrl);
+  const mcpRemoteUrl = buildRemoteMcpUrl(baseUrl);
 
   const selectPlatform = useCallback(
     (id: PlatformId) => {
@@ -343,57 +346,75 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
 
   const handlePrimaryPress = useCallback(() => {
     if (!selectedPlatform || !guide) return;
-    switch (guide.primaryKind) {
-      case "deeplink_cursor": {
-        if (!ctx) return;
-        bumpEngagement();
-        window.location.href = buildCursorMcpInstallDeeplink(ctx);
-        toast.success("Opening Cursor… Follow the prompt to install.", { timeout: 3500 });
-        break;
+    if (ctx) {
+      const validate = validateInstallContext(ctx, {
+        requiresRemoteHttps: selectedPlatform === "claudeWeb",
+      });
+      if (!validate.ok) {
+        toast.danger(validate.message, { timeout: 4500 });
+        return;
       }
-      case "copy_vscode": {
-        if (!ctx) return;
-        bumpEngagement();
-        copy(formatVsCodeMcpJson(ctx), "VS Code config copied — paste into .vscode/mcp.json");
-        break;
+    }
+    try {
+      switch (guide.primaryKind) {
+        case "deeplink_cursor": {
+          if (!ctx) return;
+          bumpEngagement();
+          window.location.href = buildCursorMcpInstallDeeplink(ctx);
+          toast.success("Opening Cursor… Follow the prompt to install.", { timeout: 3500 });
+          break;
+        }
+        case "copy_vscode": {
+          if (!ctx) return;
+          bumpEngagement();
+          copy(formatVsCodeMcpJson(ctx), "VS Code config copied — paste into .vscode/mcp.json");
+          break;
+        }
+        case "copy_claude_desktop": {
+          if (!ctx) return;
+          bumpEngagement();
+          copy(
+            formatClaudeDesktopConfigJson(ctx),
+            "Claude Desktop config copied — paste in Developer → Edit Config",
+          );
+          break;
+        }
+        case "copy_claude_web_url": {
+          bumpEngagement();
+          copy(
+            formatClaudeWebCopyText(baseUrl),
+            "Remote MCP URL copied — in Claude, set API key as Bearer or in the connector key field",
+          );
+          break;
+        }
+        case "copy_windsurf": {
+          if (!ctx) return;
+          bumpEngagement();
+          copy(formatWindsurfMcpJson(ctx), "Windsurf config copied — paste in MCP settings");
+          break;
+        }
+        case "copy_claude_code": {
+          if (!ctx) return;
+          bumpEngagement();
+          copy(
+            formatClaudeCodeCommandBundle(ctx),
+            "Claude Code command bundle copied — pick bash/zsh, fish, or PowerShell",
+          );
+          break;
+        }
+        case "copy_universal": {
+          if (!ctx) return;
+          bumpEngagement();
+          copy(formatUniversalConfigJson(ctx), "Universal config copied");
+          break;
+        }
+        default:
+          break;
       }
-      case "copy_claude_desktop": {
-        if (!ctx) return;
-        bumpEngagement();
-        copy(
-          formatClaudeDesktopConfigJson(ctx),
-          "Claude Desktop config copied — paste in Developer → Edit Config",
-        );
-        break;
-      }
-      case "copy_claude_web_url": {
-        bumpEngagement();
-        copy(
-          formatClaudeWebCopyText(baseUrl),
-          "MCP URL copied — add your API key in the client if asked",
-        );
-        break;
-      }
-      case "copy_windsurf": {
-        if (!ctx) return;
-        bumpEngagement();
-        copy(formatWindsurfMcpJson(ctx), "Windsurf config copied — paste in MCP settings");
-        break;
-      }
-      case "copy_claude_code": {
-        if (!ctx) return;
-        bumpEngagement();
-        copy(buildClaudeCodeMcpCommand(ctx), "Claude Code command copied — run in a terminal");
-        break;
-      }
-      case "copy_universal": {
-        if (!ctx) return;
-        bumpEngagement();
-        copy(formatUniversalConfigJson(ctx), "Universal config copied");
-        break;
-      }
-      default:
-        break;
+    } catch (err: unknown) {
+      toast.danger(err instanceof Error ? err.message : "Could not prepare MCP config.", {
+        timeout: 4500,
+      });
     }
   }, [selectedPlatform, guide, ctx, baseUrl, bumpEngagement, copy]);
 
@@ -401,11 +422,62 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
   const primaryDisabled = primaryNeedsCtx && !ctx;
   const showCopyIcon = guide ? guide.primaryKind !== "deeplink_cursor" : false;
 
+  const verifyChecklist = selectedPlatform
+    ? {
+        cursor: [
+          "Cursor MCP panel shows yalp as installed/running.",
+          "Ask a quick test prompt (for example: list my todos).",
+          "Confirm “Looks connected” appears after tool usage.",
+        ],
+        vscode: [
+          "VS Code MCP/Copilot tools shows yalp server started.",
+          "Run a quick test prompt (for example: list my todos).",
+          "Confirm “Looks connected” appears after tool usage.",
+        ],
+        windsurf: [
+          "Windsurf MCP settings shows yalp server configured.",
+          "Run a quick test prompt in Windsurf assistant.",
+          "Confirm “Looks connected” appears after tool usage.",
+        ],
+        manual: [
+          "Your client accepted the pasted MCP server config.",
+          "Run one test tool call (list todos / list lists).",
+          "Confirm “Looks connected” appears after tool usage.",
+        ],
+        claudeDesktop: [
+          "Claude Desktop reloads with yalp server present.",
+          "Run a quick test prompt (for example: list my todos).",
+          "Confirm “Looks connected” appears after tool usage.",
+        ],
+        claudeCode: [
+          "Run the copied shell command bundle for your shell.",
+          "Check CLI MCP list/status, then run one test prompt.",
+          "Confirm “Looks connected” appears after tool usage.",
+        ],
+        claudeWeb: [
+          "Connector is added with /api/mcp/stream and API key auth.",
+          "Run a prompt that triggers tools/list or tools/call.",
+          "Confirm “Looks connected” appears after tool usage.",
+        ],
+      }[selectedPlatform]
+    : null;
+
+  const verifyFlowBlock = verifyChecklist ? (
+    <div className="rounded-2xl border border-[#e8e8e8] bg-[#fafafa] p-3 sm:p-4">
+      <p className="mb-1.5 text-xs font-semibold text-foreground">Verify this platform connection</p>
+      <ol className="list-decimal space-y-1 pl-4 text-xs text-muted">
+        {verifyChecklist.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ol>
+    </div>
+  ) : null;
+
   const verifyNpmBlock = (
     <div className="rounded-2xl border border-[#ececec] bg-[#fafafa] p-3 sm:p-4">
       <p className="mb-1.5 text-xs font-semibold text-foreground">Verify npm package locally</p>
       <p className="mb-3 text-xs text-muted">
-        Run once in a terminal to confirm the published MCP package downloads (optional; for troubleshooting).
+        Optional troubleshooting: run once in a terminal to confirm the published MCP package downloads and starts.
       </p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <code className="min-h-10 min-w-0 flex-1 overflow-auto rounded-[12px] border border-[#e8e8e8] bg-white px-3 py-2.5 font-mono text-xs leading-snug text-foreground shadow-[inset_0_1px_0_rgba(0,0,0,0.03)]">
@@ -515,21 +587,25 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                   suggestedIds={suggestedIds}
                   onSelect={selectPlatform}
                 />
-                <div>{verifyNpmBlock}</div>
+                {verifyFlowBlock}
               </>
             ) : null}
 
             {phase === "detail" && selectedPlatform && guide ? (
-              <McpPlatformDetail
-                platform={selectedPlatform}
-                guide={guide}
-                onPrimaryPress={handlePrimaryPress}
-                primaryDisabled={primaryDisabled}
-                isEnsuringKey={isEnsuringInstall}
-                showPrimaryIcon={showCopyIcon}
-                showActivity={showActivity}
-                activityMessage={activityMessage}
-              />
+              <>
+                <McpPlatformDetail
+                  platform={selectedPlatform}
+                  guide={guide}
+                  onPrimaryPress={handlePrimaryPress}
+                  primaryDisabled={primaryDisabled}
+                  isEnsuringKey={isEnsuringInstall}
+                  showPrimaryIcon={showCopyIcon}
+                  showActivity={showActivity}
+                  activityMessage={activityMessage}
+                />
+                {verifyFlowBlock}
+                {verifyNpmBlock}
+              </>
             ) : null}
           </div>
         ) : null}
@@ -541,7 +617,7 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
               <p className="mt-0.5 text-[11px] text-muted sm:text-xs">Keys, revoke, developer checks</p>
             </div>
 
-            {phase === "detail" ? <div className="space-y-4">{verifyNpmBlock}</div> : null}
+            {phase === "detail" ? <div className="space-y-4">{verifyFlowBlock}{verifyNpmBlock}</div> : null}
 
             <p className="text-xs text-muted">
               On Windows, Claude Desktop’s config file path differs from macOS — use Settings → Developer → Edit Config to
@@ -675,14 +751,30 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                     screen.
                   </p>
                   <p>
+                    <span className="font-medium text-foreground">VS Code</span>: paste into{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">.vscode/mcp.json</code> and start the yalp
+                    server in MCP/Copilot tools.
+                  </p>
+                  <p>
+                    <span className="font-medium text-foreground">Windsurf</span>: paste the copied JSON in MCP settings; if
+                    labels differ, map to server command/args/env fields.
+                  </p>
+                  <p>
                     <span className="font-medium text-foreground">Claude Desktop</span>:{" "}
                     <code className="rounded bg-white px-1 py-0.5 text-[11px]">{CLAUDE_DESKTOP_CONFIG_HINT}</code>{" "}
                     (macOS).
                   </p>
                   <p>
-                    <span className="font-medium text-foreground">Claude Web</span>: URL{" "}
-                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpApiUrl}</code> — add your API key in
-                    the client if required.
+                    <span className="font-medium text-foreground">Claude Web</span>: Remote MCP URL{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpRemoteUrl}</code> — authenticate with
+                    your Yalp API key (Bearer or <code className="rounded bg-white px-1 py-0.5 text-[11px]">X-Api-Key</code>
+                    ). The legacy JSON tool endpoint <code className="rounded bg-white px-1 py-0.5 text-[11px]">{mcpApiUrl}</code>{" "}
+                    is for the npm stdio bridge only.
+                  </p>
+                  <p>
+                    <span className="font-medium text-foreground">Other clients</span>: use universal JSON; some clients use{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">mcpServers</code>, some use{" "}
+                    <code className="rounded bg-white px-1 py-0.5 text-[11px]">servers</code>.
                   </p>
                 </div>
               </details>

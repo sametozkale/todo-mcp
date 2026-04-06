@@ -3,11 +3,13 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { PRODUCT_HOME } from "@/lib/routes";
 import { sanitizeInternalNextPath } from "@/lib/auth/redirect";
+import { getSiteUrl } from "@/lib/site-url";
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const next = sanitizeInternalNextPath(searchParams.get("next"), PRODUCT_HOME);
+  const siteUrl = getSiteUrl();
 
   if (code) {
     const cookieStore = await cookies();
@@ -29,9 +31,9 @@ export async function GET(request: Request) {
     );
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${siteUrl}${next}`);
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  return NextResponse.redirect(`${siteUrl}/login?error=auth`);
 }

@@ -10,6 +10,12 @@ const siteUrl = getSiteUrl();
 const siteName = "Yalp";
 const defaultDescription =
   "Yalp is a lightweight todo app with MCP connections for AI tools. Stay focused and get things done.";
+const socialImage = {
+  url: "/metadata-yalp.png",
+  width: 1200,
+  height: 630,
+  alt: "Yalp AI - Manage your to-dos from Cursor, Claude & more",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -54,20 +60,13 @@ export const metadata: Metadata = {
     siteName,
     title: siteName,
     description: defaultDescription,
-    images: [
-      {
-        url: "/opengraph-image",
-        width: 1200,
-        height: 630,
-        alt: "Yalp — lightweight todo and MCP connections",
-      },
-    ],
+    images: [socialImage],
   },
   twitter: {
     card: "summary_large_image",
     title: siteName,
     description: defaultDescription,
-    images: ["/opengraph-image"],
+    images: [socialImage.url],
   },
   ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
     ? {

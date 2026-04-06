@@ -152,6 +152,19 @@ export function McpPlatformTroubleshooting() {
         <li>If nothing happens in Cursor, confirm Cursor is installed and try the button again.</li>
         <li>If copy fails, check browser permissions for the clipboard.</li>
         <li>For API key issues, expand the API keys section below and confirm keys are not revoked.</li>
+        <li>
+          VS Code/Windsurf: if the settings UI labels differ, use the copied JSON and map fields per client docs
+          (`mcpServers` vs `servers`).
+        </li>
+        <li>
+          Claude Web: use the copied <strong className="font-medium text-foreground">remote MCP</strong> URL (ends with{" "}
+          <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">/api/mcp/stream</code>) and paste your API key
+          where the connector asks (Bearer token or API key field).
+        </li>
+        <li>
+          Claude Code: the copied command needs the <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">claude</code>{" "}
+          CLI installed; use the copied bundle and run the command for your shell (bash/zsh, fish, or PowerShell).
+        </li>
       </ul>
     </details>
   );

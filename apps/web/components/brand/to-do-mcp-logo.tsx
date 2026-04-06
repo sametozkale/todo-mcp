@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-/** `public/to-do-mcp-logo.png` — copy of `To Do MCP - Logo.png` (192×192). */
+/** App logo asset used across brand surfaces (192×192). */
 const LOGO_SRC = "/to-do-mcp-logo.png";
 
 type ToDoMcpLogoProps = {

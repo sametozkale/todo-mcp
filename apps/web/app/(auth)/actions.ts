@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { PRODUCT_HOME } from "@/lib/routes";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -8,14 +9,27 @@ import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest"
 import { getSiteUrl } from "@/lib/site-url";
 import { sanitizeInternalNextPath } from "@/lib/auth/redirect";
 
+function getServiceRoleClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) return null;
+  return createSupabaseClient(url, serviceRoleKey, { auth: { persistSession: false } });
+}
+
 async function getRequestOrigin(): Promise<string> {
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const protocol = h.get("x-forwarded-proto") ?? "http";
+  // Prefer configured canonical origin in production so auth cookies/callbacks
+  // do not bounce between apex/www hosts.
+  const configured = getSiteUrl();
+  if (configured.startsWith("https://")) {
+    return configured;
+  }
   if (host) {
     return `${protocol}://${host}`;
   }
-  return getSiteUrl();
+  return configured;
 }
 
 export type AuthActionState = {
@@ -42,6 +56,14 @@ export async function loginAction(
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
+    const lower = error.message.toLowerCase();
+    if (lower.includes("invalid login credentials")) {
+      return {
+        error:
+          "Email or password is incorrect. If you just signed up, your confirmation email may be delayed — try Google for instant access.",
+        fields: { email },
+      };
+    }
     return { error: error.message, fields: { email } };
   }
 
@@ -127,6 +149,44 @@ export async function signupAction(
   if (error) {
     const message = error.message || "Could not create your account. Please try again.";
     const lower = message.toLowerCase();
+    if (lower.includes("rate limit") || lower.includes("over_email_send_rate_limit")) {
+      // Fallback: when inbuilt SMTP is throttled, provision user with service role
+      // and sign in immediately so users are not blocked by email throughput limits.
+      const admin = getServiceRoleClient();
+      if (admin) {
+        const { data: existingUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+        const existing = existingUsers?.users?.find(
+          (u) => (u.email ?? "").toLowerCase() === email.toLowerCase(),
+        );
+
+        if (!existing) {
+          const { error: createErr } = await admin.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+            user_metadata: { full_name: name },
+          });
+          if (createErr) {
+            return {
+              error:
+                "Email signup is temporarily limited. Please retry in a few minutes or use Continue with Google.",
+              fields: { name, email },
+            };
+          }
+        }
+
+        const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+        if (!signInErr) {
+          redirect(PRODUCT_HOME);
+        }
+      }
+
+      return {
+        error:
+          "Email signup is temporarily limited. Please retry in a few minutes or use Continue with Google.",
+        fields: { name, email },
+      };
+    }
     const emailFieldError =
       lower.includes("email") && (lower.includes("invalid") || lower.includes("invalid format"))
         ? message
