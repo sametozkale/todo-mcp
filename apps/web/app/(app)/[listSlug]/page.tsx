@@ -39,6 +39,12 @@ export default async function UserListPage({ params }: Props) {
     .order("position", { ascending: true, nullsFirst: true })
     .order("created_at", { ascending: false });
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("show_completed_tasks")
+    .eq("id", user.id)
+    .maybeSingle();
+
   if (error) {
     return (
       <main className="mx-auto w-full max-w-2xl pt-6">
@@ -56,6 +62,7 @@ export default async function UserListPage({ params }: Props) {
         initialTodos={todos ?? []}
         view="list"
         composerListId={list.id}
+        initialShowCompleted={profile?.show_completed_tasks ?? true}
         sectionHeaderLabel={list.title}
       />
     </main>

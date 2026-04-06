@@ -1,28 +1,11 @@
 import crypto from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { slugifyListTitle } from "@/lib/list-slug";
+import { MCP_TOOL_CATALOG, type ToolName } from "@/lib/mcp-tool-catalog";
 import { FREE_LIMITS, isProPlan, type PlanType } from "@/lib/subscription";
 
-export type ToolName =
-  | "list_lists"
-  | "create_list"
-  | "resolve_list"
-  | "list_todos"
-  | "create_todo"
-  | "update_todo"
-  | "delete_todo";
-
-export function isToolName(value: string): value is ToolName {
-  return (
-    value === "list_lists" ||
-    value === "create_list" ||
-    value === "resolve_list" ||
-    value === "list_todos" ||
-    value === "create_todo" ||
-    value === "update_todo" ||
-    value === "delete_todo"
-  );
-}
+export type { ToolName } from "@/lib/mcp-tool-catalog";
+export { isToolName } from "@/lib/mcp-tool-catalog";
 
 export function getServiceSupabase(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -476,20 +459,14 @@ export const MCP_REMOTE_TOOL_LIST: {
   name: ToolName;
   description: string;
   inputSchema: Record<string, unknown>;
-}[] = [
-  {
-    name: "list_lists",
-    description: "List all lists for the authenticated user",
-    inputSchema: {
+}[] = MCP_TOOL_CATALOG.map((tool) => {
+  const inputSchemas: Record<ToolName, Record<string, unknown>> = {
+    list_lists: {
       type: "object",
       properties: {},
       additionalProperties: false,
     },
-  },
-  {
-    name: "create_list",
-    description: "Create a new list for the authenticated user",
-    inputSchema: {
+    create_list: {
       type: "object",
       properties: {
         title: { type: "string", description: "Title for the new list" },
@@ -497,12 +474,7 @@ export const MCP_REMOTE_TOOL_LIST: {
       required: ["title"],
       additionalProperties: false,
     },
-  },
-  {
-    name: "resolve_list",
-    description:
-      "Resolve a list by listSlug, listTitle, or listRef. Defaults to Today. Can create the list if missing.",
-    inputSchema: {
+    resolve_list: {
       type: "object",
       properties: {
         listSlug: { type: "string" },
@@ -513,11 +485,7 @@ export const MCP_REMOTE_TOOL_LIST: {
       },
       additionalProperties: false,
     },
-  },
-  {
-    name: "list_todos",
-    description: "List todos for the authenticated user",
-    inputSchema: {
+    list_todos: {
       type: "object",
       properties: {
         listId: { type: ["string", "null"] },
@@ -527,11 +495,7 @@ export const MCP_REMOTE_TOOL_LIST: {
       },
       additionalProperties: false,
     },
-  },
-  {
-    name: "create_todo",
-    description: "Create a new todo for the authenticated user",
-    inputSchema: {
+    create_todo: {
       type: "object",
       properties: {
         title: { type: "string" },
@@ -544,11 +508,7 @@ export const MCP_REMOTE_TOOL_LIST: {
       required: ["title"],
       additionalProperties: false,
     },
-  },
-  {
-    name: "update_todo",
-    description: "Update an existing todo for the authenticated user",
-    inputSchema: {
+    update_todo: {
       type: "object",
       properties: {
         id: { type: "string" },
@@ -559,11 +519,7 @@ export const MCP_REMOTE_TOOL_LIST: {
       required: ["id"],
       additionalProperties: false,
     },
-  },
-  {
-    name: "delete_todo",
-    description: "Delete a todo by id for the authenticated user",
-    inputSchema: {
+    delete_todo: {
       type: "object",
       properties: {
         id: { type: "string" },
@@ -571,7 +527,13 @@ export const MCP_REMOTE_TOOL_LIST: {
       required: ["id"],
       additionalProperties: false,
     },
-  },
-];
+  };
+
+  return {
+    name: tool.name,
+    description: tool.description,
+    inputSchema: inputSchemas[tool.name],
+  };
+});
 
 export const MCP_PROTOCOL_VERSION = "2024-11-05";

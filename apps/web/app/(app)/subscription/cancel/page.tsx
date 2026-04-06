@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { toast } from "@heroui/react";
 import Link from "next/link";
+import { toast } from "@/lib/app-toast";
 
 export default function SubscriptionCancelPage() {
   useEffect(() => {

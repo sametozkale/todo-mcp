@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ToastProvider } from "@heroui/react";
+import { Toaster } from "sonner";
 
 /**
  * HeroUI v3 uses CSS (`@import "@heroui/styles"`) for theming; there is no root `HeroUIProvider`.
@@ -11,9 +11,13 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <>
       {children}
-      <ToastProvider
-        placement="bottom end"
-        width="min(560px, calc(100vw - 24px))"
+      <Toaster
+        position="bottom-right"
+        visibleToasts={5}
+        closeButton
+        toastOptions={{
+          duration: 4200,
+        }}
       />
     </>
   );

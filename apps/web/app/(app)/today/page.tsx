@@ -37,6 +37,12 @@ export default async function TodayPage() {
     .order("position", { ascending: true })
     .order("created_at", { ascending: true });
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("show_completed_tasks")
+    .eq("id", user.id)
+    .maybeSingle();
+
   if (error) {
     return (
       <main className="mx-auto w-full max-w-2xl pt-6">
@@ -54,6 +60,7 @@ export default async function TodayPage() {
         initialTodos={todos ?? []}
         view="today"
         composerListId={todayList.id}
+        initialShowCompleted={profile?.show_completed_tasks ?? true}
         sectionHeaderLabel="Today"
       />
     </main>

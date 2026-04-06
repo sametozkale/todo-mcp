@@ -3,6 +3,42 @@
 /* Explicit scan roots (apps/web/*) so utilities are generated reliably in this monorepo + Next 15. */
 @source "../**/*.{js,ts,jsx,tsx}";
 @import "@heroui/styles";
+@import "sonner/dist/styles.css";
+
+/* Keep toast stack consistently offset from viewport edges */
+[data-sonner-toaster][data-y-position="bottom"][data-x-position="right"] {
+  align-items: flex-end !important;
+  right: 16px !important;
+  bottom: 16px !important;
+}
+
+/* Sonner: minimal toast spacing + hover-only close button on top-right */
+[data-sonner-toast] {
+  position: relative !important;
+  width: fit-content !important;
+  max-width: min(92vw, 520px) !important;
+  margin-left: auto !important;
+  padding: 8px 34px 8px 12px !important;
+}
+
+[data-sonner-toast] [data-close-button] {
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  bottom: auto !important;
+  left: auto !important;
+  inset-inline-start: auto !important;
+  inset-inline-end: 8px !important;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+[data-sonner-toast]:hover [data-close-button],
+[data-sonner-toast]:focus-within [data-close-button] {
+  opacity: 1;
+  pointer-events: auto;
+}
 
 /*
  * Typography

@@ -53,10 +53,10 @@ import {
   Input,
   Label,
   Modal,
-  toast,
   TextField,
   useOverlayState,
 } from "@heroui/react";
+import { toast } from "@/lib/app-toast";
 import {
   forwardRef,
   useCallback,
@@ -128,6 +128,7 @@ export type TodayClientProps = {
   /** Reserved for future view-specific behavior (All / Today / custom list). */
   view?: "all" | "today" | "list";
   composerListId: string | null;
+  initialShowCompleted?: boolean;
   /** Passed by pages for future header customization; currently unused in the client shell. */
   sectionHeaderLabel?: string;
 };
@@ -808,7 +809,7 @@ const SortableTodoItem = forwardRef<
     );
 });
 
-export function TodayClient({ initialTodos, composerListId, view }: TodayClientProps) {
+export function TodayClient({ initialTodos, composerListId, view, initialShowCompleted = true }: TodayClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [listNavGeneration, setListNavGeneration] = useState(0);
@@ -904,34 +905,38 @@ export function TodayClient({ initialTodos, composerListId, view }: TodayClientP
   const [composerOverrideListId, setComposerOverrideListId] = useState<string | null>(null);
   const [isComposerListMenuOpen, setIsComposerListMenuOpen] = useState(false);
   const [composerListQuery, setComposerListQuery] = useState("");
-  const displayPrefKey = composerListId
-    ? `yalp:display:showCompleted:${composerListId}`
-    : "yalp:display:showCompleted:all";
-
-  // Keep initial render deterministic for SSR hydration; apply persisted preference after mount.
-  const [showCompleted, setShowCompleted] = useState<boolean>(true);
-
-  // When navigating between lists, `TodayClient` can re-mount or re-use; keep
-  // the per-list display preference consistent with the last selection.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem(displayPrefKey);
-      if (raw === "false") setShowCompleted(false);
-      else setShowCompleted(true);
-    } catch {
-      setShowCompleted(true);
-    }
-  }, [displayPrefKey]);
+  const [showCompleted, setShowCompleted] = useState<boolean>(initialShowCompleted);
+  const lastSyncedShowCompletedRef = useRef<boolean>(initialShowCompleted);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(displayPrefKey, String(showCompleted));
-    } catch {
-      // Ignore write failures.
-    }
-  }, [displayPrefKey, showCompleted]);
+    setShowCompleted(initialShowCompleted);
+    lastSyncedShowCompletedRef.current = initialShowCompleted;
+  }, [initialShowCompleted]);
+
+  useEffect(() => {
+    if (showCompleted === lastSyncedShowCompletedRef.current) return;
+    const nextValue = showCompleted;
+    const timer = window.setTimeout(() => {
+      void fetch("/api/preferences/show-completed", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ showCompleted: nextValue }),
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+            throw new Error(payload?.error ?? "Failed to persist preference.");
+          }
+        })
+        .then(() => {
+          lastSyncedShowCompletedRef.current = nextValue;
+        })
+        .catch(() => {
+          toast.danger("Could not save completed-task visibility preference.", { timeout: 3500 });
+        });
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [showCompleted]);
 
   useEffect(() => {
     setComposerOverrideListId(null);

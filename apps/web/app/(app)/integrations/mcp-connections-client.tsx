@@ -2,10 +2,11 @@
 
 import { ArrowDown01Icon, ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Button, Input, Label, TextField, toast } from "@heroui/react";
+import { Button, Input, Label, TextField } from "@heroui/react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Copy as CopyIcon } from "lucide-react";
+import { toast } from "@/lib/app-toast";
 import {
   buildCursorMcpInstallDeeplink,
   buildMcpApiUrl,
@@ -23,6 +24,7 @@ import {
 import {
   DEFAULT_PLATFORM_ORDER,
   getInstallGuide,
+  getTryToolGuide,
   getSuggestedPlatformIds,
   isPlatformId,
   sortPlatformsForUserAgent,
@@ -35,7 +37,7 @@ import {
   listApiKeysAction,
   revokeApiKeyAction,
 } from "./actions";
-import { McpPlatformDetail, McpPlatformTroubleshooting } from "./mcp-platform-detail";
+import { McpPlatformDetail, McpPlatformTroubleshooting, McpTryToolExamples } from "./mcp-platform-detail";
 import { McpPlatformPicker } from "./mcp-platform-picker";
 
 const QUICK_INSTALL_STORAGE_KEY = "yalp_mcp_quick_install_v1";
@@ -343,6 +345,7 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
   }
 
   const guide = selectedPlatform ? getInstallGuide(selectedPlatform) : null;
+  const tryToolGuide = selectedPlatform ? getTryToolGuide(selectedPlatform) : null;
 
   const handlePrimaryPress = useCallback(() => {
     if (!selectedPlatform || !guide) return;
@@ -591,7 +594,7 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
               </>
             ) : null}
 
-            {phase === "detail" && selectedPlatform && guide ? (
+            {phase === "detail" && selectedPlatform && guide && tryToolGuide ? (
               <>
                 <McpPlatformDetail
                   platform={selectedPlatform}
@@ -603,8 +606,29 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                   showActivity={showActivity}
                   activityMessage={activityMessage}
                 />
-                {verifyFlowBlock}
-                {verifyNpmBlock}
+                {selectedPlatform === "claudeWeb" && installKey ? (
+                  <div className="rounded-2xl border border-[#e8e8e8] bg-[#fafafa] p-3 sm:p-4">
+                    <p className="mb-1 text-xs font-semibold text-foreground">Claude custom MCP auth header</p>
+                    <p className="mb-2 text-xs text-muted">
+                      If Claude asks for header/token format, use this exact value.
+                    </p>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <code className="min-h-10 min-w-0 flex-1 overflow-auto rounded-[12px] border border-[#e8e8e8] bg-white px-3 py-2.5 font-mono text-xs leading-snug text-foreground shadow-[inset_0_1px_0_rgba(0,0,0,0.03)]">
+                        {`Authorization: Bearer ${installKey}`}
+                      </code>
+                      <Button
+                        variant="secondary"
+                        className="shrink-0"
+                        onPress={() => copy(`Bearer ${installKey}`, "Bearer auth value copied")}
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />
+                          Copy Bearer value
+                        </span>
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </>
             ) : null}
           </div>
@@ -799,10 +823,36 @@ export function McpConnectionsClient({ userId, initialKeys, baseUrl, initialPlat
                   <p>If tools don’t appear, confirm the client is connected and the API key matches this page.</p>
                 </div>
               </details>
+
+              <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
+                <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
+                  <span>Claude Web says connected — what should I try first?</span>
+                  <HugeiconsIcon
+                    icon={ArrowDown01Icon}
+                    size={16}
+                    strokeWidth={1.75}
+                    className="text-muted transition-transform duration-200 group-open:rotate-180"
+                  />
+                </summary>
+                <div className="mt-2 space-y-1 text-xs text-muted">
+                  <p>After connector auth is set, send one short instruction first.</p>
+                  <p>
+                    Example: <code className="rounded bg-white px-1 py-0.5 text-[11px]">List my todos</code>
+                  </p>
+                  <p>
+                    If this succeeds, you should see <span className="font-medium text-foreground">Looks connected</span>{" "}
+                    update on this page.
+                  </p>
+                </div>
+              </details>
             </div>
           </div>
         ) : null}
       </div>
+
+      {activeTab === "connect" && phase === "detail" && selectedPlatform && guide && tryToolGuide ? (
+        <McpTryToolExamples guide={tryToolGuide} />
+      ) : null}
 
       {activeTab === "connect" && phase === "detail" && selectedPlatform && guide ? (
         <McpPlatformTroubleshooting />

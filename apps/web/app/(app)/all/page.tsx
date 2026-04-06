@@ -24,6 +24,12 @@ export default async function AllPage() {
     .order("all_position", { ascending: true, nullsFirst: true })
     .order("created_at", { ascending: false });
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("show_completed_tasks")
+    .eq("id", user.id)
+    .maybeSingle();
+
   if (error) {
     return (
       <main className="mx-auto w-full max-w-2xl pt-6">
@@ -41,6 +47,7 @@ export default async function AllPage() {
         initialTodos={todos ?? []}
         view="all"
         composerListId={null}
+        initialShowCompleted={profile?.show_completed_tasks ?? true}
         sectionHeaderLabel={`All ${(todos ?? []).length}`}
       />
     </main>

@@ -6,7 +6,7 @@ import { Button } from "@heroui/react";
 import Image from "next/image";
 import { Copy as CopyIcon } from "lucide-react";
 import { ClaudeBrandIcon } from "@/components/claude-brand-icon";
-import type { InstallGuide, PlatformId } from "@/lib/mcp-platform-guides";
+import type { InstallGuide, PlatformId, TryToolGuide } from "@/lib/mcp-platform-guides";
 
 function PlatformIcon({ id }: { id: PlatformId }) {
   switch (id) {
@@ -63,7 +63,7 @@ export function McpPlatformDetail({
 }: Props) {
   return (
     <div className="flex flex-col">
-      <div className="mb-3 inline-flex items-center gap-3">
+      <div className="mb-3 inline-flex items-start justify-start gap-3">
         <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-[#e8e8e8] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
           <PlatformIcon id={platform} />
         </span>
@@ -136,6 +136,24 @@ export function McpPlatformDetail({
   );
 }
 
+export function McpTryToolExamples({ guide }: { guide: TryToolGuide }) {
+  return (
+    <div className="rounded-2xl border border-[#e8e8e8] bg-[#fafafa] p-3 sm:p-4">
+      <p className="text-xs font-semibold text-foreground">{guide.title}</p>
+      <p className="mt-1 text-xs text-muted">{guide.subtitle}</p>
+      <ul className="mt-2 space-y-1.5">
+        {guide.examples.map((line) => (
+          <li key={line}>
+            <code className="block overflow-x-auto rounded-[10px] border border-[#e8e8e8] bg-white px-2.5 py-2 text-[11px] text-foreground">
+              {line}
+            </code>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function McpPlatformTroubleshooting() {
   return (
     <details className="group rounded-xl border border-[#ececec] bg-[#fafafa] p-3">
@@ -149,22 +167,9 @@ export function McpPlatformTroubleshooting() {
         />
       </summary>
       <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-muted">
-        <li>If nothing happens in Cursor, confirm Cursor is installed and try the button again.</li>
-        <li>If copy fails, check browser permissions for the clipboard.</li>
-        <li>For API key issues, expand the API keys section below and confirm keys are not revoked.</li>
-        <li>
-          VS Code/Windsurf: if the settings UI labels differ, use the copied JSON and map fields per client docs
-          (`mcpServers` vs `servers`).
-        </li>
-        <li>
-          Claude Web: use the copied <strong className="font-medium text-foreground">remote MCP</strong> URL (ends with{" "}
-          <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">/api/mcp/stream</code>) and paste your API key
-          where the connector asks (Bearer token or API key field).
-        </li>
-        <li>
-          Claude Code: the copied command needs the <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">claude</code>{" "}
-          CLI installed; use the copied bundle and run the command for your shell (bash/zsh, fish, or PowerShell).
-        </li>
+        <li>If copy fails, allow clipboard permissions and try again.</li>
+        <li>If tools do not run, confirm your current API key is active in the Active connections tab.</li>
+        <li>For Claude Web, ensure the URL ends with <code className="rounded bg-[#f4f4f4] px-1 py-0.5 text-[11px]">/api/mcp/stream</code>.</li>
       </ul>
     </details>
   );

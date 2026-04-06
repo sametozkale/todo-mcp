@@ -48,6 +48,12 @@ export type InstallGuide = {
   pickerBlurb: string;
 };
 
+export type TryToolGuide = {
+  title: string;
+  subtitle: string;
+  examples: string[];
+};
+
 const guides: Record<PlatformId, InstallGuide> = {
   cursor: {
     headline: "Connect Cursor",
@@ -60,8 +66,7 @@ const guides: Record<PlatformId, InstallGuide> = {
     steps: [
       { title: "Click “Add to Cursor” below" },
       { title: "When Cursor opens, choose Install (or Open Cursor first if prompted)" },
-      { title: "If nothing opens, use Other → Copy universal config and import manually in Cursor MCP settings" },
-      { title: "Try asking the AI to list your Yalp todos" },
+      { title: "Ask a quick test prompt (for example: list my todos)" },
     ],
   },
   vscode: {
@@ -114,12 +119,8 @@ const guides: Record<PlatformId, InstallGuide> = {
       { title: "Click below to copy the remote MCP URL (ends with /api/mcp/stream)" },
       {
         title: "In claude.ai → Settings → Connectors (or Integrations) → add custom connector",
-        description: "Paste the URL. When asked for authentication, use your API key as a Bearer token or in the API key field.",
-      },
-      {
-        title: "Prefer a local install?",
         description:
-          "Use Cursor or Claude Desktop with the one-click / stdio config — no hosted connector required.",
+          "Paste the URL. For auth, use Authorization: Bearer yalp_... (or paste the key in API key field if shown).",
       },
     ],
   },
@@ -133,9 +134,9 @@ const guides: Record<PlatformId, InstallGuide> = {
     needsInstallContext: true,
     steps: [
       { title: "Copy the config below" },
-      { title: "Windsurf → Settings → MCP → Add server (or equivalent naming in your version)" },
+      { title: "Windsurf → Settings → MCP → Add server" },
       { title: "Paste the JSON and save" },
-      { title: "If this screen differs, use Other config and map fields manually" },
+      { title: "Run a quick test prompt in Windsurf assistant" },
     ],
   },
   claudeCode: {
@@ -148,10 +149,8 @@ const guides: Record<PlatformId, InstallGuide> = {
     needsInstallContext: true,
     steps: [
       { title: "Copy the command bundle below (bash/zsh, fish, PowerShell)" },
-      {
-        title: "Paste into Terminal and run",
-        description: "If flags don’t match your CLI version, use Cursor or Claude Desktop instead.",
-      },
+      { title: "Paste into Terminal and run" },
+      { title: "Run one test prompt (for example: list my todos)" },
     ],
   },
   manual: {
@@ -172,6 +171,59 @@ const guides: Record<PlatformId, InstallGuide> = {
 
 export function getInstallGuide(id: PlatformId): InstallGuide {
   return guides[id];
+}
+
+export function getTryToolGuide(id: PlatformId): TryToolGuide {
+  const shared = [
+    "/create-todo Buy milk",
+    "/list-todos",
+    "/update-todo <todo_id> done",
+    "If slash aliases are unavailable, call exact MCP tools: create_todo, list_todos, update_todo",
+  ];
+
+  const byPlatform: Record<PlatformId, TryToolGuide> = {
+    cursor: {
+      title: "Connected - Try these tool calls",
+      subtitle: "Paste one line into Cursor chat to verify MCP tool usage.",
+      examples: shared,
+    },
+    vscode: {
+      title: "Connected - Try these tool calls",
+      subtitle: "Paste one line into Copilot Chat after yalp server is running.",
+      examples: shared,
+    },
+    claudeDesktop: {
+      title: "Connected - Try these tool calls",
+      subtitle: "Use one short instruction in Claude Desktop after restart.",
+      examples: shared,
+    },
+    claudeWeb: {
+      title: "Connected - Try these tool calls",
+      subtitle: "Use one short instruction in Claude Web after connector auth is set.",
+      examples: shared,
+    },
+    windsurf: {
+      title: "Connected - Try these tool calls",
+      subtitle: "Paste one line into Windsurf assistant to confirm tool execution.",
+      examples: shared,
+    },
+    claudeCode: {
+      title: "Connected - Try these tool calls",
+      subtitle: "After `claude mcp add`, run one prompt using tool intent language.",
+      examples: [
+        "Create a todo: Buy milk (use create_todo)",
+        "List my todos (use list_todos)",
+        "Mark todo <todo_id> as done (use update_todo with is_completed=true)",
+      ],
+    },
+    manual: {
+      title: "Connected - Try these tool calls",
+      subtitle: "Use your client's prompt/tool-call format with these examples.",
+      examples: shared,
+    },
+  };
+
+  return byPlatform[id];
 }
 
 export function sortPlatformsForUserAgent(ua: string): PlatformId[] {

@@ -9,11 +9,11 @@ import {
   Label,
   Surface,
   TextField,
-  toast,
 } from "@heroui/react";
 import { loginAction, signInWithGoogleAction, type AuthActionState } from "@/app/(auth)/actions";
 import { GoogleIcon } from "@/components/auth/google-icon";
 import { ToDoMcpLogo } from "@/components/brand/to-do-mcp-logo";
+import { toast } from "@/lib/app-toast";
 
 type LoginFormProps = {
   searchParamsError?: string;

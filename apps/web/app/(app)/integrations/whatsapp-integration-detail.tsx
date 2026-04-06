@@ -2,9 +2,10 @@
 
 import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Button, toast } from "@heroui/react";
+import { Button } from "@heroui/react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "@/lib/app-toast";
 
 const STEPS: { title: string; description: string }[] = [
   {

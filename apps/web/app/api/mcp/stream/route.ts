@@ -63,7 +63,18 @@ export function GET() {
         service: SERVER_NAME,
         transport: "mcp-stream-http",
         protocolVersion: MCP_PROTOCOL_VERSION,
-        hint: "POST JSON-RPC 2.0 messages (initialize, tools/list, tools/call). Use Authorization: Bearer <yalp_api_key> for tool methods.",
+        methods: ["initialize", "notifications/initialized", "ping", "tools/list", "tools/call"],
+        auth: {
+          requiredFor: ["tools/call"],
+          optionalFor: ["initialize", "notifications/initialized", "ping", "tools/list"],
+          accepted: ["Authorization: Bearer <yalp_api_key>", "X-Api-Key: <yalp_api_key>"],
+        },
+        compatibilityChecklist: [
+          "Use POST with JSON-RPC 2.0 payload",
+          "Use URL ending with /api/mcp/stream",
+          "Send Bearer or X-Api-Key for tools/call",
+        ],
+        hint: "POST JSON-RPC 2.0 messages. tools/list is public metadata; tools/call requires auth.",
       },
       { status: 200 },
     ),
@@ -140,6 +151,20 @@ async function handleJsonRpc(
     };
   }
 
+  if (method === "tools/list") {
+    return {
+      status: 200,
+      body: jsonRpcSuccess(id, {
+        tools: MCP_REMOTE_TOOL_LIST.map((t) => ({
+          name: t.name,
+          description: t.description,
+          inputSchema: t.inputSchema,
+        })),
+      }),
+      isNotification: false,
+    };
+  }
+
   const apiKey = parseBearerApiKey(req);
   if (!apiKey) {
     return {
@@ -161,20 +186,6 @@ async function handleJsonRpc(
   }
 
   touchApiKeyLastUsed(supabase, keyRowId);
-
-  if (method === "tools/list") {
-    return {
-      status: 200,
-      body: jsonRpcSuccess(id, {
-        tools: MCP_REMOTE_TOOL_LIST.map((t) => ({
-          name: t.name,
-          description: t.description,
-          inputSchema: t.inputSchema,
-        })),
-      }),
-      isNotification: false,
-    };
-  }
 
   if (method === "tools/call") {
     const params = (typeof rpc.params === "object" && rpc.params !== null ? rpc.params : null) as Record<
