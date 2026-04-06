@@ -40,6 +40,7 @@ import {
   revokeApiKeyAction,
   revokeOAuthClientAction,
 } from "./actions";
+import { ClaudeWebConnectSteps } from "./claude-web-connect-steps";
 import { McpPlatformDetail, McpPlatformTroubleshooting, McpTryToolExamples } from "./mcp-platform-detail";
 import { McpPlatformPicker } from "./mcp-platform-picker";
 
@@ -493,38 +494,31 @@ export function McpConnectionsClient({ userId, initialKeys, initialOAuthClients,
     ? {
         cursor: [
           "Cursor MCP panel shows yalp as installed/running.",
-          "Ask a quick test prompt (for example: list my todos).",
-          "Confirm “Looks connected” appears after tool usage.",
+          "Confirm “Looks connected” updates after Yalp tools run in chat.",
         ],
         vscode: [
           "VS Code MCP/Copilot tools shows yalp server started.",
-          "Run a quick test prompt (for example: list my todos).",
-          "Confirm “Looks connected” appears after tool usage.",
+          "Confirm “Looks connected” updates after Yalp tools run.",
         ],
         windsurf: [
           "Windsurf MCP settings shows yalp server configured.",
-          "Run a quick test prompt in Windsurf assistant.",
-          "Confirm “Looks connected” appears after tool usage.",
+          "Confirm “Looks connected” updates after Yalp tools run.",
         ],
         manual: [
           "Your client accepted the pasted MCP server config.",
-          "Run one test tool call (list todos / list lists).",
-          "Confirm “Looks connected” appears after tool usage.",
+          "Confirm “Looks connected” updates after a Yalp tool runs.",
         ],
         claudeDesktop: [
           "Claude Desktop reloads with yalp server present.",
-          "Run a quick test prompt (for example: list my todos).",
-          "Confirm “Looks connected” appears after tool usage.",
+          "Confirm “Looks connected” updates after Yalp tools run in chat.",
         ],
         claudeCode: [
           "Run the copied shell command bundle for your shell.",
-          "Check CLI MCP list/status, then run one test prompt.",
-          "Confirm “Looks connected” appears after tool usage.",
+          "Confirm CLI MCP shows yalp and “Looks connected” updates after tools run.",
         ],
         claudeWeb: [
-          "Create OAuth credentials here and paste Client ID + Secret into claude.ai Advanced settings.",
-          "Add the remote MCP URL, click Connect, and complete sign-in to Yalp in the browser.",
-          "Run “list my todos” (or similar) — you should see Looks connected update on this page.",
+          "OAuth credentials in claude.ai Advanced; remote MCP URL added; Connect and browser sign-in completed.",
+          "Confirm “Looks connected” updates after Yalp tools run in Claude.",
         ],
       }[selectedPlatform]
     : null;
@@ -660,176 +654,33 @@ export function McpConnectionsClient({ userId, initialKeys, initialOAuthClients,
 
             {phase === "detail" && selectedPlatform && guide && tryToolGuide ? (
               <>
-                <McpPlatformDetail
-                  platform={selectedPlatform}
-                  guide={guide}
-                  onPrimaryPress={handlePrimaryPress}
-                  primaryDisabled={primaryDisabled}
-                  isEnsuringKey={isEnsuringInstall}
-                  showPrimaryIcon={showCopyIcon}
-                  showActivity={showActivity}
-                  activityMessage={activityMessage}
-                />
                 {selectedPlatform === "claudeWeb" ? (
-                  <div className="space-y-4 rounded-2xl border border-[#e8e8e8] bg-[#fafafa] p-3 sm:p-4">
-                    <div
-                      className="rounded-xl border border-emerald-200/90 bg-emerald-50/95 px-3 py-2.5 text-xs text-emerald-950"
-                      role="note"
-                    >
-                      <p className="font-semibold text-emerald-950">OAuth for Claude Web</p>
-                      <p className="mt-1 text-pretty text-emerald-950/95">
-                        In claude.ai Advanced settings, paste the <span className="font-medium">Client ID</span> and{" "}
-                        <span className="font-medium">Client Secret</span> you create here — not your{" "}
-                        <code className="rounded bg-white px-1 py-0.5 text-[11px]">yalp_…</code> API key. After Connect, Claude
-                        calls Yalp with an OAuth access token.
-                      </p>
-                    </div>
-
-                    {oauthSecretOnce ? (
-                      <div className="rounded-xl border border-amber-200/90 bg-amber-50/95 px-3 py-2.5 text-xs text-amber-950">
-                        <p className="font-semibold text-amber-950">Copy your new client secret now</p>
-                        <p className="mt-1 text-pretty text-amber-950/95">We only show it once. Store it somewhere safe.</p>
-                        <div className="mt-3 space-y-3">
-                          <div>
-                            <p className="mb-1 text-[10px] font-medium text-amber-950/90">Client ID</p>
-                            <code className="block break-all rounded-lg border border-amber-200/80 bg-white px-2.5 py-2 font-mono text-[11px] text-foreground">
-                              {oauthSecretOnce.clientId}
-                            </code>
-                            <Button
-                              variant="secondary"
-                              className="mt-2 h-8 min-h-8 text-xs"
-                              onPress={() => copy(oauthSecretOnce.clientId, "Client ID copied")}
-                            >
-                              <span className="inline-flex items-center gap-2">
-                                <CopyIcon size={14} strokeWidth={2} className="text-current" aria-hidden="true" />
-                                Copy Client ID
-                              </span>
-                            </Button>
-                          </div>
-                          <div>
-                            <p className="mb-1 text-[10px] font-medium text-amber-950/90">Client Secret</p>
-                            <code className="block break-all rounded-lg border border-amber-200/80 bg-white px-2.5 py-2 font-mono text-[11px] text-foreground">
-                              {oauthSecretOnce.secret}
-                            </code>
-                            <Button
-                              variant="secondary"
-                              className="mt-2 h-8 min-h-8 text-xs"
-                              onPress={() => copy(oauthSecretOnce.secret, "Client Secret copied")}
-                            >
-                              <span className="inline-flex items-center gap-2">
-                                <CopyIcon size={14} strokeWidth={2} className="text-current" aria-hidden="true" />
-                                Copy Client Secret
-                              </span>
-                            </Button>
-                          </div>
-                        </div>
-                        <Button variant="ghost" className="mt-3 h-8 px-2 text-xs text-amber-950" onPress={() => setOauthSecretOnce(null)}>
-                          Dismiss
-                        </Button>
-                      </div>
-                    ) : null}
-
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <Button
-                        variant="secondary"
-                        className="h-10 min-h-10 w-full shrink-0 sm:w-auto"
-                        isDisabled={isPending}
-                        onPress={runCreateOAuthClient}
-                      >
-                        {isPending ? "Working…" : "Create Claude Web OAuth client"}
-                      </Button>
-                      <p className="text-xs text-muted">
-                        Revoke unused clients under <span className="font-medium text-foreground">Active connections</span>.
-                      </p>
-                    </div>
-
-                    {activeOAuthClients.length > 0 ? (
-                      <div>
-                        <p className="mb-2 text-xs font-semibold text-foreground">Active OAuth clients</p>
-                        <ul className="flex flex-col gap-2">
-                          {activeOAuthClients.map((c) => (
-                            <li
-                              key={c.id}
-                              className="flex flex-col justify-between gap-2 rounded-[14px] border border-[#ececec] bg-white p-3 sm:flex-row sm:items-center"
-                            >
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium text-foreground">{c.name}</p>
-                                <p className="mt-0.5 break-all font-mono text-[11px] text-muted">{c.public_id}</p>
-                                <p className="mt-1 text-[11px] text-muted">
-                                  Created {c.created_at ? new Date(c.created_at).toLocaleString() : "—"}
-                                </p>
-                              </div>
-                              <div className="flex shrink-0 flex-wrap gap-2">
-                                <Button
-                                  variant="secondary"
-                                  className="h-8 min-h-8 text-xs"
-                                  onPress={() => copy(c.public_id, "Client ID copied")}
-                                >
-                                  Copy ID
-                                </Button>
-                                <Button
-                                  variant="secondary"
-                                  className="h-8 min-h-8 text-xs"
-                                  isDisabled={isPending}
-                                  onPress={() => revokeOauthClient(c.id)}
-                                >
-                                  Revoke
-                                </Button>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted">No active OAuth client yet — create one to connect Claude Web.</p>
-                    )}
-
-                    <div>
-                      <p className="mb-1 text-xs font-semibold text-foreground">Remote MCP server URL</p>
-                      <p className="mb-2 text-xs text-muted">
-                        Paste this URL in the claude.ai custom connector. Prefer{" "}
-                        <span className="font-medium text-foreground">https://www.</span> on production — apex redirects can
-                        break some clients.
-                      </p>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <code className="min-h-10 min-w-0 flex-1 overflow-auto rounded-[12px] border border-[#e8e8e8] bg-white px-3 py-2.5 font-mono text-xs leading-snug text-foreground shadow-[inset_0_1px_0_rgba(0,0,0,0.03)]">
-                          {mcpRemoteUrl}
-                        </code>
-                        <Button
-                          variant="secondary"
-                          className="shrink-0"
-                          onPress={() => copy(mcpRemoteUrl, "Remote MCP URL copied")}
-                        >
-                          <span className="inline-flex items-center gap-2">
-                            <CopyIcon size={16} strokeWidth={2} className="text-current" aria-hidden="true" />
-                            Copy URL
-                          </span>
-                        </Button>
-                      </div>
-                      <p className="mt-2 text-xs text-muted">
-                        Quick check:{" "}
-                        <a
-                          href={mcpRemoteUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium text-foreground underline underline-offset-2 hover:no-underline"
-                        >
-                          Open in a new tab
-                        </a>{" "}
-                        — JSON should include <code className="rounded bg-white px-1 py-0.5 text-[11px]">ok</code> and{" "}
-                        <code className="rounded bg-white px-1 py-0.5 text-[11px]">mcp-stream-http</code>.
-                      </p>
-                    </div>
-
-                    <div className="rounded-xl border border-[#e8e8e8] bg-white px-3 py-2.5 text-xs text-muted">
-                      <p className="font-medium text-foreground">Stdio (API key) vs Web (OAuth)</p>
-                      <p className="mt-1 text-pretty">
-                        Claude Desktop, Claude Code, and Cursor use your <code className="rounded bg-[#fafafa] px-1 py-0.5 text-[11px]">yalp_</code> API
-                        key in environment variables. Claude Web uses the OAuth client above — keep those flows separate.
-                      </p>
-                    </div>
-                  </div>
-                ) : null}
+                  <ClaudeWebConnectSteps
+                    headline={guide.headline}
+                    subline={guide.subline}
+                    showActivity={showActivity}
+                    activityMessage={activityMessage}
+                    mcpRemoteUrl={mcpRemoteUrl}
+                    oauthSecretOnce={oauthSecretOnce}
+                    onDismissSecret={() => setOauthSecretOnce(null)}
+                    activeOAuthClientCount={activeOAuthClients.length}
+                    onOpenActiveConnections={() => setTab("active")}
+                    onCreateClient={runCreateOAuthClient}
+                    onCopy={copy}
+                    isPending={isPending}
+                  />
+                ) : (
+                  <McpPlatformDetail
+                    platform={selectedPlatform}
+                    guide={guide}
+                    onPrimaryPress={handlePrimaryPress}
+                    primaryDisabled={primaryDisabled}
+                    isEnsuringKey={isEnsuringInstall}
+                    showPrimaryIcon={showCopyIcon}
+                    showActivity={showActivity}
+                    activityMessage={activityMessage}
+                  />
+                )}
               </>
             ) : null}
           </div>

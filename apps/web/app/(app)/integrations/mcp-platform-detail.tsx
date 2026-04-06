@@ -63,44 +63,48 @@ export function McpPlatformDetail({
 }: Props) {
   return (
     <div className="flex flex-col">
-      <div className="mb-3 inline-flex items-start justify-start gap-3">
-        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-[#e8e8e8] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
-          <PlatformIcon id={platform} />
-        </span>
-        <div className="min-w-0">
-          <h2 className="font-title text-balance text-lg font-semibold leading-snug text-foreground sm:text-xl">
-            {guide.headline}
-          </h2>
-          <p className="mt-0.5 text-pretty text-sm text-muted">{guide.subline}</p>
+      <div className="mb-5 flex flex-col gap-3">
+        <div className="inline-flex items-start justify-start gap-3">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-[#e8e8e8] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+            <PlatformIcon id={platform} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-title text-balance text-lg font-semibold leading-snug text-foreground sm:text-xl">
+              {guide.headline}
+            </h2>
+            <p className="mt-0.5 text-pretty text-sm text-muted">{guide.subline}</p>
+          </div>
         </div>
+
+        {showActivity ? (
+          <div
+            className="motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-out rounded-[14px] border border-emerald-200/90 bg-emerald-50/95 px-4 py-3 text-sm text-emerald-950 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_4px_14px_-6px_rgba(5,150,105,0.2)]"
+            role="status"
+          >
+            <p className="font-medium text-emerald-900">Looks connected</p>
+            <p className="mt-0.5 text-pretty text-xs text-emerald-800/95">{activityMessage}</p>
+          </div>
+        ) : null}
       </div>
 
-      {showActivity ? (
-        <div
-          className="mb-4 motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-out rounded-[14px] border border-emerald-200/90 bg-emerald-50/95 px-4 py-3 text-sm text-emerald-950 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_4px_14px_-6px_rgba(5,150,105,0.2)]"
-          role="status"
-        >
-          <p className="font-medium text-emerald-900">Looks connected</p>
-          <p className="mt-0.5 text-pretty text-xs text-emerald-800/95">{activityMessage}</p>
-        </div>
-      ) : (
-        <p className="mb-4 text-pretty text-xs leading-relaxed text-muted motion-safe:transition-opacity motion-safe:duration-200">
-          When your client calls Yalp through MCP, we show recent activity here — no extra verify step.
-        </p>
-      )}
-
       <ol className="mb-6 space-y-4">
-        {guide.steps.map((step, i) => (
-          <li key={i} className="flex gap-3">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#e4e4e4] bg-[#fafafa] text-xs font-semibold tabular-nums text-foreground">
-              {i + 1}
-            </span>
-            <div className="min-w-0 pt-0.5">
-              <p className="text-sm font-medium text-foreground">{step.title}</p>
-              {step.description ? <p className="mt-1 text-xs text-muted">{step.description}</p> : null}
-            </div>
-          </li>
-        ))}
+        {guide.steps.map((step, i) => {
+          const hasDescription = Boolean(step.description);
+          return (
+            <li key={i} className={`flex gap-3 ${hasDescription ? "items-start" : "items-center"}`}>
+              <span
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#e4e4e4] bg-[#fafafa] text-[11px] font-semibold leading-none tabular-nums text-foreground"
+                aria-hidden
+              >
+                {i + 1}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-medium leading-snug text-foreground">{step.title}</p>
+                {step.description ? <p className="mt-1 text-xs text-muted">{step.description}</p> : null}
+              </div>
+            </li>
+          );
+        })}
       </ol>
 
       <div className="flex max-w-full flex-col gap-2 self-start">

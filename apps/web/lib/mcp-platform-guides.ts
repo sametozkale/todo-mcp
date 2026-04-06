@@ -58,8 +58,7 @@ const guides: Record<PlatformId, InstallGuide> = {
   cursor: {
     headline: "Connect Cursor",
     pickerTitle: "Cursor",
-    subline:
-      "Local stdio MCP — your Yalp API key is passed in env (not OAuth). Deeplink opens Cursor to add the server in one step.",
+    subline: "Install Yalp in one tap — Cursor opens with the server ready and your key applied automatically.",
     pickerBlurb: "One-click install in Cursor",
     primaryLabel: "Add to Cursor",
     primaryKind: "deeplink_cursor",
@@ -67,10 +66,6 @@ const guides: Record<PlatformId, InstallGuide> = {
     steps: [
       { title: "Click “Add to Cursor” below" },
       { title: "When Cursor opens, choose Install (or open Cursor first if prompted)" },
-      {
-        title: "Run a test prompt",
-        description: "Example: list my todos — confirms tools are wired.",
-      },
     ],
   },
   vscode: {
@@ -89,7 +84,6 @@ const guides: Record<PlatformId, InstallGuide> = {
         description: "Create the folder if needed, then paste and save.",
       },
       { title: "Open MCP / Copilot tools, trust the workspace, start yalp if prompted" },
-      { title: "Run a test prompt (e.g. list my todos)" },
     ],
   },
   claudeDesktop: {
@@ -109,33 +103,18 @@ const guides: Record<PlatformId, InstallGuide> = {
       },
       { title: "Merge only mcpServers.yalp — do not remove other servers" },
       { title: "Restart Claude Desktop" },
-      { title: "Run a test prompt (e.g. list my todos)" },
     ],
   },
   claudeWeb: {
     headline: "Claude Web (claude.ai)",
     pickerTitle: "Claude Web",
-    subline:
-      "Remote HTTPS MCP with OAuth. Create a Client ID + Secret below, paste them in Advanced settings on claude.ai, then Connect — do not put your yalp_ API key in OAuth fields.",
+    subline: "Remote connector for claude.ai — MCP URL plus OAuth client from Yalp.",
     pickerBlurb: "OAuth + remote URL",
     primaryLabel: "Copy remote MCP URL",
     primaryKind: "copy_claude_web_url",
     needsInstallContext: false,
-    steps: [
-      {
-        title: "Create OAuth credentials on this page",
-        description: "Use “Create Claude Web OAuth client” in the box below. Copy the Client ID and Client Secret once — the secret is shown only at creation.",
-      },
-      {
-        title: "In claude.ai → Add custom connector",
-        description: "Paste the remote MCP URL. Open Advanced and paste OAuth Client ID and Client Secret (from Yalp, not your yalp_ API key).",
-      },
-      { title: "Click Connect in Claude and sign in to Yalp when the browser opens" },
-      {
-        title: "Test with a short prompt",
-        description: "Example: list my todos. Tool calls use the OAuth access token automatically.",
-      },
-    ],
+    /** Steps are rendered by `ClaudeWebConnectSteps` (copy-paste flow). */
+    steps: [],
   },
   windsurf: {
     headline: "Connect Windsurf",
@@ -149,7 +128,6 @@ const guides: Record<PlatformId, InstallGuide> = {
       { title: "Copy the config below" },
       { title: "Windsurf → Settings → MCP → Add server" },
       { title: "Paste JSON and save" },
-      { title: "Run a test prompt in the assistant" },
     ],
   },
   claudeCode: {
@@ -163,7 +141,6 @@ const guides: Record<PlatformId, InstallGuide> = {
     steps: [
       { title: "Copy the command bundle (bash/zsh, fish, or PowerShell)" },
       { title: "Paste into Terminal and run" },
-      { title: "Run one test prompt (e.g. list my todos)" },
     ],
   },
   manual: {
@@ -189,6 +166,10 @@ export function getInstallGuide(id: PlatformId): InstallGuide {
   return guides[id];
 }
 
+const TRY_TOOL_TITLE = "Tool calls after you’re connected";
+const TRY_TOOL_SUBTITLE =
+  "Once MCP is working, paste an example below or call create_todo, list_todos, and update_todo by name.";
+
 export function getTryToolGuide(id: PlatformId): TryToolGuide {
   const shared = [
     "/create-todo Buy milk",
@@ -199,33 +180,33 @@ export function getTryToolGuide(id: PlatformId): TryToolGuide {
 
   const byPlatform: Record<PlatformId, TryToolGuide> = {
     cursor: {
-      title: "Connected - Try these tool calls",
-      subtitle: "Paste one line into Cursor chat to verify MCP tool usage.",
+      title: TRY_TOOL_TITLE,
+      subtitle: TRY_TOOL_SUBTITLE,
       examples: shared,
     },
     vscode: {
-      title: "Connected - Try these tool calls",
-      subtitle: "Paste one line into Copilot Chat after yalp server is running.",
+      title: TRY_TOOL_TITLE,
+      subtitle: TRY_TOOL_SUBTITLE,
       examples: shared,
     },
     claudeDesktop: {
-      title: "Connected - Try these tool calls",
-      subtitle: "Use one short instruction in Claude Desktop after restart.",
+      title: TRY_TOOL_TITLE,
+      subtitle: TRY_TOOL_SUBTITLE,
       examples: shared,
     },
     claudeWeb: {
-      title: "Connected - Try these tool calls",
-      subtitle: "After Connect completes in Claude Web, try one short instruction.",
+      title: TRY_TOOL_TITLE,
+      subtitle: TRY_TOOL_SUBTITLE,
       examples: shared,
     },
     windsurf: {
-      title: "Connected - Try these tool calls",
-      subtitle: "Paste one line into Windsurf assistant to confirm tool execution.",
+      title: TRY_TOOL_TITLE,
+      subtitle: TRY_TOOL_SUBTITLE,
       examples: shared,
     },
     claudeCode: {
-      title: "Connected - Try these tool calls",
-      subtitle: "After `claude mcp add`, run one prompt using tool intent language.",
+      title: TRY_TOOL_TITLE,
+      subtitle: TRY_TOOL_SUBTITLE,
       examples: [
         "Create a todo: Buy milk (use create_todo)",
         "List my todos (use list_todos)",
@@ -233,8 +214,8 @@ export function getTryToolGuide(id: PlatformId): TryToolGuide {
       ],
     },
     manual: {
-      title: "Connected - Try these tool calls",
-      subtitle: "Use your client's prompt/tool-call format with these examples.",
+      title: TRY_TOOL_TITLE,
+      subtitle: TRY_TOOL_SUBTITLE,
       examples: shared,
     },
   };
