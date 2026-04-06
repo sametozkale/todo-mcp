@@ -16,7 +16,8 @@ const SERVER_VERSION = "0.1.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  /** HEAD: some MCP / health probes use HEAD before POST. */
+  "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
   "Access-Control-Allow-Headers":
     "Authorization, Content-Type, X-Api-Key, Api-Key, Mcp-Session-Id, Accept",
   "Access-Control-Max-Age": "86400",
@@ -71,6 +72,11 @@ function mergeCors(res: NextResponse): NextResponse {
 
 export function OPTIONS() {
   return mergeCors(new NextResponse(null, { status: 204 }));
+}
+
+/** Lightweight reachability check (no body) — mirrors successful GET status for remote connectors. */
+export function HEAD() {
+  return mergeCors(new NextResponse(null, { status: 200 }));
 }
 
 export function GET() {

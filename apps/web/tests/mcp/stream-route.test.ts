@@ -90,6 +90,14 @@ describe("mcp stream route", () => {
     expect(res.headers.get("WWW-Authenticate")).toContain("Bearer");
   });
 
+  it("HEAD returns 200 with CORS for reachability probes", async () => {
+    const mod = await import("@/app/api/mcp/stream/route");
+    const res = mod.HEAD();
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("Access-Control-Allow-Methods")).toContain("HEAD");
+  });
+
   it("returns invalid key error for bad auth", async () => {
     authUserIdFromApiKeyMock.mockResolvedValueOnce({ userId: null, keyRowId: null });
     const mod = await import("@/app/api/mcp/stream/route");
