@@ -112,12 +112,26 @@ export function buildMcpApiUrl(baseUrl: string): string {
   return `${baseUrl.replace(/\/+$/, "")}/api/mcp`;
 }
 
+function normalizeConnectorBaseUrl(baseUrl: string): string {
+  const raw = baseUrl.replace(/\/+$/, "");
+  try {
+    const parsed = new URL(raw);
+    // Avoid POST redirect for hosted MCP connectors.
+    if (parsed.hostname === "yalp.work") {
+      parsed.hostname = "www.yalp.work";
+    }
+    return parsed.toString().replace(/\/+$/, "");
+  } catch {
+    return raw;
+  }
+}
+
 /**
  * Remote MCP (JSON-RPC) URL for Claude Web / hosted connectors — streamable HTTP endpoint.
  * Auth: `Authorization: Bearer <yalp_api_key>` or `X-Api-Key` (create a key on this page).
  */
 export function buildRemoteMcpUrl(baseUrl: string): string {
-  return `${baseUrl.replace(/\/+$/, "")}/api/mcp/stream`;
+  return `${normalizeConnectorBaseUrl(baseUrl)}/api/mcp/stream`;
 }
 
 /** Claude Web: remote MCP URL — user supplies API key in the connector (Bearer / API key field). */
