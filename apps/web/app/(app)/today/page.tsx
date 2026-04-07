@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { withSocialImage } from "@/lib/seo-metadata";
 import { getCachedAuth } from "@/lib/supabase/cached-auth";
+import { attachSubTodoCounts } from "@/lib/server/sub-todo-counts";
 import { redirect } from "next/navigation";
 import { TodayClient } from "./today-client";
 
@@ -32,9 +33,10 @@ export default async function TodayPage() {
 
   const { data: todos, error } = await supabase
     .from("todos")
-    .select("id, title, is_completed, list_id, created_at")
+    .select("id, title, is_completed, list_id, created_at, parent_id")
     .eq("user_id", user.id)
     .eq("list_id", todayList.id)
+    .is("parent_id", null)
     .order("position", { ascending: true })
     .order("created_at", { ascending: true });
 
@@ -54,11 +56,13 @@ export default async function TodayPage() {
     );
   }
 
+  const todosWithSubCounts = await attachSubTodoCounts(supabase, user.id, todos ?? []);
+
   return (
     <main suppressHydrationWarning className="mx-auto w-full max-w-2xl px-4 pt-4 sm:pt-6">
       <h1 className="sr-only">Today</h1>
       <TodayClient
-        initialTodos={todos ?? []}
+        initialTodos={todosWithSubCounts}
         view="today"
         composerListId={todayList.id}
         initialShowCompleted={profile?.show_completed_tasks ?? true}

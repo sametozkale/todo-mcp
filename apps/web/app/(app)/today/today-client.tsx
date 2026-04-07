@@ -3,12 +3,9 @@
 import {
   addTodoAction,
   deleteTodoAction,
-  duplicateTodoAction,
-  moveTodoToListAction,
   reorderAllTodosAction,
   reorderTodosAction,
   toggleTodoAction,
-  updateTodoTitleAction,
 } from "@/app/(app)/today/actions";
 import {
   createListAction,
@@ -24,7 +21,7 @@ import {
   SlidersHorizontalIcon,
   Delete02Icon,
 } from "@hugeicons/core-free-icons";
-import { ChevronRight, Copy, Ellipsis, Folder, GripVertical, X } from "lucide-react";
+import { X } from "lucide-react";
 import {
   closestCenter,
   DndContext,
@@ -58,10 +55,8 @@ import {
 } from "@heroui/react";
 import { toast } from "@/lib/app-toast";
 import {
-  forwardRef,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useOptimistic,
   useRef,
   useState,
@@ -73,38 +68,22 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSubscription } from "@/hooks/useSubscription";
-import { getCachedTodos, prefetchTodosForPath, revalidateTodosForPath, setCachedTodos } from "@/hooks/useTodosStore";
+import { getCachedTodos, prefetchTodosForPath, setCachedTodos } from "@/hooks/useTodosStore";
 import { isClientDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
 import {
   YALP_OPEN_KEYBOARD_SHORTCUTS,
   YALP_OPEN_PROFILE,
   YALP_OPEN_PLANS,
 } from "@/lib/yalp-shortcut-events";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import type {
-  ChangeEvent,
-  ClipboardEvent,
-  CSSProperties,
-  KeyboardEvent as ReactKeyboardEvent,
-  MouseEvent,
-  MutableRefObject,
-  Ref,
-} from "react";
-
-type TodoRow = {
-  id: string;
-  title: string;
-  is_completed: boolean | null;
-  list_id: string | null;
-};
-
-/** Listeden çıkış: hafif sola kayma + küçülme + soldurma (FM’de silme için yaygın pattern). */
-const TODO_ROW_EXIT = {
-  opacity: 0,
-  x: -14,
-  scale: 0.975,
-  transition: { duration: 0.22, ease: [0.32, 0.72, 0, 1] as const },
-};
+import { AnimatePresence, useReducedMotion } from "framer-motion";
+import type { CSSProperties, MouseEvent } from "react";
+import {
+  type TodoOptimisticAction,
+  type TodoRow,
+  type TodoRowHandlers,
+  PresenceTodoRow,
+  SortableTodoItem,
+} from "./todo-row";
 
 /** Çok satırda toplam cascade süresini ~0,5s içinde tut; sıra değişince aynı id’ye aynı gecikme (ref ile). */
 const LIST_ENTRANCE_INDEX_CAP = 40;
@@ -220,15 +199,6 @@ type ContextMenuState = {
   y: number;
 };
 
-type TodoOptimisticAction =
-  | { type: "toggle"; id: string; completed: boolean }
-  | { type: "delete"; id: string }
-  | { type: "add"; todo: TodoRow }
-  | { type: "duplicateAfter"; afterId: string; todo: TodoRow }
-  | { type: "moveList"; id: string; list_id: string | null }
-  | { type: "reorder"; orderedIds: string[] }
-  | { type: "updateTitle"; id: string; title: string };
-
 function reorderTodosByIds(state: TodoRow[], orderedIds: string[]): TodoRow[] {
   const byId = new Map(state.map((t) => [t.id, t] as const));
   const ordered: TodoRow[] = [];
@@ -291,524 +261,6 @@ function applyTodoOptimistic(state: TodoRow[], action: TodoOptimisticAction): To
   }
 }
 
-/** Checkbox tamamlandığında: kısa ses + desteklenen cihazlarda vibrate (bu dosyada tutuluyor; ek webpack chunk hatası riskini azaltır). */
-let sharedAudioContext: AudioContext | null = null;
-
-function getAudioContext(): AudioContext | null {
-  if (typeof window === "undefined") return null;
-  if (!sharedAudioContext) {
-    const Ctx =
-      window.AudioContext ??
-      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return null;
-    sharedAudioContext = new Ctx();
-  }
-  return sharedAudioContext;
-}
-
-function playTodoCompleteChime(): void {
-  const ctx = getAudioContext();
-  if (!ctx) return;
-  try {
-    if (ctx.state === "suspended") void ctx.resume();
-    const t0 = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(520, t0);
-    osc.frequency.exponentialRampToValueAtTime(880, t0 + 0.028);
-    const env = ctx.createGain();
-    env.gain.setValueAtTime(0.0001, t0);
-    env.gain.exponentialRampToValueAtTime(0.11, t0 + 0.004);
-    env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
-    osc.connect(env);
-    env.connect(ctx.destination);
-    osc.start(t0);
-    osc.stop(t0 + 0.1);
-  } catch {
-    // autoplay / AudioContext
-  }
-}
-
-function tryTodoCompleteVibrate(): void {
-  if (typeof navigator === "undefined") return;
-  const v = navigator.vibrate;
-  if (typeof v !== "function") return;
-  try {
-    v.call(navigator, [12, 24, 10]);
-  } catch {
-    // ignore
-  }
-}
-
-function feedbackTodoMarkedComplete(): void {
-  playTodoCompleteChime();
-  tryTodoCompleteVibrate();
-}
-
-function insertPlainTextIntoContentEditable(el: HTMLElement, text: string): void {
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) return;
-  if (!el.contains(sel.anchorNode)) return;
-  const range = sel.getRangeAt(0);
-  range.deleteContents();
-  range.insertNode(document.createTextNode(text));
-  range.collapse(false);
-  sel.removeAllRanges();
-  sel.addRange(range);
-}
-
-type TodoRowMeasuredSortable = Pick<
-  ReturnType<typeof useSortable>,
-  "setNodeRef" | "setActivatorNodeRef" | "attributes" | "listeners"
-> & {
-  style: CSSProperties;
-  isDragging?: boolean;
-};
-
-type TodoRowHandlers = {
-  lists: { id: string; title: string }[];
-  view?: "all" | "today" | "list";
-  composerListId: string | null;
-  setSelectedTodoId: (id: string) => void;
-  isTodoPending: boolean;
-  startTodoTransition: (cb: () => void | Promise<void>) => void;
-  addOptimistic: (action: TodoOptimisticAction) => void;
-  scheduleRefresh: () => void;
-};
-
-function TodoRowMeasured({
-  todo,
-  sortable,
-  rootRef,
-  entranceDelay,
-  lists,
-  view,
-  composerListId,
-  setSelectedTodoId,
-  isTodoPending,
-  startTodoTransition,
-  addOptimistic,
-  scheduleRefresh,
-  skipEntranceAnimation,
-}: {
-  todo: TodoRow;
-  rootRef?: Ref<HTMLLIElement | null>;
-  sortable?: TodoRowMeasuredSortable;
-  /** Liste / rota yüklemesinde sırayla görünüm (sn); sürükleme / yeniden sıra etkilenmez. */
-  entranceDelay: number;
-  /** Liste sekmesi / rota değişiminde animasyonu kapat (daha hızlı his). */
-  skipEntranceAnimation?: boolean;
-} & TodoRowHandlers) {
-  const titleRef = useRef<HTMLSpanElement>(null);
-  const checkboxRef = useRef<HTMLInputElement>(null);
-  const isTitleFocusedRef = useRef(false);
-  const discardTitleEditRef = useRef(false);
-  const [isMultiline, setIsMultiline] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isMoveSubmenuOpen, setIsMoveSubmenuOpen] = useState(false);
-
-  useLayoutEffect(() => {
-    const el = titleRef.current;
-    if (!el || isTitleFocusedRef.current) return;
-    if (el.textContent !== todo.title) {
-      el.textContent = todo.title;
-    }
-  }, [todo.title]);
-
-  useLayoutEffect(() => {
-    const el = titleRef.current;
-    if (!el) return;
-
-    const compute = () => {
-      const style = window.getComputedStyle(el);
-      const lineHeight = Number.parseFloat(style.lineHeight);
-      const height = el.getBoundingClientRect().height;
-
-      if (Number.isFinite(lineHeight) && lineHeight > 0) {
-        setIsMultiline(height > lineHeight * 1.6);
-        return;
-      }
-
-      setIsMultiline(height > 26);
-    };
-
-    compute();
-
-    if (typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => compute());
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [todo.title, todo.is_completed]);
-
-  const commitTitleFromDom = useCallback(() => {
-    const el = titleRef.current;
-    if (!el) return;
-    const next = (el.textContent ?? "")
-      .replace(/\u00a0/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (next === "") {
-      el.textContent = todo.title;
-      toast.danger("Title can't be empty.", { timeout: 2200 });
-      return;
-    }
-    if (next === todo.title) return;
-    const prevTitle = todo.title;
-    startTodoTransition(async () => {
-      addOptimistic({ type: "updateTitle", id: todo.id, title: next });
-      const res = await updateTodoTitleAction(todo.id, next);
-      if ("error" in res) {
-        addOptimistic({ type: "updateTitle", id: todo.id, title: prevTitle });
-        const cur = titleRef.current;
-        if (cur) cur.textContent = prevTitle;
-        toast.danger(res.error ?? "Could not update title.", { timeout: 4500 });
-        scheduleRefresh();
-        return;
-      }
-      scheduleRefresh();
-    });
-  }, [addOptimistic, scheduleRefresh, startTodoTransition, todo.id, todo.title]);
-
-  const setNodeRefFromSortable = sortable?.setNodeRef;
-  const mergedLiRef = useCallback(
-    (node: HTMLLIElement | null) => {
-      setNodeRefFromSortable?.(node);
-      const r = rootRef;
-      if (!r) return;
-      if (typeof r === "function") r(node);
-      else (r as MutableRefObject<HTMLLIElement | null>).current = node;
-    },
-    [setNodeRefFromSortable, rootRef],
-  );
-
-  const rowInnerClass = [
-    "flex min-w-0 flex-1 gap-3 rounded-[16px] px-3 transition-colors duration-150 ease-out",
-    isMenuOpen ? "bg-[#f4f4f4]" : "group-hover:bg-[#f4f4f4]",
-    isMultiline ? "items-start py-2.5" : "items-center py-1.5",
-  ].join(" ");
-
-  const moveTargets = lists.filter((list) => list.id !== todo.list_id);
-
-  return (
-    <motion.li
-      ref={mergedLiRef}
-      layout={sortable ? !sortable.isDragging : true}
-      initial={skipEntranceAnimation ? false : { opacity: 0, y: 10 }}
-      animate={{
-        opacity: sortable?.isDragging ? 0.85 : 1,
-        y: 0,
-      }}
-      transition={{
-        opacity: { duration: 0.2, delay: skipEntranceAnimation ? 0 : entranceDelay },
-        y: {
-          duration: 0.22,
-          ease: [0.32, 0.72, 0, 1],
-          delay: skipEntranceAnimation ? 0 : entranceDelay,
-        },
-        layout: { duration: 0.2, ease: [0.32, 0.72, 0, 1] },
-      }}
-      exit={TODO_ROW_EXIT}
-      className="group relative mb-[2px] w-full list-none last:mb-0"
-      style={sortable?.style}
-      data-todo-row="1"
-      data-todo-id={todo.id}
-      onClick={(e) => {
-        const el = e.target as HTMLElement;
-        if (el.closest('input[type="checkbox"]')) return;
-        if (el.closest("button")) return;
-        if (el.closest("[data-todo-title]")) return;
-        setSelectedTodoId(todo.id);
-      }}
-    >
-      <div className="relative flex min-w-0 flex-1">
-        {sortable ? (
-          <button
-            type="button"
-            ref={sortable.setActivatorNodeRef}
-            {...sortable.attributes}
-            {...(sortable.listeners ?? {})}
-            aria-describedby={undefined}
-            className={[
-              "absolute z-10 inline-flex min-h-9 min-w-9 cursor-grab items-center justify-center rounded-[8px] p-0 text-muted/70 transition-opacity duration-150 ease-out",
-              "left-0 -translate-x-[calc(100%-2px)]",
-              isMultiline ? "top-[10px] translate-y-0" : "top-1/2 -translate-y-1/2",
-              sortable.isDragging
-                ? "opacity-100"
-                : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:pointer-events-auto focus-visible:opacity-100",
-              "hover:text-foreground/80 active:cursor-grabbing",
-            ].join(" ")}
-            aria-label={`Reorder ${todo.title}`}
-          >
-            <GripVertical size={16} strokeWidth={2} className="text-current" />
-          </button>
-        ) : null}
-
-        <div className={rowInnerClass}>
-          <span
-            className={["flex shrink-0", isMultiline ? "items-start" : "items-center"].join(" ")}
-          >
-            <input
-              type="checkbox"
-              className={[
-                "todo-checkbox-squircle",
-                isMultiline ? "self-start mt-[2px]" : "self-center",
-              ].join(" ")}
-              ref={checkboxRef}
-              checked={!!todo.is_completed}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                const checked = e.target.checked;
-                if (checked) {
-                  feedbackTodoMarkedComplete();
-                }
-                startTodoTransition(async () => {
-                  addOptimistic({ type: "toggle", id: todo.id, completed: checked });
-                  await toggleTodoAction(todo.id, checked);
-                  scheduleRefresh();
-                });
-              }}
-              aria-label={
-                todo.is_completed
-                  ? `Mark incomplete: ${todo.title}`
-                  : `Mark complete: ${todo.title}`
-              }
-            />
-          </span>
-
-          <span
-            ref={titleRef}
-            data-todo-title=""
-            role="textbox"
-            tabIndex={isTodoPending ? -1 : 0}
-            contentEditable={!isTodoPending}
-            suppressContentEditableWarning
-            spellCheck={false}
-            className={[
-              "min-w-0 flex-1 cursor-text border-0 text-[14px] leading-5 shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none focus-visible:outline-none",
-              todo.is_completed ? "text-muted line-through" : "text-foreground",
-            ].join(" ")}
-            aria-label={`Edit task title: ${todo.title}`}
-            aria-multiline="false"
-            suppressHydrationWarning
-            onFocus={() => {
-              isTitleFocusedRef.current = true;
-            }}
-            onBlur={() => {
-              isTitleFocusedRef.current = false;
-              if (discardTitleEditRef.current) {
-                discardTitleEditRef.current = false;
-                return;
-              }
-              commitTitleFromDom();
-            }}
-            onKeyDown={(e: ReactKeyboardEvent<HTMLSpanElement>) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                e.currentTarget.blur();
-                return;
-              }
-              if (e.key === "Escape") {
-                e.preventDefault();
-                discardTitleEditRef.current = true;
-                e.currentTarget.textContent = todo.title;
-                e.currentTarget.blur();
-              }
-            }}
-            onPaste={(e: ClipboardEvent<HTMLSpanElement>) => {
-              e.preventDefault();
-              const text = e.clipboardData
-                .getData("text/plain")
-                .replace(/\r\n/g, "\n")
-                .replace(/\n/g, " ");
-              insertPlainTextIntoContentEditable(e.currentTarget, text);
-            }}
-          />
-
-          <span
-            className={[
-              "flex shrink-0 items-center gap-0.5 -mr-[6px] opacity-0 transition-opacity group-hover:opacity-100",
-              isMultiline ? "self-start -mt-1" : "",
-            ].join(" ").trim()}
-          >
-            <Dropdown.Root
-              onOpenChange={(open) => {
-                setIsMenuOpen(open);
-                if (!open) setIsMoveSubmenuOpen(false);
-              }}
-            >
-              <Dropdown.Trigger
-                className="inline-flex min-h-7 min-w-7 items-center justify-center rounded-xl p-0 text-muted transition-colors hover:bg-[#eee] hover:text-foreground data-[hovered]:bg-[#eee] data-[hovered]:text-foreground data-[focused]:bg-[#eee] data-[focused]:text-foreground"
-                aria-label={`More actions for ${todo.title}`}
-                isDisabled={isTodoPending}
-              >
-                <Ellipsis size={16} />
-              </Dropdown.Trigger>
-
-              <Dropdown.Popover
-                placement="bottom end"
-                style={{ width: "max-content", minWidth: "0px", overflow: "visible" }}
-              >
-                <Dropdown.Menu
-                  className="w-fit max-w-max min-w-0 overflow-visible"
-                  aria-label={`Todo actions for ${todo.title}`}
-                >
-                  <Dropdown.Item
-                    textValue="Duplicate"
-                    onAction={() => {
-                      setIsMoveSubmenuOpen(false);
-                      startTodoTransition(async () => {
-                        const duplicated: TodoRow = {
-                          ...todo,
-                          id: `optimistic-dup-${crypto.randomUUID()}`,
-                        };
-                        addOptimistic({ type: "duplicateAfter", afterId: todo.id, todo: duplicated });
-                        const res = await duplicateTodoAction(todo.id);
-                        if ("error" in res) {
-                          toast.danger("Could not duplicate todo.", { timeout: 4500 });
-                          scheduleRefresh();
-                          return;
-                        }
-                        toast.success("Todo duplicated.", { timeout: 2200 });
-                        scheduleRefresh();
-                      });
-                    }}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <Copy size={14} />
-                      <span>Duplicate</span>
-                    </span>
-                  </Dropdown.Item>
-
-                  <Dropdown.Item textValue="Move to list">
-                    <div
-                      className="relative -mx-1 overflow-visible"
-                      onMouseEnter={() => setIsMoveSubmenuOpen(true)}
-                      onMouseLeave={() => setIsMoveSubmenuOpen(false)}
-                    >
-                      <div className="flex w-full items-center justify-between gap-3 px-1 py-0.5">
-                        <span className="inline-flex items-center gap-2">
-                          <Folder size={14} />
-                          <span>Move to list</span>
-                        </span>
-                        <ChevronRight size={14} className="ml-2 shrink-0 text-muted" />
-                      </div>
-                      {isMoveSubmenuOpen ? (
-                        <div className="absolute top-0 left-[calc(100%-1px)] min-w-[200px] rounded-xl border border-[#e8e8e8] bg-white p-1 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
-                          {moveTargets.length > 0 ? (
-                            moveTargets.map((list) => (
-                              <button
-                                key={list.id}
-                                type="button"
-                                className="block w-full rounded-lg px-2.5 py-2 text-left text-[13px] text-foreground hover:bg-[#f5f5f5]"
-                                onClick={() => {
-                                  setIsMoveSubmenuOpen(false);
-                                  startTodoTransition(async () => {
-                                    const prevListId = todo.list_id;
-                                    addOptimistic({ type: "moveList", id: todo.id, list_id: list.id });
-                                    if (view !== "all" && composerListId) {
-                                      addOptimistic({ type: "delete", id: todo.id });
-                                    }
-                                    const res = await moveTodoToListAction(todo.id, list.id);
-                                    if ("error" in res) {
-                                      addOptimistic({ type: "moveList", id: todo.id, list_id: prevListId });
-                                      toast.danger("Could not move todo.", { timeout: 4500 });
-                                      scheduleRefresh();
-                                      return;
-                                    }
-                                    toast.success(`Moved to ${list.title}.`, { timeout: 2200 });
-                                    scheduleRefresh();
-                                  });
-                                }}
-                              >
-                                {list.title}
-                              </button>
-                            ))
-                          ) : (
-                            <p className="px-2.5 py-2 text-[12px] text-muted">No other lists</p>
-                          )}
-                        </div>
-                      ) : null}
-                    </div>
-                  </Dropdown.Item>
-
-                  <Dropdown.Item
-                    textValue="Delete"
-                    className="text-[color:var(--color-danger)]"
-                    onAction={() => {
-                      setIsMoveSubmenuOpen(false);
-                      startTodoTransition(async () => {
-                        try {
-                          addOptimistic({ type: "delete", id: todo.id });
-                          await deleteTodoAction(todo.id);
-                          toast.success("Todo deleted.", { timeout: 2500 });
-                        } catch {
-                          addOptimistic({ type: "add", todo });
-                          toast.danger("Could not delete todo.", { timeout: 4500 });
-                        } finally {
-                          scheduleRefresh();
-                        }
-                      });
-                    }}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={1.75} />
-                      <span>Delete</span>
-                    </span>
-                  </Dropdown.Item>
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
-          </span>
-        </div>
-      </div>
-    </motion.li>
-  );
-}
-
-const PresenceTodoRow = forwardRef<
-  HTMLLIElement,
-  { todo: TodoRow; entranceDelay: number; skipEntranceAnimation?: boolean } & TodoRowHandlers
->(function PresenceTodoRow({ todo, entranceDelay, skipEntranceAnimation, ...handlers }, ref) {
-  return (
-    <TodoRowMeasured
-      todo={todo}
-      rootRef={ref}
-      entranceDelay={entranceDelay}
-      skipEntranceAnimation={skipEntranceAnimation}
-      {...handlers}
-    />
-  );
-});
-
-const SortableTodoItem = forwardRef<
-  HTMLLIElement,
-  { todo: TodoRow; entranceDelay: number; skipEntranceAnimation?: boolean } & TodoRowHandlers
->(function SortableTodoItem({ todo, entranceDelay, skipEntranceAnimation, ...handlers }, ref) {
-    const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
-      useSortable({ id: todo.id });
-
-    return (
-      <TodoRowMeasured
-        todo={todo}
-        rootRef={ref}
-        entranceDelay={entranceDelay}
-        skipEntranceAnimation={skipEntranceAnimation}
-        {...handlers}
-        sortable={{
-          setNodeRef,
-          setActivatorNodeRef,
-          attributes,
-          listeners,
-          isDragging,
-          style: {
-            transform: CSS.Transform.toString(transform),
-            transition,
-            zIndex: isDragging ? 20 : undefined,
-          },
-        }}
-      />
-    );
-});
-
 export function TodayClient({ initialTodos, composerListId, view, initialShowCompleted = true }: TodayClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -868,17 +320,6 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
     setBaseTodos(initialTodos);
     setCachedTodos(pathname, initialTodos);
   }, [initialTodos, pathname]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void revalidateTodosForPath(pathname).then((fresh) => {
-      if (!fresh || cancelled) return;
-      setBaseTodos(fresh as TodoRow[]);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [pathname]);
 
   useEffect(() => {
     setCachedTodos(pathname, baseTodos);
@@ -972,6 +413,7 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
     startTodoTransition: (() => {}) as typeof startTodoTransition,
     addOptimistic: (() => {}) as typeof addOptimistic,
     scheduleRefresh: () => {},
+    onTodoDeleted: (() => {}) as ((deletedId: string) => void),
     prefetchRoute: (() => {}) as (href: string) => void,
     routerPush: (() => {}) as (href: string) => void,
   });
@@ -998,9 +440,21 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
     rollbackOrder: string[];
   } | null>(null);
 
+  const refreshTimerRef = useRef<number | null>(null);
   const scheduleRefresh = useCallback(() => {
-    queueMicrotask(() => router.refresh());
+    if (refreshTimerRef.current != null) window.clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = window.setTimeout(() => {
+      router.refresh();
+      refreshTimerRef.current = null;
+    }, 180);
   }, [router]);
+
+  useEffect(
+    () => () => {
+      if (refreshTimerRef.current != null) window.clearTimeout(refreshTimerRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!reorderError) return;
@@ -1025,6 +479,23 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
       void prefetchTodosForPath(`/${l.slug}`);
     }
   }, [lists]);
+
+  const focusNextAfterDelete = useCallback(
+    (deletedId: string) => {
+      const ids = keyboardRef.current.orderedVisibleTodos.map((t) => t.id);
+      const remaining = ids.filter((id) => id !== deletedId);
+      const deletedIdx = ids.indexOf(deletedId);
+      const targetIdx = deletedIdx < 0 ? 0 : Math.min(deletedIdx, Math.max(remaining.length - 1, 0));
+      const nextId = remaining[targetIdx] ?? null;
+      setSelectedTodoId(nextId);
+      if (!nextId) return;
+      queueMicrotask(() => {
+        const row = document.querySelector(`[data-todo-id="${nextId}"]`);
+        row?.querySelector<HTMLInputElement>(".todo-checkbox-squircle")?.focus();
+      });
+    },
+    [],
+  );
 
   const filterChipClass = (href: string) =>
     [
@@ -1362,6 +833,9 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
       }
       const result = await addTodoAction(null, fd);
       if (result?.error) {
+        if (shouldRenderOptimisticInCurrentView) {
+          addOptimistic({ type: "delete", id: tempId });
+        }
         setAddError(result.error);
         const err = result.error;
         const isDefaultListFailure =
@@ -1410,6 +884,7 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
     const oldIndex = listsSorted.findIndex((l) => l.id === String(active.id));
     const newIndex = listsSorted.findIndex((l) => l.id === String(over.id));
     if (oldIndex < 0 || newIndex < 0) return;
+    const previousIds = listTabOrderIds ?? listsSorted.map((l) => l.id);
     const nextLists = arrayMove(listsSorted, oldIndex, newIndex);
     const nextIds = nextLists.map((l) => l.id);
     setListTabOrderIds(nextIds);
@@ -1417,10 +892,9 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
       const result = await reorderListsAction(nextIds);
       if (!result.ok) {
         toast.danger(result.error, { timeout: 4000 });
-        setListTabOrderIds(null);
+        setListTabOrderIds(previousIds);
         return;
       }
-      router.refresh();
     });
   }
 
@@ -1474,6 +948,7 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
       startTodoTransition,
       addOptimistic,
       scheduleRefresh,
+      onTodoDeleted: focusNextAfterDelete,
     }),
     [
       lists,
@@ -1484,6 +959,7 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
       startTodoTransition,
       addOptimistic,
       scheduleRefresh,
+      focusNextAfterDelete,
     ],
   );
 
@@ -1536,6 +1012,7 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
     startTodoTransition,
     addOptimistic,
     scheduleRefresh,
+    onTodoDeleted: focusNextAfterDelete,
     prefetchRoute,
     routerPush: (href: string) => {
       router.push(href);
@@ -1805,17 +1282,18 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
         if (!todo) return;
         e.preventDefault();
         k.startTodoTransition(async () => {
-          try {
-            k.addOptimistic({ type: "delete", id: todo.id });
-            await deleteTodoAction(todo.id);
-            toast.success("Todo deleted.", { timeout: 2500 });
-            k.setSelectedTodoId(null);
-          } catch {
+          k.addOptimistic({ type: "delete", id: todo.id });
+          const res = await deleteTodoAction(todo.id);
+          if ("error" in res) {
             k.addOptimistic({ type: "add", todo });
             toast.danger("Could not delete todo.", { timeout: 4500 });
-          } finally {
             k.scheduleRefresh();
+            return;
           }
+          toast.success("Todo deleted.", { timeout: 2500 });
+          k.setSelectedTodoId(null);
+          k.onTodoDeleted?.(todo.id);
+          k.scheduleRefresh();
         });
         return;
       }
@@ -2159,7 +1637,7 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
                 composerTargetList ? "pl-0" : "pl-4",
               ].join(" ")}
             />
-            <kbd className="hidden shrink-0 items-center justify-center rounded border border-[#e6e6e6] bg-[#fafafa] px-1.5 py-1 font-sans text-[11px] font-medium leading-none text-muted sm:inline-flex">
+            <kbd className="hidden shrink-0 items-center justify-center rounded-[6px] border border-[#e6e6e6] bg-[#fafafa] px-1.5 py-1 font-sans text-[11px] font-medium leading-none text-muted sm:inline-flex">
               N
             </kbd>
 
@@ -2238,6 +1716,7 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
                       todo={todo}
                       entranceDelay={getEntranceDelay(todo.id, index, renderedOrderedTodos.length)}
                       skipEntranceAnimation={skipListEntranceAnimations}
+                      showDetailAction={!todo.parent_id}
                       {...todoRowHandlers}
                     />
                   ))}
@@ -2261,6 +1740,7 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
                   todo={todo}
                   entranceDelay={getEntranceDelay(todo.id, index, renderedVisibleTodos.length)}
                   skipEntranceAnimation={skipListEntranceAnimations}
+                  showDetailAction={!todo.parent_id}
                   {...todoRowHandlers}
                 />
               ))}

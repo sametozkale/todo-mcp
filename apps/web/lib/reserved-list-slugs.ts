@@ -6,6 +6,7 @@ const RESERVED_LIST_SLUGS = [
   // Product (current)
   "all",
   "today",
+  "todo",
   // Auth
   "login",
   "signup",

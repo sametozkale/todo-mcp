@@ -307,7 +307,12 @@ export async function executeMcpTool(
         };
       }
 
-      const query = supabase.from("todos").select("*").eq("user_id", userId).order("position");
+      const query = supabase
+        .from("todos")
+        .select("*")
+        .eq("user_id", userId)
+        .is("parent_id", null)
+        .order("position");
       const { data, error } =
         resolved.status === "inbox"
           ? await query.is("list_id", null)
@@ -409,6 +414,7 @@ export async function executeMcpTool(
           .select("position")
           .eq("user_id", userId)
           .eq("list_id", listId)
+          .is("parent_id", null)
           .order("position", { ascending: true })
           .limit(1)
           .maybeSingle();
@@ -419,6 +425,7 @@ export async function executeMcpTool(
           .select("position")
           .eq("user_id", userId)
           .is("list_id", null)
+          .is("parent_id", null)
           .order("position", { ascending: true })
           .limit(1)
           .maybeSingle();

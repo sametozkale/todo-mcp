@@ -52,38 +52,81 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   ]);
 
   const lists = listRows ?? [];
-  const [{ count: allCountRaw }, { count: allListTodosCountRaw }, listCountResults] = await Promise.all([
-    supabase
-      .from("todos")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .not("is_completed", "is", true),
-    supabase
-      .from("todos")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .is("list_id", null)
-      .not("is_completed", "is", true),
-    Promise.all(
-      lists.map(async (list) => {
-        const { count } = await supabase
-          .from("todos")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .eq("list_id", list.id)
-          .not("is_completed", "is", true);
-        return [list.id, count ?? 0] as const;
-      }),
-    ),
-  ]);
+  const { data: countsRowRaw, error: countsRpcError } = await supabase.rpc("get_todo_counts_snapshot").single();
+  const countsRow = countsRowRaw as {
+    usage_total_active: number;
+    all_list_todos_count: number;
+    display_all_top_level: number;
+    list_usage_by_list: Record<string, number>;
+    list_display_by_list: Record<string, number>;
+  } | null;
+  let usageTotalActive = countsRow?.usage_total_active ?? 0;
+  let allCount = countsRow?.display_all_top_level ?? 0;
+  let allListTodosCount = countsRow?.all_list_todos_count ?? 0;
+  let byListId = (countsRow?.list_display_by_list ?? {}) as Record<string, number>;
+  let activeTodosByListIdForLimits = (countsRow?.list_usage_by_list ?? {}) as Record<string, number>;
 
-  const allCount = allCountRaw ?? 0;
-  const allListTodosCount = allListTodosCountRaw ?? 0;
-  const byListId: Record<string, number> = Object.fromEntries(listCountResults);
+  if (countsRpcError || !countsRow) {
+    const [
+      { count: usageTotalActiveRaw },
+      { count: allListTodosCountRaw },
+      listUsageByList,
+      { count: displayAllTopLevel },
+      listDisplayByList,
+    ] = await Promise.all([
+      supabase
+        .from("todos")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .not("is_completed", "is", true),
+      supabase
+        .from("todos")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .is("list_id", null)
+        .not("is_completed", "is", true),
+      Promise.all(
+        lists.map(async (list) => {
+          const { count } = await supabase
+            .from("todos")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .eq("list_id", list.id)
+            .not("is_completed", "is", true);
+          return [list.id, count ?? 0] as const;
+        }),
+      ),
+      supabase
+        .from("todos")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .is("parent_id", null)
+        .not("is_completed", "is", true),
+      Promise.all(
+        lists.map(async (list) => {
+          const { count } = await supabase
+            .from("todos")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .eq("list_id", list.id)
+            .is("parent_id", null)
+            .not("is_completed", "is", true);
+          return [list.id, count ?? 0] as const;
+        }),
+      ),
+    ]);
+    usageTotalActive = usageTotalActiveRaw ?? 0;
+    allCount = displayAllTopLevel ?? 0;
+    allListTodosCount = allListTodosCountRaw ?? 0;
+    byListId = Object.fromEntries(listDisplayByList);
+    activeTodosByListIdForLimits = Object.fromEntries(listUsageByList);
+  }
 
   const extraListsCount = lists.length;
   const maxExtraListTodosCount =
-    lists.length === 0 ? 0 : Math.max(...lists.map((l) => byListId[l.id] ?? 0));
+    lists.length === 0
+      ? 0
+      : Math.max(...lists.map((l) => activeTodosByListIdForLimits[l.id] ?? 0));
 
   const initialSubscription: SubscriptionSnapshot = {
     plan: (subRow?.plan_type ?? "free") as SubscriptionSnapshot["plan"],
@@ -93,11 +136,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   };
 
   const initialUsage: UsageSnapshot = {
-    totalActiveTodosCount: allCount,
+    totalActiveTodosCount: usageTotalActive,
     allListTodosCount,
     extraListsCount,
     maxExtraListTodosCount,
-    activeTodosByListId: byListId,
+    activeTodosByListId: activeTodosByListIdForLimits,
   };
 
   return (

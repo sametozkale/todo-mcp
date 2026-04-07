@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { withSocialImage } from "@/lib/seo-metadata";
 import { getCachedAuth } from "@/lib/supabase/cached-auth";
+import { attachSubTodoCounts } from "@/lib/server/sub-todo-counts";
 import { TodayClient } from "../today/today-client";
 
 export const metadata: Metadata = withSocialImage({
@@ -20,8 +21,9 @@ export default async function AllPage() {
 
   const { data: todos, error } = await supabase
     .from("todos")
-    .select("id, title, is_completed, list_id, created_at")
+    .select("id, title, is_completed, list_id, created_at, parent_id")
     .eq("user_id", user.id)
+    .is("parent_id", null)
     .order("all_position", { ascending: true, nullsFirst: true })
     .order("created_at", { ascending: false });
 
@@ -41,15 +43,17 @@ export default async function AllPage() {
     );
   }
 
+  const todosWithSubCounts = await attachSubTodoCounts(supabase, user.id, todos ?? []);
+
   return (
     <main suppressHydrationWarning className="mx-auto w-full max-w-2xl px-4 pt-4 sm:pt-6">
       <h1 className="sr-only">All</h1>
       <TodayClient
-        initialTodos={todos ?? []}
+        initialTodos={todosWithSubCounts}
         view="all"
         composerListId={null}
         initialShowCompleted={profile?.show_completed_tasks ?? true}
-        sectionHeaderLabel={`All ${(todos ?? []).length}`}
+        sectionHeaderLabel={`All ${todosWithSubCounts.length}`}
       />
     </main>
   );

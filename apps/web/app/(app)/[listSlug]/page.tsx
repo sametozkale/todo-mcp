@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { withSocialImage } from "@/lib/seo-metadata";
 import { getCachedUserListBySlug } from "@/lib/lists/cached-list-by-slug";
+import { attachSubTodoCounts } from "@/lib/server/sub-todo-counts";
 import { notFound } from "next/navigation";
 import { TodayClient } from "../today/today-client";
 
@@ -34,9 +35,10 @@ export default async function UserListPage({ params }: Props) {
 
   const { data: todos, error } = await supabase
     .from("todos")
-    .select("id, title, is_completed, list_id, created_at")
+    .select("id, title, is_completed, list_id, created_at, parent_id")
     .eq("user_id", user.id)
     .eq("list_id", list.id)
+    .is("parent_id", null)
     .order("position", { ascending: true, nullsFirst: true })
     .order("created_at", { ascending: false });
 
@@ -56,11 +58,13 @@ export default async function UserListPage({ params }: Props) {
     );
   }
 
+  const todosWithSubCounts = await attachSubTodoCounts(supabase, user.id, todos ?? []);
+
   return (
     <main suppressHydrationWarning className="mx-auto w-full max-w-2xl px-4 pt-4 sm:pt-6">
       <h1 className="sr-only">{list.title}</h1>
       <TodayClient
-        initialTodos={todos ?? []}
+        initialTodos={todosWithSubCounts}
         view="list"
         composerListId={list.id}
         initialShowCompleted={profile?.show_completed_tasks ?? true}

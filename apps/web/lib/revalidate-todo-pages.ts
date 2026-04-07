@@ -24,3 +24,11 @@ export function revalidateTodoListPaths(listSlugs?: readonly string[]) {
   }
 }
 
+/** Invalidate todo detail route(s); pass `parentTodoId` when mutating a sub-todo so the parent page refreshes. */
+export function revalidateTodoDetailPaths(todoId: string, parentTodoId?: string | null) {
+  revalidatePath(`/todo/${todoId}`);
+  if (parentTodoId) {
+    revalidatePath(`/todo/${parentTodoId}`);
+  }
+}
+

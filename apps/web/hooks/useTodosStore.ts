@@ -7,6 +7,9 @@ export type TodoStoreRow = {
   title: string;
   is_completed: boolean | null;
   list_id: string | null;
+  parent_id?: string | null;
+  sub_todo_completed_count?: number;
+  sub_todo_total_count?: number;
   created_at?: string;
 };
 

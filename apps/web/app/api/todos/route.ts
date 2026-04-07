@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { attachSubTodoCounts } from "@/lib/server/sub-todo-counts";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -20,15 +21,17 @@ export async function GET(request: Request) {
   if (view === "all") {
     const { data, error } = await supabase
       .from("todos")
-      .select("id, title, is_completed, list_id, created_at")
+      .select("id, title, is_completed, list_id, created_at, parent_id")
       .eq("user_id", user.id)
+      .is("parent_id", null)
       .order("all_position", { ascending: true, nullsFirst: true })
       .order("created_at", { ascending: false });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ todos: data ?? [] });
+    const todosWithSubCounts = await attachSubTodoCounts(supabase, user.id, data ?? []);
+    return NextResponse.json({ todos: todosWithSubCounts });
   }
 
   const { data: todayList, error: listErr } = await supabase
@@ -44,9 +47,10 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase
     .from("todos")
-    .select("id, title, is_completed, list_id, created_at")
+    .select("id, title, is_completed, list_id, created_at, parent_id")
     .eq("user_id", user.id)
     .eq("list_id", todayList.id)
+    .is("parent_id", null)
     .order("position", { ascending: true })
     .order("created_at", { ascending: true });
 
@@ -54,5 +58,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ todos: data ?? [] });
+  const todosWithSubCounts = await attachSubTodoCounts(supabase, user.id, data ?? []);
+  return NextResponse.json({ todos: todosWithSubCounts });
 }

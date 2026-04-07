@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isReservedListSlug } from "@/lib/reserved-list-slugs";
+import { attachSubTodoCounts } from "@/lib/server/sub-todo-counts";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -35,9 +36,10 @@ export async function GET(_request: Request, { params }: Props) {
 
   const { data, error } = await supabase
     .from("todos")
-    .select("id, title, is_completed, list_id, created_at")
+    .select("id, title, is_completed, list_id, created_at, parent_id")
     .eq("user_id", user.id)
     .eq("list_id", list.id)
+    .is("parent_id", null)
     .order("position", { ascending: true, nullsFirst: true })
     .order("created_at", { ascending: false });
 
@@ -45,5 +47,6 @@ export async function GET(_request: Request, { params }: Props) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ todos: data ?? [] });
+  const todosWithSubCounts = await attachSubTodoCounts(supabase, user.id, data ?? []);
+  return NextResponse.json({ todos: todosWithSubCounts });
 }
