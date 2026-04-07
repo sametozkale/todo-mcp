@@ -102,7 +102,10 @@ const guides: Record<PlatformId, InstallGuide> = {
         title: "Claude Desktop → Settings → Developer → Edit Config",
         description: `macOS path is often ${CLAUDE_DESKTOP_CONFIG_HINT}. On Windows, use Settings to open the correct file.`,
       },
-      { title: "Merge only mcpServers.yalp — do not remove other servers" },
+      {
+        title: "Paste only the copied yalp server block into mcpServers",
+        description: "Keep existing servers as-is. Add/update mcpServers.yalp, save the file.",
+      },
       { title: "Restart Claude Desktop" },
     ],
   },

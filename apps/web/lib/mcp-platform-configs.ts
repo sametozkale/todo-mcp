@@ -67,7 +67,9 @@ export function buildMcpServersStdio(ctx: McpInstallContext) {
 
 /** Cursor: base64-encoded mcpServers JSON → deeplink. */
 export function buildCursorMcpInstallDeeplink(ctx: McpInstallContext): string {
-  const configObj = buildMcpServersStdio(ctx);
+  // Cursor expects the *server config object* for the selected name, not the
+  // full { mcpServers: { ... } } wrapper used by other clients.
+  const configObj = buildMcpServersStdio(ctx).mcpServers[YALP_MCP_SERVER_ID];
   const json = JSON.stringify(configObj);
   const configB64 = base64EncodeUtf8(json);
   const name = encodeURIComponent(YALP_MCP_SERVER_ID);
