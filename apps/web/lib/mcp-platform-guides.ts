@@ -143,8 +143,8 @@ const guides: Record<PlatformId, InstallGuide> = {
     primaryKind: "copy_claude_code",
     needsInstallContext: true,
     steps: [
-      { title: "Copy the command bundle (bash/zsh, fish, or PowerShell)" },
-      { title: "Paste into Terminal and run" },
+      { title: "Copy the install command below" },
+      { title: "Paste into Terminal and run (single-step)" },
     ],
   },
   manual: {

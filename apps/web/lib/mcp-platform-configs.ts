@@ -180,23 +180,20 @@ export function buildClaudeCodeMcpCommandVariants(ctx: McpInstallContext): {
 }
 
 export function formatClaudeCodeCommandBundle(ctx: McpInstallContext): string {
-  const variants = buildClaudeCodeMcpCommandVariants(ctx);
+  const validated = validateInstallContext(ctx);
+  if (!validated.ok) throw new Error(validated.message);
+  const key = ctx.apiKey.replace(/'/g, "'\\''");
+  const url = validated.normalizedBaseUrl.replace(/'/g, "'\\''");
+
+  // Single pasteable bash/zsh command with CLI-version fallbacks.
+  // Tries current flag-based form first, then legacy positional forms.
   return [
-    "# Claude Code MCP setup",
-    "# Use the variant that matches your shell.",
-    "",
-    "## bash/zsh",
-    variants.bashZsh,
-    "",
-    "## fish",
-    variants.fish,
-    "",
-    "## PowerShell",
-    variants.powershell,
-    "",
-    "## Fallback",
-    "# If the CLI flags differ in your version, use the universal JSON config from this page.",
-  ].join("\n");
+    `YALP_API_KEY='${key}' YALP_API_BASE_URL='${url}' sh -c "`,
+    `claude mcp remove ${YALP_MCP_SERVER_ID} --scope user >/dev/null 2>&1 || true; `,
+    `(claude mcp add ${YALP_MCP_SERVER_ID} --scope user --transport stdio --command npx --args -y --args -p --args ${YALP_MCP_PACKAGE} --args ${YALP_MCP_BIN} `,
+    `|| claude mcp add ${YALP_MCP_SERVER_ID} --scope user npx -y -p ${YALP_MCP_PACKAGE} ${YALP_MCP_BIN} `,
+    `|| claude mcp add ${YALP_MCP_SERVER_ID} npx -y -p ${YALP_MCP_PACKAGE} ${YALP_MCP_BIN})"`,
+  ].join("");
 }
 
 export function formatUniversalConfigJson(ctx: McpInstallContext): string {
