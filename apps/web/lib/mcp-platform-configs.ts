@@ -185,15 +185,12 @@ export function formatClaudeCodeCommandBundle(ctx: McpInstallContext): string {
   const key = ctx.apiKey.replace(/'/g, "'\\''");
   const url = validated.normalizedBaseUrl.replace(/'/g, "'\\''");
 
-  // Single pasteable bash/zsh command with CLI-version fallbacks.
-  // Prefer current `claude mcp add <name> -- <command ...>` syntax.
+  // Single pasteable bash/zsh command.
+  // Use `env ... npx ...` after `--` to avoid CLI-specific `-e/--env` parsing quirks.
   return [
     `YALP_API_KEY='${key}' YALP_API_BASE_URL='${url}' sh -c "`,
     `claude mcp remove -s user ${YALP_MCP_SERVER_ID} >/dev/null 2>&1 || true; `,
-    `(claude mcp add -s user -t stdio -e YALP_API_KEY=\\\"$YALP_API_KEY\\\" -e YALP_API_BASE_URL=\\\"$YALP_API_BASE_URL\\\" ${YALP_MCP_SERVER_ID} -- npx -y -p ${YALP_MCP_PACKAGE} ${YALP_MCP_BIN} `,
-    `|| claude mcp add --scope user --transport stdio ${YALP_MCP_SERVER_ID} -- npx -y -p ${YALP_MCP_PACKAGE} ${YALP_MCP_BIN} `,
-    `|| claude mcp add --scope user --transport stdio --command npx --args -y --args -p --args ${YALP_MCP_PACKAGE} --args ${YALP_MCP_BIN} ${YALP_MCP_SERVER_ID} `,
-    `|| claude mcp add ${YALP_MCP_SERVER_ID} -- npx -y -p ${YALP_MCP_PACKAGE} ${YALP_MCP_BIN})"`,
+    `claude mcp add -s user -t stdio ${YALP_MCP_SERVER_ID} -- env YALP_API_KEY=\\\"$YALP_API_KEY\\\" YALP_API_BASE_URL=\\\"$YALP_API_BASE_URL\\\" npx -y -p ${YALP_MCP_PACKAGE} ${YALP_MCP_BIN}"`,
   ].join("");
 }
 
