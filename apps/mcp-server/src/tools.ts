@@ -50,7 +50,16 @@ function getBaseUrl(): string {
 }
 
 function getApiKey(provided?: string): string {
-  return (provided ?? process.env.YALP_API_KEY ?? '').trim();
+  const raw = (provided ?? process.env.YALP_API_KEY ?? '').trim();
+  if (!raw) return '';
+  let key = raw;
+  if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
+    key = key.slice(1, -1).trim();
+  }
+  if (key.toLowerCase().startsWith('bearer ')) {
+    key = key.slice(7).trim();
+  }
+  return key;
 }
 
 async function callYalpApi<T>(

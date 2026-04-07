@@ -20,6 +20,19 @@ function getPepper(): string {
   return process.env.YALP_API_KEY_PEPPER ?? "";
 }
 
+function normalizeApiKeyInput(raw: string | null | undefined): string {
+  if (!raw) return "";
+  let key = raw.trim();
+  if (!key) return "";
+  if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
+    key = key.slice(1, -1).trim();
+  }
+  if (key.toLowerCase().startsWith("bearer ")) {
+    key = key.slice(7).trim();
+  }
+  return key;
+}
+
 function hashApiKey(apiKey: string): string {
   const hasValidPrefix = apiKey.startsWith("yalp_");
   if (!hasValidPrefix || apiKey.length < 20) {
@@ -32,12 +45,17 @@ export async function authUserIdFromApiKey(
   supabase: ReturnType<typeof getServiceSupabase>,
   apiKey: string,
 ) {
-  const hash = hashApiKey(apiKey);
+  const normalizedApiKey = normalizeApiKeyInput(apiKey);
+  const hash = hashApiKey(normalizedApiKey);
 
   const { data, error } = await supabase
     .from("api_keys")
     .select("user_id, id")
-    .or(hash ? `key_hash.eq.${hash},key_hash.eq.${apiKey}` : `key_hash.eq.${apiKey}`)
+    .or(
+      hash
+        ? `key_hash.eq.${hash},key_hash.eq.${normalizedApiKey}`
+        : `key_hash.eq.${normalizedApiKey}`,
+    )
     .maybeSingle();
 
   if (error || !data) return { userId: null as string | null, keyRowId: null as string | null };
