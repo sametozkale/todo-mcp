@@ -188,9 +188,9 @@ export function formatClaudeCodeCommandBundle(ctx: McpInstallContext): string {
   // Single pasteable bash/zsh command.
   // Use `env ... npx ...` after `--` to avoid CLI-specific `-e/--env` parsing quirks.
   return [
-    `YALP_API_KEY='${key}' YALP_API_BASE_URL='${url}' sh -c "`,
+    `sh -c "`,
     `claude mcp remove -s user ${YALP_MCP_SERVER_ID} >/dev/null 2>&1 || true; `,
-    `claude mcp add -s user -t stdio ${YALP_MCP_SERVER_ID} -- env YALP_API_KEY=\\\"$YALP_API_KEY\\\" YALP_API_BASE_URL=\\\"$YALP_API_BASE_URL\\\" npx -y -p ${YALP_MCP_PACKAGE} ${YALP_MCP_BIN}"`,
+    `claude mcp add -s user -t stdio ${YALP_MCP_SERVER_ID} -- env YALP_API_KEY='${key}' YALP_API_BASE_URL='${url}' npx -y -p ${YALP_MCP_PACKAGE} ${YALP_MCP_BIN}"`,
   ].join("");
 }
 
