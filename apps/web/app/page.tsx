@@ -13,7 +13,7 @@ import { LandingPricingFooterPaper } from "./landing-pricing-footer-paper";
 
 const landingTitle = "Yalp — Manage todos from Cursor & Claude";
 const landingDescription =
-  "One task list: use it from Cursor, Claude, or other MCP clients. Free tier with generous limits.";
+  "Capture and manage todos from Cursor, Claude, and other MCP clients in one focused workspace. Start free and scale as you grow.";
 
 export const metadata: Metadata = withSocialImage({
   title: { absolute: landingTitle },

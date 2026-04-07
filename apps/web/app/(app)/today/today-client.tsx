@@ -1588,6 +1588,21 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
+      // #region agent log
+      fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "fd174b" },
+        body: JSON.stringify({
+          sessionId: "fd174b",
+          runId: "shortcuts-audit-1",
+          hypothesisId: "H1-keydown-not-reaching-handler",
+          location: "today-client.tsx:onKeyDown",
+          message: "Global keydown received",
+          data: { key: e.key, code: e.code, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
       if (e.defaultPrevented) return;
 
       const typing = isTextTypingTarget(e.target);
@@ -1606,7 +1621,24 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
         return;
       }
 
-      if (typing) return;
+      if (typing) {
+        // #region agent log
+        fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "fd174b" },
+          body: JSON.stringify({
+            sessionId: "fd174b",
+            runId: "shortcuts-audit-1",
+            hypothesisId: "H2-shortcuts-blocked-by-typing-guard",
+            location: "today-client.tsx:onKeyDown",
+            message: "Shortcut ignored because typing target detected",
+            data: { key: e.key, code: e.code },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
+        return;
+      }
 
       if (e.code === "Space") {
         const ae = document.activeElement;
@@ -1632,6 +1664,21 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
 
       if (e.key === "?") {
         e.preventDefault();
+        // #region agent log
+        fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "fd174b" },
+          body: JSON.stringify({
+            sessionId: "fd174b",
+            runId: "shortcuts-audit-1",
+            hypothesisId: "H3-event-dispatch-happens-but-modal-not-opening",
+            location: "today-client.tsx:onKeyDown",
+            message: "Dispatching keyboard shortcuts modal event",
+            data: { eventName: YALP_OPEN_KEYBOARD_SHORTCUTS },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
         window.dispatchEvent(new CustomEvent(YALP_OPEN_KEYBOARD_SHORTCUTS));
         return;
       }
@@ -1663,6 +1710,21 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
         if (kn === "a" || kn === "i" || kn === "u" || kn === "p") {
           disarmGo();
           e.preventDefault();
+          // #region agent log
+          fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "fd174b" },
+            body: JSON.stringify({
+              sessionId: "fd174b",
+              runId: "shortcuts-audit-1",
+              hypothesisId: "H4-go-sequence-second-key-mapping-issue",
+              location: "today-client.tsx:onKeyDown",
+              message: "Go-sequence second key accepted",
+              data: { key: kn },
+              timestamp: Date.now(),
+            }),
+          }).catch(() => {});
+          // #endregion
           if (kn === "a") k.routerPush("/all");
           else if (kn === "i") k.routerPush("/mcp");
           else if (kn === "u") window.dispatchEvent(new CustomEvent(YALP_OPEN_PROFILE));
@@ -2088,7 +2150,7 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
               name="title"
               type="text"
               autoComplete="off"
-              placeholder="New todo @list @2pm"
+              placeholder="New todo @list"
               disabled={isAddPending}
               value={composerValue}
               onChange={(e) => handleComposerChange(e.target.value)}

@@ -143,7 +143,7 @@ function PlanCardColumn({
       ].join(" ")}
     >
       {featured ? (
-        <span className="absolute right-3 top-3 rounded-full bg-[#00b5e9] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+        <span className="absolute right-4 top-4 rounded-full bg-[#00b5e9] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white sm:right-5 sm:top-5">
           Best value
         </span>
       ) : null}

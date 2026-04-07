@@ -9,6 +9,7 @@ import {
   Logout02Icon,
   McpServerIcon,
   PuzzleIcon,
+  SentIcon,
   UserCircleIcon,
   KeyboardIcon,
 } from "@hugeicons/core-free-icons";
@@ -132,6 +133,68 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
   }, []);
 
   useEffect(() => {
+    const onShortcutsObserved = () => {
+      // #region agent log
+      fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "fd174b" },
+        body: JSON.stringify({
+          sessionId: "fd174b",
+          runId: "shortcuts-audit-1",
+          hypothesisId: "H5-header-not-receiving-custom-events",
+          location: "app-header.tsx:useEffect",
+          message: "Header observed shortcuts event",
+          data: { eventName: YALP_OPEN_KEYBOARD_SHORTCUTS, overlaysReady, isOpen: shortcutsModal.isOpen },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+    };
+    const onProfileObserved = () => {
+      // #region agent log
+      fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "fd174b" },
+        body: JSON.stringify({
+          sessionId: "fd174b",
+          runId: "shortcuts-audit-1",
+          hypothesisId: "H5-header-not-receiving-custom-events",
+          location: "app-header.tsx:useEffect",
+          message: "Header observed profile event",
+          data: { eventName: YALP_OPEN_PROFILE, overlaysReady, isOpen: profileModal.isOpen },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+    };
+    const onPlansObserved = () => {
+      // #region agent log
+      fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "fd174b" },
+        body: JSON.stringify({
+          sessionId: "fd174b",
+          runId: "shortcuts-audit-1",
+          hypothesisId: "H5-header-not-receiving-custom-events",
+          location: "app-header.tsx:useEffect",
+          message: "Header observed plans event",
+          data: { eventName: YALP_OPEN_PLANS, overlaysReady },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+    };
+    window.addEventListener(YALP_OPEN_KEYBOARD_SHORTCUTS, onShortcutsObserved);
+    window.addEventListener(YALP_OPEN_PROFILE, onProfileObserved);
+    window.addEventListener(YALP_OPEN_PLANS, onPlansObserved);
+    return () => {
+      window.removeEventListener(YALP_OPEN_KEYBOARD_SHORTCUTS, onShortcutsObserved);
+      window.removeEventListener(YALP_OPEN_PROFILE, onProfileObserved);
+      window.removeEventListener(YALP_OPEN_PLANS, onPlansObserved);
+    };
+  }, [overlaysReady, profileModal.isOpen, shortcutsModal.isOpen]);
+
+  useEffect(() => {
     if (!profileModal.isOpen) return;
     setFullName(initialProfile.fullName);
     setAvatarUrl(initialProfile.avatarUrl ?? "");
@@ -167,6 +230,7 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
   const initials = getInitials(initialProfile.fullName, userEmail);
   const profileModalPreviewSrc = avatarUrl.trim() || DEFAULT_AVATAR_SRC;
   const profileModalInitials = getInitials(fullName, userEmail);
+  const profileEmail = userEmail ?? "No email available";
 
   return (
     <>
@@ -207,11 +271,14 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                     </span>
                   </Dropdown.Item>
                   <Dropdown.Item
-                    isDisabled
-                    textValue="separator"
-                    className="pointer-events-none mx-auto my-[2px] h-px min-h-px w-[calc(100%-24px)] max-w-full cursor-default bg-[#f4f4f4] px-0 py-0 opacity-100"
+                    onAction={() => {
+                      window.location.href = "mailto:ozkalesamet@gmail.com";
+                    }}
                   >
-                    <span aria-hidden="true" />
+                    <span className="inline-flex items-center gap-2">
+                      <HugeiconsIcon icon={SentIcon} size={16} strokeWidth={1.75} />
+                      <span>Support</span>
+                    </span>
                   </Dropdown.Item>
                   <Dropdown.Item
                     onAction={() => subscription.openPaymentModal({ dismissible: true })}
@@ -236,6 +303,13 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                         )}
                       </span>
                     </span>
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    isDisabled
+                    textValue="separator"
+                    className="pointer-events-none mx-auto my-[2px] h-px min-h-px w-[calc(100%-24px)] max-w-full cursor-default bg-[#f4f4f4] px-0 py-0 opacity-100"
+                  >
+                    <span aria-hidden="true" />
                   </Dropdown.Item>
                   <Dropdown.Item
                     onAction={() => {
@@ -336,6 +410,10 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                     >
                       <Label>Full name</Label>
                       <Input placeholder="Your name" />
+                    </TextField.Root>
+                    <TextField.Root value={profileEmail} isDisabled>
+                      <Label>Email</Label>
+                      <Input />
                     </TextField.Root>
                     <TextField.Root
                       name="avatar_url"

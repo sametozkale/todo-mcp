@@ -9,7 +9,7 @@ import { getMcpConnectionsVisitedStorageKey } from "@/lib/mcp-connections-visite
 import { isReservedListSlug } from "@/lib/reserved-list-slugs";
 import type { PlatformId } from "@/lib/mcp-platform-guides";
 
-const ROTATION_MS = 60_000;
+const ROTATION_MS = 20_000;
 
 const ROTATION: Array<{
   platform: PlatformId;
