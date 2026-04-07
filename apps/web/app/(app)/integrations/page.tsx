@@ -20,12 +20,6 @@ export default async function IntegrationsPage() {
     redirect("/login?next=%2Fintegrations");
   }
 
-  const { data: waProfile } = await supabase
-    .from("profiles")
-    .select("whatsapp_phone, whatsapp_linked")
-    .eq("id", user.id)
-    .maybeSingle();
-
   return (
     <div className="mx-auto w-full max-w-3xl pt-6">
       <Suspense
@@ -35,10 +29,7 @@ export default async function IntegrationsPage() {
           </div>
         }
       >
-        <IntegrationsHubClient
-          initialWhatsappLinked={Boolean(waProfile?.whatsapp_linked)}
-          initialWhatsappPhone={waProfile?.whatsapp_phone ?? null}
-        />
+        <IntegrationsHubClient />
       </Suspense>
     </div>
   );

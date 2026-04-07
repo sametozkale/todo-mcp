@@ -54,6 +54,11 @@ const nextConfig: NextConfig = {
         hostname: "www.whatsapp.com",
         pathname: "/favicon.ico",
       },
+      {
+        protocol: "https",
+        hostname: "telegram.org",
+        pathname: "/img/**",
+      },
     ],
   },
 };
