@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { withSocialImage } from "@/lib/seo-metadata";
 import { getSiteUrl } from "@/lib/site-url";
 import { LandingHeader } from "../landing-header";
 import { LandingHeroBlock } from "../landing-hero-block";
@@ -10,7 +11,7 @@ const title = "Why I built Yalp";
 const description =
   "Samet on building Yalp for clearer task management and MCP-powered workflows.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSocialImage({
   title,
   description,
   alternates: { canonical: `${getSiteUrl()}/why-i-built` },
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
     title,
     description,
   },
-};
+});
 
 const FOOTER_COLUMN_1_LINKS = [
   { href: "/why-i-built", label: "Why I built" },

@@ -3,6 +3,7 @@ import { inter, openRunde } from "./fonts";
 import { Providers } from "./providers";
 import { OrganizationJsonLd } from "@/components/seo/organization-json-ld";
 import { SiteAnalytics } from "@/components/seo/site-analytics";
+import { socialImage } from "@/lib/seo-metadata";
 import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 
@@ -10,13 +11,6 @@ const siteUrl = getSiteUrl();
 const siteName = "Yalp";
 const defaultDescription =
   "Yalp is a lightweight todo app with MCP connections for AI tools. Stay focused and get things done.";
-const socialImage = {
-  url: "/metadata-yalp.png",
-  width: 1200,
-  height: 630,
-  alt: "Yalp AI - Manage your to-dos from Cursor, Claude & more",
-};
-
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {

@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { LoginForm } from "@/components/auth/login-form";
 import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
+import { withSocialImage } from "@/lib/seo-metadata";
 
 const title = "Log in to Yalp";
 const description =
   "Sign in to manage your tasks, lists, and MCP connections. Secure access to your Yalp workspace.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSocialImage({
   title: "Log in",
   description,
   alternates: { canonical: "/login" },
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
     title,
     description,
   },
-};
+});
 
 export default async function LoginPage({
   searchParams,

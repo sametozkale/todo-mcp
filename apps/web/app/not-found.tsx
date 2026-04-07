@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { withSocialImage } from "@/lib/seo-metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSocialImage({
   title: "Page not found",
   description: "This page does not exist or has been moved.",
   robots: { index: false, follow: true },
-};
+});
 
 export default function NotFound() {
   return (

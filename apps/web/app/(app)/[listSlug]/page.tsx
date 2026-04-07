@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withSocialImage } from "@/lib/seo-metadata";
 import { getCachedUserListBySlug } from "@/lib/lists/cached-list-by-slug";
 import { notFound } from "next/navigation";
 import { TodayClient } from "../today/today-client";
@@ -12,11 +13,11 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { listSlug } = await params;
   const noIndex = { robots: { index: false, follow: false } } as const;
-  return {
+  return withSocialImage({
     title: listSlug === "today" ? "Today" : "List",
     description: "Tasks in your list.",
     ...noIndex,
-  };
+  });
 }
 
 export default async function UserListPage({ params }: Props) {

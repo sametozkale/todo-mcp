@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { SignupForm } from "@/components/auth/signup-form";
+import { withSocialImage } from "@/lib/seo-metadata";
 
 const title = "Create a Yalp account";
 const description =
   "Sign up for free to organize todos, custom lists, and connect AI clients via MCP. Upgrade anytime for unlimited tasks and lists.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSocialImage({
   title: "Sign up",
   description,
   alternates: { canonical: "/signup" },
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
     title,
     description,
   },
-};
+});
 
 export default async function SignupPage({
   searchParams,

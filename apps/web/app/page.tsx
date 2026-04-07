@@ -1,4 +1,5 @@
 import { SoftwareApplicationJsonLd } from "@/components/seo/software-app-json-ld";
+import { withSocialImage } from "@/lib/seo-metadata";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/site-url";
 import { PRODUCT_HOME } from "@/lib/routes";
@@ -14,7 +15,7 @@ const landingTitle = "Yalp — Manage todos from Cursor & Claude";
 const landingDescription =
   "One task list: use it from Cursor, Claude, or other MCP clients. Free tier with generous limits.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSocialImage({
   title: { absolute: landingTitle },
   description: landingDescription,
   alternates: { canonical: "/" },
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
     title: landingTitle,
     description: landingDescription,
   },
-};
+});
 
 export default async function Home() {
   let user = null as { id: string } | null;

@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { withSocialImage } from "@/lib/seo-metadata";
 import { getCachedAuth } from "@/lib/supabase/cached-auth";
 import { redirect } from "next/navigation";
 import { TodayClient } from "./today-client";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSocialImage({
   title: "Today",
   description: "Your tasks for today.",
   robots: { index: false, follow: false },
-};
+});
 
 export const dynamic = "force-dynamic";
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { withSocialImage } from "@/lib/seo-metadata";
 import { getSiteUrl } from "@/lib/site-url";
 import { LandingHeader } from "../landing-header";
 import { LandingHeroBlock } from "../landing-hero-block";
@@ -8,7 +9,7 @@ import { LandingHeroBlock } from "../landing-hero-block";
 const title = "Roadmap — Yalp";
 const description = "Upcoming features and integrations for Yalp.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSocialImage({
   title,
   description,
   alternates: { canonical: `${getSiteUrl()}/roadmap` },
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
     title,
     description,
   },
-};
+});
 
 const FOOTER_COLUMN_1_LINKS = [
   { href: "/why-i-built", label: "Why I built" },

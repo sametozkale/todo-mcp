@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { withSocialImage } from "@/lib/seo-metadata";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { IntegrationsHubClient } from "./integrations-hub-client";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSocialImage({
   title: "Integrations",
   description: "Connect WhatsApp, MCP clients, and other tools to Yalp.",
   robots: { index: false, follow: false },
-};
+});
 
 export default async function IntegrationsPage() {
   const supabase = await createClient();

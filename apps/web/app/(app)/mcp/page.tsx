@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { withSocialImage } from "@/lib/seo-metadata";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/site-url";
 import { isPlatformId } from "@/lib/mcp-platform-guides";
@@ -9,11 +10,11 @@ import { McpConnectionsClient } from "../integrations/mcp-connections-client";
 import { listApiKeysForCurrentUser } from "@/lib/server/api-keys";
 import { listOAuthClientsForCurrentUser } from "@/lib/server/oauth-clients";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSocialImage({
   title: "MCP Connections",
   description: "Connect Cursor, Claude, VS Code, and other MCP clients to Yalp.",
   robots: { index: false, follow: false },
-};
+});
 
 type PageProps = {
   searchParams: Promise<{ platform?: string }>;
