@@ -186,13 +186,14 @@ export function formatClaudeCodeCommandBundle(ctx: McpInstallContext): string {
   const url = validated.normalizedBaseUrl.replace(/'/g, "'\\''");
 
   // Single pasteable bash/zsh command with CLI-version fallbacks.
-  // Tries current flag-based form first, then legacy positional forms.
+  // Prefer current `claude mcp add <name> -- <command ...>` syntax.
   return [
     `YALP_API_KEY='${key}' YALP_API_BASE_URL='${url}' sh -c "`,
-    `claude mcp remove ${YALP_MCP_SERVER_ID} --scope user >/dev/null 2>&1 || true; `,
-    `(claude mcp add ${YALP_MCP_SERVER_ID} --scope user --transport stdio --command npx --args -y --args -p --args ${YALP_MCP_PACKAGE} --args ${YALP_MCP_BIN} `,
-    `|| claude mcp add ${YALP_MCP_SERVER_ID} --scope user npx -y -p ${YALP_MCP_PACKAGE} ${YALP_MCP_BIN} `,
-    `|| claude mcp add ${YALP_MCP_SERVER_ID} npx -y -p ${YALP_MCP_PACKAGE} ${YALP_MCP_BIN})"`,
+    `claude mcp remove -s user ${YALP_MCP_SERVER_ID} >/dev/null 2>&1 || true; `,
+    `(claude mcp add -s user -t stdio -e YALP_API_KEY=\\\"$YALP_API_KEY\\\" -e YALP_API_BASE_URL=\\\"$YALP_API_BASE_URL\\\" ${YALP_MCP_SERVER_ID} -- npx -y -p ${YALP_MCP_PACKAGE} ${YALP_MCP_BIN} `,
+    `|| claude mcp add --scope user --transport stdio ${YALP_MCP_SERVER_ID} -- npx -y -p ${YALP_MCP_PACKAGE} ${YALP_MCP_BIN} `,
+    `|| claude mcp add --scope user --transport stdio --command npx --args -y --args -p --args ${YALP_MCP_PACKAGE} --args ${YALP_MCP_BIN} ${YALP_MCP_SERVER_ID} `,
+    `|| claude mcp add ${YALP_MCP_SERVER_ID} -- npx -y -p ${YALP_MCP_PACKAGE} ${YALP_MCP_BIN})"`,
   ].join("");
 }
 
