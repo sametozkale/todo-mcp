@@ -65,33 +65,55 @@ export function IntegrationsHubClient() {
 
         <div
           className="flex w-full items-start justify-start gap-4 rounded-2xl border border-[#ececec] bg-white p-4 text-left opacity-90"
-          aria-label="WhatsApp integration coming soon"
+          aria-label="WhatsApp integration coming Soon"
         >
           <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#e8e8e8] bg-[#fafafa]">
-            <Image src="https://www.whatsapp.com/favicon.ico" alt="" width={28} height={28} className="h-7 w-7" />
+            <Image src="/landing-brand-whatsapp.svg" alt="" width={28} height={28} className="h-7 w-7" />
           </span>
           <span className="min-w-0 flex-1">
             <span className="font-title text-base font-semibold text-foreground">WhatsApp</span>
             <span className="mt-0.5 block text-sm text-muted">Add and complete todos from WhatsApp</span>
           </span>
           <span className="rounded-full border border-[#e6e6e6] bg-[#f7f7f7] px-2.5 py-1 text-xs font-medium text-muted">
-            soon
+            Soon
           </span>
         </div>
 
         <div
           className="flex w-full items-start justify-start gap-4 rounded-2xl border border-[#ececec] bg-white p-4 text-left opacity-90"
-          aria-label="Telegram integration coming soon"
+          aria-label="Telegram integration coming Soon"
         >
           <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#e8e8e8] bg-[#fafafa]">
-            <Image src="https://telegram.org/img/t_logo.png" alt="" width={28} height={28} className="h-7 w-7" />
+            <Image src="/landing-brand-telegram.svg" alt="" width={28} height={28} className="h-7 w-7" />
           </span>
           <span className="min-w-0 flex-1">
             <span className="font-title text-base font-semibold text-foreground">Telegram</span>
             <span className="mt-0.5 block text-sm text-muted">Create and manage todos from Telegram chat</span>
           </span>
           <span className="rounded-full border border-[#e6e6e6] bg-[#f7f7f7] px-2.5 py-1 text-xs font-medium text-muted">
-            soon
+            Soon
+          </span>
+        </div>
+
+        <div
+          className="flex w-full items-start justify-start gap-4 rounded-2xl border border-[#ececec] bg-white p-4 text-left opacity-90"
+          aria-label="Chrome Extension integration coming Soon"
+        >
+          <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#e8e8e8] bg-[#fafafa]">
+            <Image
+              src="https://www.google.com/chrome/static/images/favicons/favicon-96x96.png"
+              alt=""
+              width={28}
+              height={28}
+              className="h-7 w-7"
+            />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="font-title text-base font-semibold text-foreground">Chrome Extension</span>
+            <span className="mt-0.5 block text-sm text-muted">Capture and manage todos directly from your browser</span>
+          </span>
+          <span className="rounded-full border border-[#e6e6e6] bg-[#f7f7f7] px-2.5 py-1 text-xs font-medium text-muted">
+            Soon
           </span>
         </div>
       </div>

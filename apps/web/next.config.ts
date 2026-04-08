@@ -59,6 +59,11 @@ const nextConfig: NextConfig = {
         hostname: "telegram.org",
         pathname: "/img/**",
       },
+      {
+        protocol: "https",
+        hostname: "www.google.com",
+        pathname: "/chrome/static/images/favicons/**",
+      },
     ],
   },
 };

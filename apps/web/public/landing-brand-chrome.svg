@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Google Chrome">
+  <!-- Basit, küçük boyuta uygun Chrome benzeri logo -->
+  <!-- Dış daire -->
+  <circle cx="128" cy="128" r="120" fill="#ffffff" />
+  <!-- Kırmızı üst kısım -->
+  <path
+    d="M128 32a96 96 0 0 1 82.6 48H132a40 40 0 0 0-34.6 20L69 70.5A96 96 0 0 1 128 32Z"
+    fill="#ea4335"
+  />
+  <!-- Sarı alt-sol kısım -->
+  <path
+    d="M69 70.5 104 132a40 40 0 0 0 26 18l-24.7 42.8A96 96 0 0 1 40 136a95 95 0 0 1 29-65.5Z"
+    fill="#fbbc05"
+  />
+  <!-- Yeşil alt-sağ kısım -->
+  <path
+    d="M132 150h47.4A96 96 0 0 1 128 232a95 95 0 0 1-22.7-2.7L130 150Z"
+    fill="#34a853"
+  />
+  <!-- Mavi halka ve iç daire -->
+  <circle cx="128" cy="128" r="52" fill="#1a73e8" />
+  <circle cx="128" cy="128" r="28" fill="#e8f0fe" />
+</svg>
