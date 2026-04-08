@@ -47,6 +47,10 @@ const ROADMAP_ITEMS = [
     description: "Create and complete todos from Telegram messages, synced to your Yalp lists.",
   },
   {
+    title: "Chrome Extension",
+    description: "Capture and manage todos directly from your browser.",
+  },
+  {
     title: "Widgets",
     description:
       "Build your own widgets page so you can see what matters most to you in a single screen.",

@@ -19,7 +19,7 @@ const intro =
   + "\n"
   + "Then a thought lands.\n"
   + "The next product step.\n"
-  + "A quick note.\n"
+  + "A quick to-do.\n"
   + "Milk for later.\n"
   + "\n"
   + "And suddenly I have to open another app.\n"
@@ -42,6 +42,7 @@ const intro =
   + "\n"
   + "If you use Cursor, Claude, or similar tools,\n"
   + "you have probably felt this too.\n"
+  + "\n"
   + "Managing your todos through MCP,\n"
   + "feels more natural than you expect.";
 

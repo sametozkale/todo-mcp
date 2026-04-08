@@ -4,7 +4,7 @@ import Image from "next/image";
 export function LandingHeader() {
   return (
     <header className="pointer-events-auto fixed top-6 left-1/2 z-20 -translate-x-1/2">
-      <nav className="inline-flex h-12 flex-col items-start gap-[10px] rounded-full bg-[#14141f] p-2 pl-3 shadow-[0_1px_4px_0_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.05)] backdrop-blur-[8px] sm:pl-4">
+      <nav className="inline-flex h-12 items-center rounded-full bg-[#14141f] py-2 pl-3 pr-2 shadow-[0_1px_4px_0_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.05)] backdrop-blur-[8px] sm:pl-4 sm:pr-2">
         <div className="flex items-center gap-3 sm:gap-4">
           <Link
             href="/"
@@ -38,14 +38,14 @@ export function LandingHeader() {
           <div className="flex items-center gap-[6px]">
             <Link
               href="/login"
-              className="inline-flex h-9 items-center justify-center rounded-full bg-white/8 px-3 py-[7px] font-title text-[14px] leading-[18px] font-medium tracking-[-0.32px] text-[#d4d5da] no-underline transition hover:bg-white/12 hover:text-white sm:h-8"
+              className="inline-flex h-8 items-center justify-center rounded-full bg-white/8 px-3 py-[7px] font-title text-[14px] leading-[18px] font-medium tracking-[-0.32px] text-[#d4d5da] no-underline transition hover:bg-white/12 hover:text-white"
             >
               Login
             </Link>
 
             <Link
               href="/signup"
-              className="inline-flex h-9 items-center justify-center rounded-full bg-[#00b5e9] px-3 py-[7px] font-title text-[14px] leading-[18px] font-medium tracking-[-0.32px] text-white no-underline shadow-[0_1px_1px_0_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.05)] transition hover:bg-[#09abda] sm:h-8"
+              className="inline-flex h-8 items-center justify-center rounded-full bg-[#00b5e9] px-3 py-[7px] font-title text-[14px] leading-[18px] font-medium tracking-[-0.32px] text-white no-underline shadow-[0_1px_1px_0_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.05)] transition hover:bg-[#09abda]"
             >
               Sign up
             </Link>
