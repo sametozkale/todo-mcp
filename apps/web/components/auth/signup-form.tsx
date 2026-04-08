@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import {
   Button,
   FieldError,
@@ -25,6 +26,8 @@ export function SignupForm({ nextPath }: SignupFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmTouched, setConfirmTouched] = useState(false);
   const [confirmTyping, setConfirmTyping] = useState(false);
 
@@ -69,10 +72,10 @@ export function SignupForm({ nextPath }: SignupFormProps) {
 
   return (
     <div className="flex w-full flex-1 flex-col items-center">
-      <div className="w-full max-w-md pt-12 max-sm:mb-8">
+      <div className="w-full max-w-md pt-12">
         <ToDoMcpLogo className="mx-auto block h-6 w-6 max-w-none" />
       </div>
-      <div className="flex w-full max-w-md flex-col sm:flex-1 sm:justify-center">
+      <div className="mt-8 w-full max-w-md">
         <Surface
           variant="tertiary"
           className="w-full rounded-[32px] border border-[#f4f4f4] !bg-white p-8 shadow-[0_2px_16px_-4px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.03)]"
@@ -127,7 +130,7 @@ export function SignupForm({ nextPath }: SignupFormProps) {
             </TextField>
             <TextField
               name="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               isRequired
               isInvalid={!!state?.fieldErrors?.password}
               onChange={(v) => {
@@ -136,7 +139,22 @@ export function SignupForm({ nextPath }: SignupFormProps) {
               }}
             >
               <Label>Password</Label>
-              <Input placeholder="At least 8 characters" fullWidth value={password} />
+              <div className="relative">
+                <Input
+                  placeholder="At least 8 characters"
+                  fullWidth
+                  value={password}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-3 z-10 inline-flex items-center text-muted transition-colors hover:text-foreground"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  onClick={() => setShowPassword((prev) => !prev)}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {state?.fieldErrors?.password ? (
                 <FieldError>{state.fieldErrors.password}</FieldError>
               ) : (
@@ -145,7 +163,7 @@ export function SignupForm({ nextPath }: SignupFormProps) {
             </TextField>
             <TextField
               name="confirmPassword"
-              type="password"
+              type={showConfirmPassword ? "text" : "password"}
               isRequired
               isInvalid={!!state?.fieldErrors?.confirmPassword || showPasswordMismatch}
               onChange={(v) => {
@@ -155,7 +173,22 @@ export function SignupForm({ nextPath }: SignupFormProps) {
               }}
             >
               <Label>Confirm password</Label>
-              <Input placeholder="Re-enter your password" fullWidth value={confirmPassword} />
+              <div className="relative">
+                <Input
+                  placeholder="Re-enter your password"
+                  fullWidth
+                  value={confirmPassword}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-3 z-10 inline-flex items-center text-muted transition-colors hover:text-foreground"
+                  aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {state?.fieldErrors?.confirmPassword ? (
                 <FieldError>{state.fieldErrors.confirmPassword}</FieldError>
               ) : showPasswordMismatch ? (
@@ -186,7 +219,7 @@ export function SignupForm({ nextPath }: SignupFormProps) {
           </form>
         </Surface>
       </div>
-      <p className="w-full max-w-md shrink-0 mt-8 pb-12 text-center text-sm text-muted sm:mt-0">
+      <p className="mt-8 w-full max-w-md shrink-0 pb-12 text-center text-sm text-muted">
         Already have an account?{" "}
         <Link
           href="/login"
