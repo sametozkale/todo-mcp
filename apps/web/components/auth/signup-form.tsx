@@ -49,6 +49,13 @@ export function SignupForm({ nextPath }: SignupFormProps) {
   }, [visibleError]);
 
   useEffect(() => {
+    if (!state?.success) return;
+    toast.success("Check your inbox and confirm your email to finish signing up.", {
+      timeout: 5000,
+    });
+  }, [state?.success]);
+
+  useEffect(() => {
     if (!state?.fields) return;
     if (typeof state.fields.name === "string") setName(state.fields.name);
     if (typeof state.fields.email === "string") setEmail(state.fields.email);
