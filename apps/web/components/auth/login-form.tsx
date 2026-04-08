@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import {
   Button,
   FieldError,
@@ -12,7 +13,6 @@ import {
 } from "@heroui/react";
 import { loginAction, signInWithGoogleAction, type AuthActionState } from "@/app/(auth)/actions";
 import { GoogleIcon } from "@/components/auth/google-icon";
-import { ToDoMcpLogo } from "@/components/brand/to-do-mcp-logo";
 import { toast } from "@/lib/app-toast";
 
 type LoginFormProps = {
@@ -25,6 +25,7 @@ export function LoginForm({ searchParamsError, nextPath }: LoginFormProps) {
   const [state, formAction, isPending] = useActionState(loginAction, null as AuthActionState);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [editCounter, setEditCounter] = useState(0);
   const lastSubmitEditCounterRef = useRef(0);
@@ -50,11 +51,8 @@ export function LoginForm({ searchParamsError, nextPath }: LoginFormProps) {
   }, [visibleError]);
 
   return (
-    <div className="flex w-full flex-1 flex-col items-center">
-      <div className="w-full max-w-md pt-12 max-sm:mb-8">
-        <ToDoMcpLogo className="mx-auto block h-6 w-6 max-w-none" />
-      </div>
-      <div className="flex w-full max-w-md flex-col sm:flex-1 sm:justify-center">
+    <div className="flex w-full flex-1 flex-col items-center justify-center py-6">
+      <div className="w-full max-w-md">
         <Surface
           variant="tertiary"
           className="w-full rounded-[32px] border border-[#f4f4f4] !bg-white p-8 shadow-[0_2px_16px_-4px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.03)]"
@@ -69,7 +67,7 @@ export function LoginForm({ searchParamsError, nextPath }: LoginFormProps) {
             {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
             <div>
               <div className="space-y-2">
-                <h1 className="font-title text-xl font-semibold text-foreground">Log in</h1>
+                <h1 className="font-title text-xl font-semibold text-foreground">Log in to Yalp AI</h1>
                 <p className="text-sm text-muted">Enter your details to continue to your account.</p>
               </div>
             </div>
@@ -93,7 +91,7 @@ export function LoginForm({ searchParamsError, nextPath }: LoginFormProps) {
             </TextField>
             <TextField
               name="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               isRequired
               onChange={(v) => {
                 setPassword(String(v));
@@ -101,7 +99,17 @@ export function LoginForm({ searchParamsError, nextPath }: LoginFormProps) {
               }}
             >
               <Label>Password</Label>
-              <Input placeholder="••••••••" fullWidth value={password} />
+              <div className="relative">
+                <Input placeholder="••••••••" fullWidth value={password} className="pr-10" />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-3 z-10 inline-flex items-center text-muted transition-colors hover:text-foreground"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  onClick={() => setShowPassword((prev) => !prev)}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               <FieldError />
             </TextField>
             <Button type="submit" variant="primary" fullWidth isDisabled={isPending}>
@@ -124,7 +132,7 @@ export function LoginForm({ searchParamsError, nextPath }: LoginFormProps) {
           </form>
         </Surface>
       </div>
-      <p className="w-full max-w-md shrink-0 mt-8 pb-12 text-center text-sm text-muted sm:mt-0">
+      <p className="mt-8 w-full max-w-md shrink-0 pb-12 text-center text-sm text-muted">
         Don&apos;t have an account?{" "}
         <Link
           href="/signup"

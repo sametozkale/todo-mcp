@@ -62,7 +62,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
 
   return (
     <div className="min-h-dvh overflow-y-auto bg-[#fafafa]">
-      <div className="flex min-h-dvh flex-col bg-white p-4 pb-24 pt-10">{children}</div>
+      <div className="flex min-h-dvh flex-col bg-white p-4">{children}</div>
     </div>
   );
 }

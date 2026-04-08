@@ -13,7 +13,6 @@ import {
 } from "@heroui/react";
 import { signInWithGoogleAction, signupAction, type AuthActionState } from "@/app/(auth)/actions";
 import { GoogleIcon } from "@/components/auth/google-icon";
-import { ToDoMcpLogo } from "@/components/brand/to-do-mcp-logo";
 import { toast } from "@/lib/app-toast";
 
 type SignupFormProps = {
@@ -78,11 +77,8 @@ export function SignupForm({ nextPath }: SignupFormProps) {
     confirmTouched && !confirmTyping && confirmPassword.length > 0 && !passwordsMatch;
 
   return (
-    <div className="flex w-full flex-1 flex-col items-center">
-      <div className="w-full max-w-md pt-12">
-        <ToDoMcpLogo className="mx-auto block h-6 w-6 max-w-none" />
-      </div>
-      <div className="mt-8 w-full max-w-md">
+    <div className="flex w-full flex-1 flex-col items-center justify-center py-6">
+      <div className="w-full max-w-md">
         <Surface
           variant="tertiary"
           className="w-full rounded-[32px] border border-[#f4f4f4] !bg-white p-8 shadow-[0_2px_16px_-4px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.03)]"
@@ -91,7 +87,7 @@ export function SignupForm({ nextPath }: SignupFormProps) {
             <div>
               <div className="space-y-2">
                 <h1 className="font-title text-xl font-semibold text-foreground">Create account</h1>
-                <p className="text-sm text-muted">Get started with Yalp in a few quick fields.</p>
+                <p className="text-sm text-muted">Get started with Yalp AI in a few quick fields.</p>
               </div>
             </div>
             {state?.success && (
