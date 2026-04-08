@@ -158,7 +158,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <div className="flex flex-1 flex-col px-4 pb-8 pt-2 sm:px-6 sm:pb-24">{children}</div>
         </ListsProvider>
         {/* Mobile: MCP CTA + weather share one inset footer band below todos; sm+: both stay fixed/floating */}
-        <div className="mt-auto flex shrink-0 flex-col gap-3 px-4 pb-6 pt-4 sm:contents sm:m-0 sm:p-0">
+        <div className="mt-auto flex shrink-0 flex-col items-end gap-2 px-4 pb-6 pt-4 sm:contents sm:m-0 sm:p-0">
           <McpCtaRotator userId={user.id} />
           <WeatherClockWidget />
         </div>

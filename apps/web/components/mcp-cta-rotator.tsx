@@ -5,6 +5,7 @@ import { Button } from "@heroui/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ClaudeBrandIcon } from "@/components/claude-brand-icon";
+import { useSubscription } from "@/hooks/useSubscription";
 import { getMcpConnectionsVisitedStorageKey } from "@/lib/mcp-connections-visited";
 import { isReservedListSlug } from "@/lib/reserved-list-slugs";
 import type { PlatformId } from "@/lib/mcp-platform-guides";
@@ -67,6 +68,7 @@ type Props = {
 export function McpCtaRotator({ userId }: Props) {
   const router = useRouter();
   const pathname = usePathname() ?? "";
+  const { plan } = useSubscription();
   const [mounted, setMounted] = useState(false);
   const [dismissed, setDismissed] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -94,14 +96,15 @@ export function McpCtaRotator({ userId }: Props) {
   }, [mounted, dismissed]);
 
   const onTodo = isTodoSurfacePath(pathname);
-  if (!mounted || dismissed || !onTodo) return null;
+  const isFreePlan = plan === "free";
+  if (!mounted || !onTodo || (!isFreePlan && dismissed)) return null;
 
   const current = ROTATION[activeIndex]!;
 
   return (
     <div
       className={
-        "pointer-events-none z-20 max-sm:flex max-sm:w-full max-sm:justify-end max-sm:px-0 " +
+        "pointer-events-none z-20 max-sm:flex max-sm:justify-end " +
         "sm:fixed sm:bottom-6 sm:right-6 lg:right-12"
       }
     >
@@ -111,9 +114,9 @@ export function McpCtaRotator({ userId }: Props) {
         variant="secondary"
         onPress={() => router.push(`/mcp?platform=${current.platform}`)}
         className={
-          "pointer-events-auto h-[30px] min-h-[30px] gap-1.5 rounded-2xl border !bg-white px-2.5 text-left text-[11px] font-medium " +
-          "text-foreground max-sm:h-9 max-sm:min-h-9 max-sm:max-w-full max-sm:border-[#ebebeb] max-sm:px-3 max-sm:shadow-[0_1px_3px_rgba(0,0,0,0.06)] " +
-          "max-sm:ring-1 max-sm:ring-black/[0.04] sm:max-w-[min(calc(100vw-2rem),14rem)] sm:border-[#eaeaea] sm:px-2 " +
+          "pointer-events-auto h-8 min-h-8 gap-1.5 rounded-full border !bg-white px-3 text-left text-[11px] font-medium " +
+          "text-foreground max-sm:border-[#f4f4f4] max-sm:shadow-[0_1px_3px_rgba(0,0,0,0.05)] " +
+          "sm:h-[30px] sm:min-h-[30px] sm:rounded-2xl sm:max-w-[min(calc(100vw-2rem),14rem)] sm:border-[#eaeaea] sm:px-2.5 " +
           "sm:shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)]"
         }
       >
