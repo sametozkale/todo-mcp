@@ -64,6 +64,11 @@ const nextConfig: NextConfig = {
         hostname: "www.google.com",
         pathname: "/chrome/static/images/favicons/**",
       },
+      {
+        protocol: "https",
+        hostname: "www.gstatic.com",
+        pathname: "/images/branding/product/**",
+      },
     ],
   },
 };

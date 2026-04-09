@@ -17,6 +17,7 @@ import { toast } from "@/lib/app-toast";
 import {
   forwardRef,
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -175,6 +176,21 @@ export function TodoRowMeasured({
   const [isMultiline, setIsMultiline] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMoveSubmenuOpen, setIsMoveSubmenuOpen] = useState(false);
+  const [detailOpenTooltipVisible, setDetailOpenTooltipVisible] = useState(false);
+  const detailOpenTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearDetailOpenTooltipTimer = useCallback(() => {
+    if (detailOpenTooltipTimerRef.current !== null) {
+      clearTimeout(detailOpenTooltipTimerRef.current);
+      detailOpenTooltipTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearDetailOpenTooltipTimer();
+    };
+  }, [clearDetailOpenTooltipTimer]);
 
   useLayoutEffect(() => {
     const el = titleRef.current;
@@ -415,15 +431,40 @@ export function TodoRowMeasured({
             ].join(" ").trim()}
           >
             {showDetailAction ? (
-              <Link
-                href={detailHref}
-                className="inline-flex min-h-7 min-w-7 items-center justify-center rounded-xl p-0 text-muted transition-colors hover:bg-[#eee] hover:text-foreground"
-                aria-label={`Open details for ${todo.title}`}
-                data-todo-open-detail=""
-                onClick={(e) => e.stopPropagation()}
-              >
-                <HugeiconsIcon icon={ArrowRightBigIcon} size={16} strokeWidth={1.75} />
-              </Link>
+              <span className="relative inline-flex shrink-0">
+                {detailOpenTooltipVisible ? (
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none absolute bottom-full left-1/2 z-[60] mb-[5px] -translate-x-1/2"
+                  >
+                    <span
+                      className="inline-flex h-[26px] w-max max-w-[min(280px,calc(100vw-32px))] shrink-0 items-center justify-center whitespace-nowrap rounded-[10px] bg-[#424449] px-2 font-title text-[13px] font-medium leading-none tracking-[0.13px] text-white"
+                    >
+                      Open details
+                    </span>
+                  </span>
+                ) : null}
+                <Link
+                  href={detailHref}
+                  className="inline-flex min-h-7 min-w-7 items-center justify-center rounded-xl p-0 text-muted transition-colors hover:bg-[#eee] hover:text-foreground"
+                  aria-label={`Open details for ${todo.title}`}
+                  data-todo-open-detail=""
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseEnter={() => {
+                    clearDetailOpenTooltipTimer();
+                    detailOpenTooltipTimerRef.current = setTimeout(() => {
+                      setDetailOpenTooltipVisible(true);
+                      detailOpenTooltipTimerRef.current = null;
+                    }, 1500);
+                  }}
+                  onMouseLeave={() => {
+                    clearDetailOpenTooltipTimer();
+                    setDetailOpenTooltipVisible(false);
+                  }}
+                >
+                  <HugeiconsIcon icon={ArrowRightBigIcon} size={16} strokeWidth={1.75} />
+                </Link>
+              </span>
             ) : null}
             <Dropdown.Root
               onOpenChange={(open) => {

@@ -386,7 +386,8 @@ export function TodoDetailClient({
       <div className="flex w-full min-w-0 items-center justify-between gap-3">
         <Link
           href={backHref}
-          className="group inline-flex h-7 max-h-7 shrink-0 items-center gap-0 overflow-hidden rounded-lg py-0 pl-1.5 pr-2 text-muted transition-[gap,colors] duration-200 hover:bg-[#eee] hover:text-foreground group-hover:gap-2.5"
+          style={{ borderRadius: 10 }}
+          className="group inline-flex h-7 max-h-7 shrink-0 items-center gap-0 overflow-hidden py-0 pl-1.5 pr-2 text-muted transition-[gap,colors] duration-200 hover:bg-[#eee] hover:text-foreground group-hover:gap-2.5"
           aria-label="Back to list"
         >
           <ArrowLeft size={16} strokeWidth={2} className="shrink-0" aria-hidden />
