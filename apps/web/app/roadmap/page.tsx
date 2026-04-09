@@ -33,35 +33,47 @@ const FOOTER_COLUMN_1_LINKS = [
 ] as const;
 
 const FOOTER_COLUMN_3_LINKS = [
-  { href: "/integrations", label: "Privacy policy" },
-  { href: "/mcp", label: "Terms of use" },
+  { href: "/privacy", label: "Privacy policy" },
+  { href: "/terms", label: "Terms of use" },
 ] as const;
 
 const ROADMAP_ITEMS = [
   {
     title: "WhatsApp Bot",
     description: "Create and complete todos from WhatsApp messages, synced to your Yalp lists.",
+    iconSrc: "/landing-brand-whatsapp.svg",
+    iconAlt: "WhatsApp",
   },
   {
     title: "Telegram Bot",
     description: "Create and complete todos from Telegram messages, synced to your Yalp lists.",
+    iconSrc: "/landing-brand-telegram.svg",
+    iconAlt: "Telegram",
   },
   {
     title: "Chrome Extension",
     description: "Capture and manage todos directly from your browser.",
+    iconSrc: "/landing-brand-chrome.svg",
+    iconAlt: "Chrome",
   },
   {
     title: "Widgets",
     description:
       "Build your own widgets page so you can see what matters most to you in a single screen.",
+    iconSrc: "/to-do-mcp-logo-black-48.svg",
+    iconAlt: "Yalp widgets",
   },
   {
     title: "Gmail Integration",
     description: "Turn emails into todos (and back) without breaking your flow.",
+    iconSrc: "/globe.svg",
+    iconAlt: "Gmail integration",
   },
   {
     title: "Google Calendar Integration",
     description: "Convert calendar events into tasks and schedule tasks back into your calendar.",
+    iconSrc: "/globe.svg",
+    iconAlt: "Google Calendar integration",
   },
 ] as const;
 
@@ -108,9 +120,20 @@ export default function RoadmapPage() {
                 key={item.title}
                 className="rounded-2xl border border-[#ebebeb] bg-white px-5 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
               >
-                <p className="font-title text-[15px] font-medium leading-snug tracking-[-0.02em] text-[#181925]">
-                  {item.title}
-                </p>
+                <div className="flex items-center gap-2.5">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#ececf2] bg-white">
+                    <Image
+                      src={item.iconSrc}
+                      alt={item.iconAlt}
+                      width={16}
+                      height={16}
+                      className="h-4 w-4 object-contain"
+                    />
+                  </span>
+                  <p className="font-title text-[15px] font-medium leading-snug tracking-[-0.02em] text-[#181925]">
+                    {item.title}
+                  </p>
+                </div>
                 <p className="mt-1 font-title text-[14px] leading-[21px] tracking-[-0.01em] text-[#5c5c66]">
                   {item.description}
                 </p>

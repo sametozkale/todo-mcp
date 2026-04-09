@@ -8,6 +8,8 @@ export async function updateSession(request: NextRequest) {
     path === "/" ||
     path.startsWith("/why-i-built") ||
     path.startsWith("/roadmap") ||
+    path.startsWith("/privacy") ||
+    path.startsWith("/terms") ||
     path.startsWith("/login") ||
     path.startsWith("/signup") ||
     path.startsWith("/auth/callback") ||

@@ -35,8 +35,8 @@ const FOOTER_COLUMN_1_LINKS = [
 ] as const;
 
 const FOOTER_COLUMN_3_LINKS = [
-  { href: "/integrations", label: "Privacy policy" },
-  { href: "/mcp", label: "Terms of use" },
+  { href: "/privacy", label: "Privacy policy" },
+  { href: "/terms", label: "Terms of use" },
 ] as const;
 
 export default function WhyIBuiltPage() {

@@ -12,6 +12,7 @@ type LandingHeroBlockProps = {
   description?: React.ReactNode;
   ctaLabel?: string;
   ctaHref?: string;
+  hideCta?: boolean;
 };
 
 export function LandingHeroBlock({
@@ -23,6 +24,7 @@ export function LandingHeroBlock({
   description,
   ctaLabel = "Get started for free",
   ctaHref = "/signup",
+  hideCta = false,
 }: LandingHeroBlockProps) {
   return (
     <section
@@ -59,7 +61,7 @@ export function LandingHeroBlock({
         <p className="max-w-[560px] text-pretty font-title text-[15px] leading-6 font-medium tracking-[-0.32px] text-[#777] sm:text-base">
           {description ?? (
             <>
-              One list for everything you need to do—and you can drive it
+              One list for everything you need to do, and you can drive it
               <br className="hidden sm:block" />
               <span className="sm:hidden"> </span>
               from Cursor, Claude Desktop, or any other MCP-ready app.
@@ -68,12 +70,14 @@ export function LandingHeroBlock({
         </p>
       </div>
 
-      <Link
-        href={ctaHref}
-        className="inline-flex items-center justify-center gap-[10px] rounded-full bg-[#00b5e9] px-4 py-[11px] font-title text-sm leading-[18px] font-medium tracking-[-0.32px] text-white no-underline shadow-[0px_1px_1px_0px_rgba(0,0,0,0.08),0px_0px_0px_1px_rgba(0,0,0,0.05)] transition hover:bg-[#09abda]"
-      >
-        {ctaLabel}
-      </Link>
+      {hideCta ? null : (
+        <Link
+          href={ctaHref}
+          className="inline-flex items-center justify-center gap-[10px] rounded-full bg-[#00b5e9] px-4 py-[11px] font-title text-sm leading-[18px] font-medium tracking-[-0.32px] text-white no-underline shadow-[0px_1px_1px_0px_rgba(0,0,0,0.08),0px_0px_0px_1px_rgba(0,0,0,0.05)] transition hover:bg-[#09abda]"
+        >
+          {ctaLabel}
+        </Link>
+      )}
     </section>
   );
 }
