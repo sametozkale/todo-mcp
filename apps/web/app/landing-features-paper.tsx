@@ -50,7 +50,7 @@ const features: Feature[] = [
 export function LandingFeaturesPaper() {
   return (
     <section
-      className="mt-24 w-full max-w-[450px] px-1"
+      className="mt-36 w-full max-w-[450px] px-1"
       aria-label="Yalp product features"
     >
       <div className="mx-auto flex w-full max-w-[400px] flex-col items-stretch gap-6 text-center">

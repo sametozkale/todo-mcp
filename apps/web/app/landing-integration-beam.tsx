@@ -56,12 +56,12 @@ export function LandingIntegrationBeam() {
 
   return (
     <section
-      className="mt-16 w-full max-w-3xl sm:mt-20"
+      className="mt-10 w-full max-w-[1024px] sm:mt-20"
       aria-label="Integrations: Cursor, Claude, and MCP clients connect to Yalp; web app syncs with Yalp."
     >
       <div
         ref={containerRef}
-        className="relative flex min-h-[300px] w-full items-center justify-center overflow-visible px-2 py-4 sm:min-h-[340px] sm:px-6 sm:py-4"
+        className="relative flex min-h-[300px] w-full items-center justify-center overflow-visible px-2 pt-0 pb-4 sm:min-h-[340px] sm:px-6 sm:pt-0 sm:pb-4"
       >
         <div className="relative z-10 flex w-full max-w-xl flex-row items-center justify-between gap-3 sm:max-w-2xl sm:gap-8">
           <div className="flex flex-col justify-center gap-4 sm:gap-5">
@@ -192,6 +192,20 @@ export function LandingIntegrationBeam() {
           curvature={78}
           delay={0.7}
         />
+      </div>
+
+      <div className="mt-14 w-full px-2 sm:mt-24 sm:px-6">
+        <div className="overflow-hidden rounded-lg border border-[#eee] bg-white sm:rounded-xl md:rounded-2xl">
+          <Image
+            src="/hero.png"
+            alt="Yalp web app: list tabs, new todo field, and tasks synced from integrations."
+            width={3810}
+            height={2475}
+            className="h-auto w-full"
+            sizes="(max-width: 1024px) 100vw, 1024px"
+            quality={95}
+          />
+        </div>
       </div>
     </section>
   );
