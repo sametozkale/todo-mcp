@@ -20,7 +20,7 @@ const PRO_FEATURES = [
   "Unlimited active todos across every list",
   "Unlimited custom lists (no per-list caps)",
   "MCP + web app: same list in Cursor, Claude, or the browser",
-  "Priority updates while subscribed (Monthly / Yearly)",
+  "Priority updates while subscribed",
 ] as const;
 
 type Billing = "monthly" | "annually" | "lifetime";
