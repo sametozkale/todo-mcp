@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
  * Layout + type scale; amounts aligned with `PaymentModal` / Stripe.
  */
 const MONTHLY_USD = 5;
-const YEARLY_USD = 49;
-const LIFETIME_USD = 99;
+const YEARLY_USD = 39;
+const LIFETIME_USD = 69;
 
 const YEARLY_SAVE_PCT = Math.round((1 - YEARLY_USD / (MONTHLY_USD * 12)) * 100);
 
