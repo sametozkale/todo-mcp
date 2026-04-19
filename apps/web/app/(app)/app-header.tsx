@@ -41,7 +41,7 @@ import {
   YALP_OPEN_PROFILE,
   YALP_OPEN_PLANS,
 } from "@/lib/yalp-shortcut-events";
-import { getMacDesktopDmgUrl } from "@/lib/mac-desktop-download";
+import { getMacDownloadOptions } from "@/lib/mac-desktop-download";
 
 const DEFAULT_AVATAR_SRC =
   "https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/blue.jpg";
@@ -94,6 +94,7 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
   const [avatarUrl, setAvatarUrl] = useState(initialProfile.avatarUrl ?? "");
   const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [showMacDownloadOptions, setShowMacDownloadOptions] = useState(false);
   /** HeroUI / React Aria ids must not run until after hydration (avoids Next RSC + useId drift). */
   const [overlaysReady, setOverlaysReady] = useState(false);
 
@@ -209,9 +210,9 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
     router.refresh();
   }
 
-  function handleMacAppDownload() {
-    const url = getMacDesktopDmgUrl();
-    window.open(url, "_blank", "noopener,noreferrer");
+  function handleMacArchDownload(href: string) {
+    setShowMacDownloadOptions(false);
+    window.open(href, "_blank", "noopener,noreferrer");
   }
 
   function handleProfileSubmit(e: FormEvent<HTMLFormElement>) {
@@ -247,7 +248,13 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
           </Link>
 
           {overlaysReady ? (
-            <Dropdown.Root>
+            <Dropdown.Root
+              onOpenChange={(open) => {
+                if (!open) {
+                  setShowMacDownloadOptions(false);
+                }
+              }}
+            >
               <Dropdown.Trigger
                 className={ACCOUNT_TRIGGER_CLASS}
                 aria-label="Account menu"
@@ -320,6 +327,7 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                   <Dropdown.Item
                     onAction={() => {
                       router.push("/integrations");
+                      setShowMacDownloadOptions(false);
                     }}
                   >
                     <span className="inline-flex items-center gap-2">
@@ -330,6 +338,7 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                   <Dropdown.Item
                     onAction={() => {
                       router.push("/mcp");
+                      setShowMacDownloadOptions(false);
                     }}
                   >
                     <span className="inline-flex items-center gap-2">
@@ -345,16 +354,40 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                     <span aria-hidden="true" />
                   </Dropdown.Item>
                   <Dropdown.Item
-                    onAction={handleMacAppDownload}
+                    onAction={() => setShowMacDownloadOptions((prev) => !prev)}
+                    onMouseEnter={() => setShowMacDownloadOptions(true)}
                     textValue="Download for MacOS"
                   >
                     <span className="inline-flex items-center gap-2">
-                      <span className="text-[16px] leading-none text-[#1f2937]" aria-hidden>
-                        
+                      <span
+                        className="inline-flex h-4 w-4 items-center justify-center text-muted"
+                        aria-hidden
+                      >
+                        <span className="text-[14px] leading-none"></span>
                       </span>
                       <span>Download for MacOS</span>
                     </span>
                   </Dropdown.Item>
+                  {showMacDownloadOptions
+                    ? getMacDownloadOptions().map((option) => (
+                        <Dropdown.Item
+                          key={option.arch}
+                          onAction={() => handleMacArchDownload(option.href)}
+                          textValue={option.label}
+                          className="translate-y-0 opacity-100 transition-[opacity,transform] duration-180 ease-out"
+                        >
+                          <span className="inline-flex w-full items-center justify-between gap-2">
+                            <span className="inline-flex items-center gap-2">
+                              <span className="inline-flex h-4 w-4 shrink-0" aria-hidden />
+                              <span>{option.label}</span>
+                            </span>
+                            <span className="text-[11px] text-muted">
+                              {option.arch === "arm64" ? "ARM" : "x64"}
+                            </span>
+                          </span>
+                        </Dropdown.Item>
+                      ))
+                    : null}
                   <Dropdown.Item
                     isDisabled
                     textValue="separator"

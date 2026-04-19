@@ -1,10 +1,24 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import { NextResponse } from "next/server";
+import type { MacArch } from "@/lib/mac-desktop-download";
 
 export const runtime = "nodejs";
 
-async function findLatestDmgPath(): Promise<string | null> {
+function parseArch(input: string | null): MacArch {
+  return input === "x64" ? "x64" : "arm64";
+}
+
+function getExternalUrlForArch(arch: MacArch): string | null {
+  const perArch =
+    arch === "arm64"
+      ? process.env.NEXT_PUBLIC_YALP_MAC_DMG_URL_ARM64?.trim()
+      : process.env.NEXT_PUBLIC_YALP_MAC_DMG_URL_X64?.trim();
+  if (perArch) return perArch;
+  return process.env.NEXT_PUBLIC_YALP_MAC_DMG_URL?.trim() || null;
+}
+
+async function findLatestDmgPath(arch: MacArch): Promise<string | null> {
   const distDir = path.resolve(process.cwd(), "../desktop/dist-app");
   let entries;
   try {
@@ -15,11 +29,14 @@ async function findLatestDmgPath(): Promise<string | null> {
 
   const dmgFiles = await Promise.all(
     entries
-      .filter((entry) => entry.isFile() && entry.name.endsWith(".dmg"))
+      .filter((entry) => {
+        if (!entry.isFile() || !entry.name.endsWith(".dmg")) return false;
+        return arch === "arm64" ? entry.name.includes("arm64") : entry.name.includes("x64");
+      })
       .map(async (entry) => {
         const fullPath = path.join(distDir, entry.name);
         const stat = await fs.stat(fullPath);
-        return { fullPath, fileName: entry.name, mtimeMs: stat.mtimeMs };
+        return { fullPath, mtimeMs: stat.mtimeMs };
       }),
   );
 
@@ -28,18 +45,20 @@ async function findLatestDmgPath(): Promise<string | null> {
   return dmgFiles[0]!.fullPath;
 }
 
-export async function GET() {
-  const externalUrl = process.env.NEXT_PUBLIC_YALP_MAC_DMG_URL?.trim();
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const arch = parseArch(searchParams.get("arch"));
+
+  const externalUrl = getExternalUrlForArch(arch);
   if (externalUrl) {
     return NextResponse.redirect(externalUrl);
   }
 
-  const localDmgPath = await findLatestDmgPath();
+  const localDmgPath = await findLatestDmgPath(arch);
   if (!localDmgPath) {
     return NextResponse.json(
       {
-        error:
-          "No macOS build artifact found. Build desktop app (`pnpm --filter desktop build:mac`) or set NEXT_PUBLIC_YALP_MAC_DMG_URL.",
+        error: `No ${arch} macOS build artifact found. Build it with pnpm --filter desktop build:mac or set NEXT_PUBLIC_YALP_MAC_DMG_URL_${arch.toUpperCase()}.`,
       },
       { status: 404 },
     );

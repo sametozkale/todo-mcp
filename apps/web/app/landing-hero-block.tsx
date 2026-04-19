@@ -74,7 +74,7 @@ export function LandingHeroBlock({
       </div>
 
       {hideCta ? null : (
-        <div className="flex flex-wrap items-center justify-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-[8px]">
           <Link
             href={ctaHref}
             className="inline-flex items-center justify-center gap-[10px] rounded-full bg-[#00b5e9] px-4 py-[11px] font-title text-sm leading-[18px] font-medium tracking-[-0.32px] text-white no-underline shadow-[0px_1px_1px_0px_rgba(0,0,0,0.08),0px_0px_0px_1px_rgba(0,0,0,0.05)] transition hover:bg-[#09abda]"
