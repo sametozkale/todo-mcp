@@ -70,10 +70,9 @@ export function LandingHeroBlock({
         <p className="max-w-[560px] text-pretty font-title text-[15px] leading-6 font-medium tracking-[-0.32px] text-[#777] sm:text-base">
           {description ?? (
             <>
-              A focused todo workspace for everything you need to do, and you can drive it
-              <br className="hidden sm:block" />
-              <span className="sm:hidden"> </span>
-              from Cursor, Claude Desktop, or any other MCP-ready app.
+              A focused todo workspace for everything you need to do, and you can
+              <br />
+              drive it from Cursor, Claude Desktop, or any other MCP-ready app.
             </>
           )}
         </p>
