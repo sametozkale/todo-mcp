@@ -50,7 +50,7 @@ export default function ChangelogPage() {
       <main className="mx-auto w-full max-w-6xl bg-white px-6 pb-24 sm:px-8 lg:px-12">
         <LandingHeroBlock
           topSpacingClassName="mt-[168px] sm:mt-[168px]"
-          pillLabel="Changelog"
+          pillLabel="CHANGELOG"
           pillOnlyLabel
           title={
             <>

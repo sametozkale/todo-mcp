@@ -42,7 +42,7 @@ export function LandingMacDownloadButton({
         aria-controls={menuId}
         onClick={() => setIsOpen((prev) => !prev)}
         className={cn(
-          "group inline-flex items-center justify-center gap-2 rounded-full border border-[#ececf2] bg-white font-title font-medium text-[rgba(24,25,37,1)] no-underline shadow-[0px_1px_2px_0px_rgba(16,24,40,0.04)] transition hover:border-[#e2e3ea] hover:bg-[#fcfcfd] hover:shadow-[0px_2px_6px_0px_rgba(16,24,40,0.05)]",
+          "group inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-[#ececf2] bg-white font-title font-medium text-[rgba(24,25,37,1)] no-underline shadow-[0px_1px_2px_0px_rgba(16,24,40,0.04)] transition hover:border-[#e2e3ea] hover:bg-[#fcfcfd] hover:shadow-[0px_2px_6px_0px_rgba(16,24,40,0.05)]",
           variant === "hero" &&
             "px-4 py-[11px] text-sm leading-[18px] tracking-[-0.32px]",
           variant === "footer" &&

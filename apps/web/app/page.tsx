@@ -53,7 +53,7 @@ export default async function Home() {
     <main className="relative flex min-h-dvh flex-col items-center overflow-x-hidden bg-white p-6 pb-24 sm:p-8 sm:pb-24">
       <LandingHeader />
       <SoftwareApplicationJsonLd />
-      <LandingHeroBlock />
+      <LandingHeroBlock pillUppercase={false} />
       <LandingIntegrationBeam />
       <LandingFeaturesPaper />
       <LandingPricingFooterPaper />

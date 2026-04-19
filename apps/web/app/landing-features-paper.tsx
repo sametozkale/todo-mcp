@@ -1,5 +1,6 @@
 import {
   Globe,
+  Laptop,
   Layers,
   Plug,
   RefreshCw,
@@ -45,12 +46,17 @@ const features: Feature[] = [
     title: "Full web app",
     description: "Manage your list in the browser with the same sync.",
   },
+  {
+    icon: Laptop,
+    title: "Native macOS app",
+    description: "Use Yalp in a dedicated Mac app window with the same synced account.",
+  },
 ];
 
 export function LandingFeaturesPaper() {
   return (
     <section
-      className="mt-36 w-full max-w-[450px] px-1"
+      className="mt-36 mb-7 w-full max-w-[450px] px-1"
       aria-label="Yalp product features"
     >
       <div className="mx-auto flex w-full max-w-[400px] flex-col items-stretch gap-6 text-center">

@@ -17,6 +17,7 @@ type LandingHeroBlockProps = {
   ctaHref?: string;
   hideCta?: boolean;
   hideMacDownloadButton?: boolean;
+  pillUppercase?: boolean;
 };
 
 export function LandingHeroBlock({
@@ -30,6 +31,7 @@ export function LandingHeroBlock({
   ctaHref = "/signup",
   hideCta = false,
   hideMacDownloadButton = false,
+  pillUppercase = true,
 }: LandingHeroBlockProps) {
   return (
     <section
@@ -43,7 +45,9 @@ export function LandingHeroBlock({
         href="/why-i-built"
         className="inline-flex max-w-full items-center gap-2 rounded-[99px] bg-[#f7f7f7] px-3 py-[6.5px] no-underline"
       >
-        <span className="font-title text-xs font-medium text-[#777]">{pillLabel}</span>
+        <span className={["font-title text-xs font-medium text-[#777]", pillUppercase ? "uppercase" : ""].join(" ")}>
+          {pillLabel}
+        </span>
         {pillOnlyLabel ? null : (
           <>
             <span className="h-1 w-1 rounded-[2px] bg-[#ccc]" aria-hidden />
@@ -66,7 +70,7 @@ export function LandingHeroBlock({
         <p className="max-w-[560px] text-pretty font-title text-[15px] leading-6 font-medium tracking-[-0.32px] text-[#777] sm:text-base">
           {description ?? (
             <>
-              One list for everything you need to do, and you can drive it
+              A focused todo workspace for everything you need to do, and you can drive it
               <br className="hidden sm:block" />
               <span className="sm:hidden"> </span>
               from Cursor, Claude Desktop, or any other MCP-ready app.
