@@ -13,6 +13,7 @@
     "test": "echo \"No tests yet\""
   },
   "devDependencies": {
+    "@electron/notarize": "^3.1.1",
     "@types/node": "^22.0.0",
     "concurrently": "^9.0.0",
     "cross-env": "^7.0.0",
@@ -25,13 +26,17 @@
     "appId": "com.yalp.app",
     "productName": "Yalp",
     "afterPack": "scripts/after-pack-macos-helpers.cjs",
+    "afterSign": "scripts/after-sign-notarize.cjs",
     "copyright": "Copyright © 2025 Yalp",
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.icns",
@@ -44,6 +49,8 @@
       "output": "dist-app",
       "buildResources": "assets"
     },
-    "files": ["dist/**/*"]
+    "files": [
+      "dist/**/*"
+    ]
   }
 }
