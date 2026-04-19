@@ -15,6 +15,12 @@ const nextConfig: NextConfig = {
     "@dnd-kit/sortable",
     "@dnd-kit/utilities",
     "@dnd-kit/modifiers",
+    /**
+     * Supabase: prebundle so server chunks do not reference stale pnpm vendor paths like
+     * `./vendor-chunks/@supabase+auth-js@x.y.z.js` after installs / HMR (fixes MODULE_NOT_FOUND + 500 in dev).
+     */
+    "@supabase/ssr",
+    "@supabase/supabase-js",
   ],
   /**
    * Avoid `experimental.optimizePackageImports` here: with Webpack it has triggered

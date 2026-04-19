@@ -41,6 +41,7 @@ import {
   YALP_OPEN_PROFILE,
   YALP_OPEN_PLANS,
 } from "@/lib/yalp-shortcut-events";
+import { getMacDesktopDmgUrl } from "@/lib/mac-desktop-download";
 
 const DEFAULT_AVATAR_SRC =
   "https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/blue.jpg";
@@ -208,6 +209,11 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
     router.refresh();
   }
 
+  function handleMacAppDownload() {
+    const url = getMacDesktopDmgUrl();
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
   function handleProfileSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFormError(null);
@@ -329,6 +335,24 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                     <span className="inline-flex items-center gap-2">
                       <HugeiconsIcon icon={McpServerIcon} size={16} strokeWidth={1.75} />
                       <span>MCP Connections</span>
+                    </span>
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    isDisabled
+                    textValue="separator"
+                    className="pointer-events-none mx-auto my-[2px] h-px min-h-px w-[calc(100%-24px)] max-w-full cursor-default bg-[#f4f4f4] px-0 py-0 opacity-100"
+                  >
+                    <span aria-hidden="true" />
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    onAction={handleMacAppDownload}
+                    textValue="Download for MacOS"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <span className="text-[16px] leading-none text-[#1f2937]" aria-hidden>
+                        
+                      </span>
+                      <span>Download for MacOS</span>
                     </span>
                   </Dropdown.Item>
                   <Dropdown.Item

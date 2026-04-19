@@ -4,25 +4,45 @@
   "version": "0.1.0",
   "main": "dist/main/index.js",
   "scripts": {
-    "dev": "tsc && electron .",
-    "build": "electron-builder",
+    "dev": "concurrently \"tsc -p tsconfig.json --watch\" \"wait-on tcp:3001 && cross-env NODE_ENV=development electron .\"",
+    "dev:watch": "concurrently \"tsc -p tsconfig.json --watch\" \"wait-on tcp:3001 && cross-env NODE_ENV=development electron .\"",
+    "dev:once": "tsc -p tsconfig.json && cross-env NODE_ENV=development electron .",
+    "build": "tsc -p tsconfig.json && electron-builder",
+    "build:mac": "tsc -p tsconfig.json && electron-builder --mac dmg",
     "lint": "echo \"No lint config yet\"",
     "test": "echo \"No tests yet\""
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
+    "concurrently": "^9.0.0",
+    "cross-env": "^7.0.0",
     "electron": "^31.0.0",
     "electron-builder": "^25.0.0",
     "typescript": "^5.6.0",
-    "@types/node": "^22.0.0"
+    "wait-on": "^8.0.0"
   },
   "build": {
     "appId": "com.yalp.app",
+    "productName": "Yalp",
+    "copyright": "Copyright © 2025 Yalp",
     "mac": {
       "category": "public.app-category.productivity",
-      "target": ["dmg"]
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        }
+      ],
+      "icon": "assets/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist"
     },
     "directories": {
-      "output": "dist"
-    }
+      "output": "dist-app",
+      "buildResources": "assets"
+    },
+    "files": ["dist/**/*"]
   }
 }

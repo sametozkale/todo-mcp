@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 
+import { LandingMacDownloadButton } from "@/components/landing-mac-download-button";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { LandingPlansPaperSection } from "./landing-plans-paper-section";
 
@@ -118,6 +119,7 @@ export function LandingPricingFooterPaper() {
               <p className="font-title text-[12px] leading-4 tracking-[-0.24px] text-[#5c5c66]">
                 Manage todos from Cursor, Claude, and more.
               </p>
+              <LandingMacDownloadButton variant="footer" />
             </div>
 
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-10">

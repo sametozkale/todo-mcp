@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { LandingMacDownloadButton } from "@/components/landing-mac-download-button";
 import { LandingRotatingTool } from "@/components/landing-rotating-tool";
 
 type LandingHeroBlockProps = {
@@ -71,12 +74,15 @@ export function LandingHeroBlock({
       </div>
 
       {hideCta ? null : (
-        <Link
-          href={ctaHref}
-          className="inline-flex items-center justify-center gap-[10px] rounded-full bg-[#00b5e9] px-4 py-[11px] font-title text-sm leading-[18px] font-medium tracking-[-0.32px] text-white no-underline shadow-[0px_1px_1px_0px_rgba(0,0,0,0.08),0px_0px_0px_1px_rgba(0,0,0,0.05)] transition hover:bg-[#09abda]"
-        >
-          {ctaLabel}
-        </Link>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href={ctaHref}
+            className="inline-flex items-center justify-center gap-[10px] rounded-full bg-[#00b5e9] px-4 py-[11px] font-title text-sm leading-[18px] font-medium tracking-[-0.32px] text-white no-underline shadow-[0px_1px_1px_0px_rgba(0,0,0,0.08),0px_0px_0px_1px_rgba(0,0,0,0.05)] transition hover:bg-[#09abda]"
+          >
+            {ctaLabel}
+          </Link>
+          <LandingMacDownloadButton variant="hero" />
+        </div>
       )}
     </section>
   );
