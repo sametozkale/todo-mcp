@@ -16,6 +16,7 @@ type LandingHeroBlockProps = {
   ctaLabel?: string;
   ctaHref?: string;
   hideCta?: boolean;
+  hideMacDownloadButton?: boolean;
 };
 
 export function LandingHeroBlock({
@@ -28,6 +29,7 @@ export function LandingHeroBlock({
   ctaLabel = "Get started for free",
   ctaHref = "/signup",
   hideCta = false,
+  hideMacDownloadButton = false,
 }: LandingHeroBlockProps) {
   return (
     <section
@@ -81,7 +83,7 @@ export function LandingHeroBlock({
           >
             {ctaLabel}
           </Link>
-          <LandingMacDownloadButton variant="hero" />
+          {hideMacDownloadButton ? null : <LandingMacDownloadButton variant="hero" />}
         </div>
       )}
     </section>

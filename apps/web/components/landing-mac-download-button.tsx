@@ -62,9 +62,9 @@ export function LandingMacDownloadButton({
         <span>Download macOS app</span>
         <span
           className={cn(
-            "inline-flex shrink-0 items-center justify-end overflow-hidden transition-opacity duration-200 ease-out",
+            "inline-flex shrink-0 items-center justify-center overflow-hidden transition-opacity duration-200 ease-out",
             variant === "hero" ? "h-4 w-4" : "h-[14px] w-[14px]",
-            isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+            "opacity-100",
           )}
           aria-hidden
         >

@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { withSocialImage } from "@/lib/seo-metadata";
 import { getSiteUrl } from "@/lib/site-url";
+import { LandingMacDownloadButton } from "@/components/landing-mac-download-button";
 import { LandingHeader } from "../landing-header";
 import { LandingHeroBlock } from "../landing-hero-block";
 
@@ -12,12 +13,14 @@ const description = "How Yalp handles personal data and protects your privacy.";
 const FOOTER_COLUMN_1_LINKS = [
   { href: "/why-i-built", label: "Why I built" },
   { href: "/roadmap", label: "Roadmap" },
+  { href: "/changelog", label: "Changelog" },
   { href: "/login", label: "Login" },
 ] as const;
 
 const FOOTER_COLUMN_3_LINKS = [
   { href: "/privacy", label: "Privacy policy" },
   { href: "/terms", label: "Terms of use" },
+  { href: "mailto:ozkalesamet@gmail.com", label: "Support" },
 ] as const;
 
 export const metadata: Metadata = withSocialImage({
@@ -203,6 +206,7 @@ export default function PrivacyPolicyPage() {
                 <p className="font-title text-[12px] leading-4 tracking-[-0.24px] text-[#5c5c66]">
                   Manage todos from Cursor, Claude, and more.
                 </p>
+                <LandingMacDownloadButton variant="footer" />
               </div>
 
               <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-10">
@@ -234,8 +238,8 @@ export default function PrivacyPolicyPage() {
               </div>
             </div>
 
-            <p className="mt-8 text-center font-title text-[12px] leading-4 text-[#a4a4ae]">
-              © {new Date().getFullYear()} Yalp. All rights reserved.
+            <p className="mt-[80px] text-center font-title text-[12px] leading-4 text-[#a4a4ae]">
+              Yalp AI © 2026. All rights reserved.
             </p>
           </nav>
         </footer>

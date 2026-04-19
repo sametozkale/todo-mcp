@@ -9,12 +9,14 @@ import { LandingPlansPaperSection } from "./landing-plans-paper-section";
 const FOOTER_COLUMN_1_LINKS = [
   { href: "/why-i-built", label: "Why I built" },
   { href: "/roadmap", label: "Roadmap" },
+  { href: "/changelog", label: "Changelog" },
   { href: "/login", label: "Login" },
 ] as const;
 
 const FOOTER_COLUMN_3_LINKS = [
   { href: "/privacy", label: "Privacy policy" },
   { href: "/terms", label: "Terms of use" },
+  { href: "mailto:ozkalesamet@gmail.com", label: "Support" },
 ] as const;
 
 /** Common questions visitors ask about Yalp — copy matches product behavior where possible. */
@@ -97,7 +99,7 @@ export function LandingPricingFooterPaper() {
       </section>
 
       <footer
-        className="mt-16 border-t border-[#ececf2] pt-10 pb-2"
+        className="mt-[112px] border-t border-[#ececf2] pt-10 pb-2"
         aria-label="Site footer"
       >
         <nav aria-label="Footer" className="mx-auto w-full max-w-[640px]">
@@ -152,8 +154,8 @@ export function LandingPricingFooterPaper() {
           </div>
 
           {/* Bottom row: legal */}
-          <p className="mt-8 text-center font-title text-[12px] leading-4 text-[#a4a4ae]">
-            © {new Date().getFullYear()} Yalp. All rights reserved.
+          <p className="mt-[80px] text-center font-title text-[12px] leading-4 text-[#a4a4ae]">
+            Yalp AI © 2026. All rights reserved.
           </p>
         </nav>
       </footer>

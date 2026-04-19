@@ -10,6 +10,7 @@ import {
 import {
   createListAction,
   deleteListAction,
+  renameListAction,
   reorderListsAction,
   type DeleteListMode,
 } from "@/app/(app)/lists/actions";
@@ -21,7 +22,7 @@ import {
   SlidersHorizontalIcon,
   Delete02Icon,
 } from "@hugeicons/core-free-icons";
-import { X } from "lucide-react";
+import { Pencil, X } from "lucide-react";
 import {
   closestCenter,
   DndContext,
@@ -114,6 +115,7 @@ export type TodayClientProps = {
 
 type SortableListTabChipProps = {
   list: UserListRow;
+  displayTitle: string;
   href: string;
   chipClassName: string;
   isActive: boolean;
@@ -124,6 +126,7 @@ type SortableListTabChipProps = {
 
 function SortableListTabChip({
   list,
+  displayTitle,
   href,
   chipClassName,
   isActive,
@@ -158,7 +161,7 @@ function SortableListTabChip({
           onMouseEnter={() => onPrefetch(href)}
           onFocus={() => onPrefetch(href)}
         >
-          {list.title}{" "}
+          {displayTitle}{" "}
           {isActive ? (
             <>
               <span className="mx-[2px] text-muted/70">•</span> {count}
@@ -424,6 +427,12 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
   const [createListError, setCreateListError] = useState<string | null>(null);
   const [createPending, setCreatePending] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const renameListModal = useOverlayState();
+  const [renameTarget, setRenameTarget] = useState<{ listId: string; slug: string } | null>(null);
+  const [renameListTitle, setRenameListTitle] = useState("");
+  const [renameListError, setRenameListError] = useState<string | null>(null);
+  const [renameListPending, setRenameListPending] = useState(false);
+  const [renamedTitlesById, setRenamedTitlesById] = useState<Record<string, string>>({});
   const [deleteTarget, setDeleteTarget] = useState<{
     listId: string;
     slug: string;
@@ -716,6 +725,10 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
     return `/${slug}`;
   }
 
+  function getListDisplayTitle(list: UserListRow) {
+    return renamedTitlesById[list.id] ?? list.title;
+  }
+
   function isTabActiveForList(slug: string) {
     return pathname === `/${slug}`;
   }
@@ -761,6 +774,46 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
     // pratikte aynı davranır; kullanıcı yine de ne olduğunu görebilsin.)
     setDeleteTarget({ listId, slug, taskCount });
     deleteTasksModal.open();
+  }
+
+  function openRenameFlow(listId: string, slug: string, title: string) {
+    setContextMenu(null);
+    setRenameTarget({ listId, slug });
+    setRenameListTitle(title);
+    setRenameListError(null);
+    renameListModal.open();
+  }
+
+  async function submitRenameList(e: React.FormEvent) {
+    e.preventDefault();
+    if (!renameTarget) return;
+    const nextTitle = renameListTitle.trim();
+    if (!nextTitle) {
+      setRenameListError("Enter a list name.");
+      return;
+    }
+
+    setRenameListPending(true);
+    setRenameListError(null);
+    const result = await renameListAction(renameTarget.listId, nextTitle);
+    setRenameListPending(false);
+
+    if (!result.ok) {
+      setRenameListError(result.error);
+      return;
+    }
+
+    setRenamedTitlesById((prev) => ({ ...prev, [renameTarget.listId]: nextTitle }));
+    renameListModal.close();
+    setRenameTarget(null);
+
+    const oldPath = listHref(renameTarget.slug);
+    const newPath = listHref(result.slug);
+    if (pathname === oldPath && oldPath !== newPath) {
+      router.push(newPath);
+    }
+    scheduleRefresh();
+    toast.success("List renamed.", { timeout: 2200 });
   }
 
   function afterListDeleted(slug: string) {
@@ -1325,7 +1378,10 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
                 <span className="truncate">
                   {pathname === "/all"
                     ? `All • ${counts.all}`
-                    : listsSorted.find((l) => isTabActiveForList(l.slug))?.title ?? "Select list"}
+                    : (() => {
+                        const activeList = listsSorted.find((l) => isTabActiveForList(l.slug));
+                        return activeList ? getListDisplayTitle(activeList) : "Select list";
+                      })()}
                 </span>
                 <HugeiconsIcon icon={ArrowDown01Icon} size={16} strokeWidth={1.75} className="text-muted" />
               </span>
@@ -1344,7 +1400,7 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
                     textValue={list.title}
                     onAction={() => router.push(listHref(list.slug))}
                   >
-                    {list.title}
+                    {getListDisplayTitle(list)}
                     <span className="mx-[2px] text-muted/70">•</span> {counts.byListId[list.id] ?? 0}
                   </Dropdown.Item>
                 ))}
@@ -1399,12 +1455,13 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
                     chipClassName={filterChipClass(listHref(list.slug))}
                     isActive={isTabActiveForList(list.slug)}
                     count={counts.byListId[list.id] ?? 0}
+                    displayTitle={getListDisplayTitle(list)}
                     onPrefetch={prefetchRoute}
                     onListContextMenu={(l, e) => {
                       setContextMenu({
                         listId: l.id,
                         slug: l.slug,
-                        title: l.title,
+                        title: getListDisplayTitle(l),
                         x: e.clientX,
                         y: e.clientY,
                       });
@@ -1500,6 +1557,14 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
             style={{ width: "max-content", minWidth: "0px" }}
           >
             <Dropdown.Menu className="w-fit max-w-max min-w-0">
+              <Dropdown.Item
+                onAction={() => openRenameFlow(contextMenu.listId, contextMenu.slug, contextMenu.title)}
+              >
+                <div className="flex items-center gap-[8px]">
+                  <Pencil size={16} />
+                  <span>Rename</span>
+                </div>
+              </Dropdown.Item>
               <Dropdown.Item onAction={() => openDeleteFlow(contextMenu.listId, contextMenu.slug)}>
                 <div className="flex items-center gap-[8px]">
                   <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={1.75} />
@@ -1550,6 +1615,53 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
                   </Button>
                   <Button type="submit" variant="primary" isPending={createPending}>
                     Create
+                  </Button>
+                </Modal.Footer>
+              </form>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal.Root>
+
+      <Modal.Root state={renameListModal}>
+        <Modal.Trigger className="sr-only absolute h-px w-px overflow-hidden border-0 p-0 opacity-0">
+          <span aria-hidden />
+        </Modal.Trigger>
+        <Modal.Backdrop>
+          <Modal.Container size="md" placement="center">
+            <Modal.Dialog>
+              <Modal.CloseTrigger />
+              <Modal.Header className="mb-[24px]">
+                <Modal.Heading>Rename list</Modal.Heading>
+              </Modal.Header>
+              <form onSubmit={submitRenameList}>
+                <Modal.Body className="flex flex-col gap-3 pt-0">
+                  {renameListError ? (
+                    <p className="text-sm text-[color:var(--color-danger)]" role="alert">
+                      {renameListError}
+                    </p>
+                  ) : null}
+                  <TextField.Root
+                    name="rename_list_title"
+                    value={renameListTitle}
+                    onChange={setRenameListTitle}
+                    isRequired
+                  >
+                    <Label>List name</Label>
+                    <Input placeholder="e.g. Work" autoFocus />
+                  </TextField.Root>
+                </Modal.Body>
+                <Modal.Footer className="flex justify-end gap-2">
+                  <Button
+                    variant="secondary"
+                    slot="close"
+                    type="button"
+                    isDisabled={renameListPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary" isPending={renameListPending}>
+                    Save
                   </Button>
                 </Modal.Footer>
               </form>
@@ -1651,7 +1763,7 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
                       className="block w-full rounded-lg px-2.5 py-2 text-left text-[13px] text-foreground hover:bg-[#f5f5f5]"
                       onClick={() => applyComposerTargetList(list.id)}
                     >
-                      {list.title}
+                      {getListDisplayTitle(list)}
                     </button>
                   ))
                 ) : (

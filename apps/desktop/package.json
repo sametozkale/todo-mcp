@@ -24,6 +24,7 @@
   "build": {
     "appId": "com.yalp.app",
     "productName": "Yalp",
+    "afterPack": "scripts/after-pack-macos-helpers.cjs",
     "copyright": "Copyright © 2025 Yalp",
     "mac": {
       "category": "public.app-category.productivity",

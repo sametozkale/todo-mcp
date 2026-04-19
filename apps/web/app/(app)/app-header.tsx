@@ -238,6 +238,8 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
   const profileModalPreviewSrc = avatarUrl.trim() || DEFAULT_AVATAR_SRC;
   const profileModalInitials = getInitials(fullName, userEmail);
   const profileEmail = userEmail ?? "No email available";
+  const isDesktopApp =
+    typeof window !== "undefined" && Boolean((window as { yalp?: { isDesktop?: boolean } }).yalp?.isDesktop);
 
   return (
     <>
@@ -346,48 +348,52 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                       <span>MCP Connections</span>
                     </span>
                   </Dropdown.Item>
-                  <Dropdown.Item
-                    isDisabled
-                    textValue="separator"
-                    className="pointer-events-none mx-auto my-[2px] h-px min-h-px w-[calc(100%-24px)] max-w-full cursor-default bg-[#f4f4f4] px-0 py-0 opacity-100"
-                  >
-                    <span aria-hidden="true" />
-                  </Dropdown.Item>
-                  <Dropdown.Item
-                    onAction={() => setShowMacDownloadOptions((prev) => !prev)}
-                    onMouseEnter={() => setShowMacDownloadOptions(true)}
-                    textValue="Download for MacOS"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <span
-                        className="inline-flex h-4 w-4 items-center justify-center text-muted"
-                        aria-hidden
+                  {!isDesktopApp ? (
+                    <>
+                      <Dropdown.Item
+                        isDisabled
+                        textValue="separator"
+                        className="pointer-events-none mx-auto my-[2px] h-px min-h-px w-[calc(100%-24px)] max-w-full cursor-default bg-[#f4f4f4] px-0 py-0 opacity-100"
                       >
-                        <span className="text-[14px] leading-none"></span>
-                      </span>
-                      <span>Download for MacOS</span>
-                    </span>
-                  </Dropdown.Item>
-                  {showMacDownloadOptions
-                    ? getMacDownloadOptions().map((option) => (
-                        <Dropdown.Item
-                          key={option.arch}
-                          onAction={() => handleMacArchDownload(option.href)}
-                          textValue={option.label}
-                          className="translate-y-0 opacity-100 transition-[opacity,transform] duration-180 ease-out"
-                        >
-                          <span className="inline-flex w-full items-center justify-between gap-2">
-                            <span className="inline-flex items-center gap-2">
-                              <span className="inline-flex h-4 w-4 shrink-0" aria-hidden />
-                              <span>{option.label}</span>
-                            </span>
-                            <span className="text-[11px] text-muted">
-                              {option.arch === "arm64" ? "ARM" : "x64"}
-                            </span>
+                        <span aria-hidden="true" />
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        onAction={() => setShowMacDownloadOptions((prev) => !prev)}
+                        onMouseEnter={() => setShowMacDownloadOptions(true)}
+                        textValue="Download for MacOS"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <span
+                            className="inline-flex h-4 w-4 items-center justify-center text-muted"
+                            aria-hidden
+                          >
+                            <span className="text-[14px] leading-none"></span>
                           </span>
-                        </Dropdown.Item>
-                      ))
-                    : null}
+                          <span>Download for MacOS</span>
+                        </span>
+                      </Dropdown.Item>
+                      {showMacDownloadOptions
+                        ? getMacDownloadOptions().map((option) => (
+                            <Dropdown.Item
+                              key={option.arch}
+                              onAction={() => handleMacArchDownload(option.href)}
+                              textValue={option.label}
+                              className="translate-y-0 opacity-100 transition-[opacity,transform] duration-180 ease-out"
+                            >
+                              <span className="inline-flex w-full items-center justify-between gap-2">
+                                <span className="inline-flex items-center gap-2">
+                                  <span className="inline-flex h-4 w-4 shrink-0" aria-hidden />
+                                  <span>{option.label}</span>
+                                </span>
+                                <span className="text-[11px] text-muted">
+                                  {option.arch === "arm64" ? "ARM" : "x64"}
+                                </span>
+                              </span>
+                            </Dropdown.Item>
+                          ))
+                        : null}
+                    </>
+                  ) : null}
                   <Dropdown.Item
                     isDisabled
                     textValue="separator"

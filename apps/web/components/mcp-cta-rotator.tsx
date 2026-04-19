@@ -72,6 +72,8 @@ export function McpCtaRotator({ userId }: Props) {
   const [mounted, setMounted] = useState(false);
   const [dismissed, setDismissed] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
+  const isDesktopApp =
+    typeof window !== "undefined" && Boolean((window as { yalp?: { isDesktop?: boolean } }).yalp?.isDesktop);
 
   useEffect(() => {
     setMounted(true);
@@ -104,8 +106,9 @@ export function McpCtaRotator({ userId }: Props) {
   return (
     <div
       className={
-        "pointer-events-none z-20 max-sm:flex max-sm:justify-end " +
-        "sm:fixed sm:bottom-6 sm:right-6 lg:right-12"
+        isDesktopApp
+          ? "pointer-events-none z-20 flex w-full justify-end"
+          : "pointer-events-none z-20 max-sm:flex max-sm:justify-end sm:fixed sm:bottom-6 sm:right-6 lg:right-12"
       }
     >
       <Button

@@ -111,6 +111,8 @@ export function WeatherClockWidget() {
   const [location, setLocation] = useState<LocationState | null>(null);
   const [weather, setWeather] = useState<WeatherState | null>(null);
   const reverseGeocodeAttemptedKey = useRef<string | null>(null);
+  const isDesktopApp =
+    typeof window !== "undefined" && Boolean((window as { yalp?: { isDesktop?: boolean } }).yalp?.isDesktop);
 
   useEffect(() => {
     setNow(new Date());
@@ -244,7 +246,13 @@ export function WeatherClockWidget() {
   }, [weather, location]);
 
   return (
-    <div className="pointer-events-none relative max-sm:mt-0 max-sm:w-full sm:fixed sm:bottom-4 sm:left-12 sm:z-30">
+    <div
+      className={
+        isDesktopApp
+          ? "pointer-events-none relative w-full"
+          : "pointer-events-none relative max-sm:mt-0 max-sm:w-full sm:fixed sm:bottom-4 sm:left-12 sm:z-30"
+      }
+    >
       <div className="inline-flex h-6 max-w-full min-w-0 items-center text-[11px] leading-4 text-[#777777]">
         <span className="inline-flex items-center gap-1">
           <span className="inline-flex h-5 w-5 items-center justify-center">

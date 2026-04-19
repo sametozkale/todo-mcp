@@ -137,6 +137,66 @@ export type DeleteListMode = "move_tasks_to_unassigned" | "delete_tasks";
 
 export type DeleteListResult = { ok: true } | { ok: false; error: string };
 
+export type RenameListResult =
+  | { ok: true; slug: string }
+  | { ok: false; error: string };
+
+export async function renameListAction(
+  listId: string,
+  nextTitle: string,
+): Promise<RenameListResult> {
+  const trimmed = nextTitle.trim();
+  if (!trimmed) {
+    return { ok: false, error: "Enter a list name." };
+  }
+
+  const nextSlug = slugifyListTitle(trimmed);
+  const slugErr = validateListSlugForCreate(nextSlug);
+  if (slugErr) {
+    return { ok: false, error: slugErr };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "Not signed in." };
+  }
+
+  const { data: list, error: listErr } = await supabase
+    .from("lists")
+    .select("id, slug, title")
+    .eq("id", listId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (listErr || !list) {
+    return { ok: false, error: "List not found." };
+  }
+
+  // No-op rename: keep UX smooth and avoid unnecessary writes.
+  if (list.title.trim() === trimmed && list.slug === nextSlug) {
+    return { ok: true, slug: list.slug };
+  }
+
+  const { error: updateErr } = await supabase
+    .from("lists")
+    .update({ title: trimmed, slug: nextSlug })
+    .eq("id", listId)
+    .eq("user_id", user.id);
+
+  if (updateErr) {
+    if (updateErr.code === "23505") {
+      return { ok: false, error: "A list with this name already exists." };
+    }
+    return { ok: false, error: updateErr.message };
+  }
+
+  revalidateTodoListPaths([list.slug, nextSlug]);
+  return { ok: true, slug: nextSlug };
+}
+
 export async function deleteListAction(
   listId: string,
   mode: DeleteListMode,

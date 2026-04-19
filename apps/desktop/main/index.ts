@@ -5,8 +5,64 @@ import * as path from 'node:path';
 const isDev = process.env.NODE_ENV === 'development';
 const WEB_DEV_URL = 'http://localhost:3001';
 const WEB_PROD_URL = 'https://www.yalp.work';
+const DESKTOP_ENTRY_PATH = '/login';
+const DESKTOP_BLOCKED_PUBLIC_PATHS = new Set([
+  '/',
+  '/why-i-built',
+  '/roadmap',
+  '/privacy',
+  '/terms',
+]);
 
 let mainWindow: BrowserWindow | null = null;
+
+function normalizePathname(pathname: string): string {
+  if (!pathname) return '/';
+  if (pathname === '/') return '/';
+  return pathname.replace(/\/+$/, '');
+}
+
+function isDesktopAppHost(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === 'yalp.work' ||
+    hostname === 'www.yalp.work'
+  );
+}
+
+function getDesktopBaseUrl(): string {
+  return isDev ? WEB_DEV_URL : WEB_PROD_URL;
+}
+
+function getDesktopLoginUrl(origin?: string): string {
+  if (origin) return `${origin}${DESKTOP_ENTRY_PATH}`;
+  return `${getDesktopBaseUrl()}${DESKTOP_ENTRY_PATH}`;
+}
+
+function shouldForceDesktopAppPath(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (!isDesktopAppHost(parsed.hostname)) return false;
+    const path = normalizePathname(parsed.pathname);
+    return DESKTOP_BLOCKED_PUBLIC_PATHS.has(path);
+  } catch {
+    return false;
+  }
+}
+
+function enforceDesktopEntryPath(currentUrl: string) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (!shouldForceDesktopAppPath(currentUrl)) return;
+  try {
+    const parsed = new URL(currentUrl);
+    const loginUrl = getDesktopLoginUrl(parsed.origin);
+    if (parsed.pathname === DESKTOP_ENTRY_PATH) return;
+    void mainWindow.loadURL(loginUrl);
+  } catch {
+    void mainWindow.loadURL(getDesktopLoginUrl());
+  }
+}
 
 function isAllowedNavigationHost(hostname: string): boolean {
   if (hostname === 'localhost' || hostname === '127.0.0.1') return true;
@@ -80,11 +136,15 @@ async function createMainWindow() {
 
   mainWindow = new BrowserWindow(options);
 
-  if (isDev) {
-    await mainWindow.loadURL(WEB_DEV_URL);
-  } else {
-    await mainWindow.loadURL(WEB_PROD_URL);
-  }
+  await mainWindow.loadURL(getDesktopLoginUrl());
+
+  mainWindow.webContents.on('did-navigate', (_event, url) => {
+    enforceDesktopEntryPath(url);
+  });
+
+  mainWindow.webContents.on('did-navigate-in-page', (_event, url) => {
+    enforceDesktopEntryPath(url);
+  });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://') || url.startsWith('mailto:')) {

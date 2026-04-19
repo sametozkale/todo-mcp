@@ -34,6 +34,12 @@ export function LandingHeader() {
           >
             Roadmap
           </Link>
+          <Link
+            href="/changelog"
+            className="hidden font-title text-[14px] leading-5 font-medium tracking-[-0.32px] text-[#bbbcc3] no-underline transition hover:text-white sm:inline"
+          >
+            Changelog
+          </Link>
 
           <div className="flex items-center gap-[6px]">
             <Link
