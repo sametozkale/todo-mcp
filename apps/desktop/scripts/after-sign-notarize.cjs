@@ -1,6 +1,10 @@
 const { notarize } = require("@electron/notarize");
 const path = require("node:path");
 
+function requireNotarization() {
+  return process.env.REQUIRE_MACOS_NOTARIZATION === "true" || process.env.CI === "true";
+}
+
 function hasAppleIdCredentials() {
   return (
     Boolean(process.env.APPLE_ID) &&
@@ -21,6 +25,12 @@ module.exports = async function afterSign(context) {
   if (context.electronPlatformName !== "darwin") return;
 
   if (!hasAppleIdCredentials() && !hasApiKeyCredentials()) {
+    if (requireNotarization()) {
+      throw new Error(
+        "[notarize] Missing credentials. Set APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID or APPLE_API_KEY + APPLE_API_KEY_ID + APPLE_API_ISSUER.",
+      );
+    }
+
     console.warn(
       "[notarize] Skipping notarization: set APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID or APPLE_API_KEY + APPLE_API_KEY_ID + APPLE_API_ISSUER."
     );
@@ -42,6 +52,7 @@ module.exports = async function afterSign(context) {
       keyId: process.env.APPLE_API_KEY_ID,
       issuer: process.env.APPLE_API_ISSUER,
     });
+    console.info("[notarize] Notarization completed with API key credentials.");
     return;
   }
 
@@ -51,4 +62,5 @@ module.exports = async function afterSign(context) {
     appleIdPassword: process.env.APPLE_APP_SPECIFIC_PASSWORD,
     teamId: process.env.APPLE_TEAM_ID,
   });
+  console.info("[notarize] Notarization completed with Apple ID credentials.");
 };

@@ -1,0 +1,91 @@
+name: macOS Desktop Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag to release (example: v0.1.0)"
+        required: false
+        default: ""
+        type: string
+      auto_publish:
+        description: "Publish release instead of draft"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      prerelease:
+        description: "Mark release as pre-release"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos-dmg:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      CI: "true"
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build notarized DMG
+        run: pnpm --filter desktop build:mac:release
+
+      - name: Verify macOS artifacts
+        run: pnpm --filter desktop verify:mac:artifacts
+
+      - name: Upload DMG artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: yalp-macos-dmg
+          path: apps/desktop/dist-app/*.dmg
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '')
+        uses: softprops/action-gh-release@v2
+        env:
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || github.event.inputs.release_tag }}
+        with:
+          draft: ${{ !(github.event_name == 'workflow_dispatch' && github.event.inputs.auto_publish == 'true') }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease == 'true') || contains(env.RELEASE_TAG, '-alpha') || contains(env.RELEASE_TAG, '-beta') || contains(env.RELEASE_TAG, '-rc') }}
+          make_latest: ${{ (contains(env.RELEASE_TAG, '-alpha') || contains(env.RELEASE_TAG, '-beta') || contains(env.RELEASE_TAG, '-rc')) && 'false' || 'true' }}
+          generate_release_notes: true
+          files: apps/desktop/dist-app/*.dmg

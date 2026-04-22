@@ -9,6 +9,8 @@
     "dev:once": "tsc -p tsconfig.json && cross-env NODE_ENV=development electron .",
     "build": "tsc -p tsconfig.json && electron-builder",
     "build:mac": "tsc -p tsconfig.json && electron-builder --mac dmg",
+    "build:mac:release": "cross-env REQUIRE_MACOS_NOTARIZATION=true tsc -p tsconfig.json && electron-builder --mac dmg",
+    "verify:mac:artifacts": "bash scripts/verify-macos-artifacts.sh",
     "lint": "echo \"No lint config yet\"",
     "test": "echo \"No tests yet\""
   },
