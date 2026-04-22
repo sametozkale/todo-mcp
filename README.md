@@ -34,22 +34,13 @@ Notes:
 
 - Workflow: `.github/workflows/macos-desktop-release.yml`
 - Trigger: manuel (`workflow_dispatch`) veya `v*` tag push.
-- Pipeline: notarization zorunlu build (`build:mac:release`) + artifact verification (`verify:mac:artifacts`) + DMG upload.
-- Bu pipeline notarization/codesign eksikse fail eder; boylece sorunlu DMG kullaniciya ulasmaz.
-- `v*` tag tetiklemelerinde otomatik draft GitHub Release olusturulur ve DMG dosyalari release asset olarak eklenir.
-- Manuel tetiklemede:
-  - `release_tag` girilirse release olusturulur.
-  - `auto_publish=true` verilirse draft yerine direkt publish edilir.
-  - `prerelease=true` verilirse release pre-release olarak isaretlenir.
-- Tag push akısında `-alpha`, `-beta` veya `-rc` iceren tag'ler otomatik pre-release olur (ornek: `v1.2.0-beta.1`).
-- `latest` etiketi sadece stable surumlerde acik kalir; `-alpha/-beta/-rc` surumler `latest` olarak isaretlenmez.
+- Builds are gated by notarization + artifact verification before release assets are uploaded.
+- Optional workflow inputs: `release_tag`, `auto_publish`, `prerelease`.
+- `-alpha/-beta/-rc` tags are published as pre-release and not marked as `latest`.
 
 Required GitHub Secrets:
-- `CSC_LINK`
-- `CSC_KEY_PASSWORD`
-- Notarization icin su setlerden biri:
-  - `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`
-  - veya `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`
+- `CSC_LINK`, `CSC_KEY_PASSWORD`
+- Notarization credentials (use one set): `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID`, or `APPLE_API_KEY` + `APPLE_API_KEY_ID` + `APPLE_API_ISSUER`
 
 **Web typography:** Headings use **Open Runde** (`next/font/local`, OFL — `app/fonts/open-runde/`); body, descriptions, and buttons use **Inter** (`next/font/google`). Configuration: [`apps/web/app/fonts.ts`](apps/web/app/fonts.ts), [`apps/web/app/globals.css`](apps/web/app/globals.css).
 
