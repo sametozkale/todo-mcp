@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { forwardRef, useRef, type ReactNode } from "react";
+import { forwardRef, useEffect, useRef, useState, type ReactNode } from "react";
 import { Globe } from "lucide-react";
 
 import { AnimatedBeam } from "@/components/ui/animated-beam";
@@ -10,6 +10,42 @@ import { cn } from "@/lib/utils";
 /** Bright core (Magic UI–style pulse) and cool edge along the beam */
 const beamBright = "#38e0ff";
 const beamEdge = "#0284c7";
+const HERO_TAB_ROTATE_MS = 5000;
+
+const heroTabs = [
+  {
+    id: "manage-todos",
+    label: "Manage Todos",
+    src: "/hero.png",
+    alt: "Yalp web app: list tabs, new todo field, and tasks synced from integrations.",
+    width: 3810,
+    height: 2475,
+  },
+  {
+    id: "create-lists",
+    label: "Create Lists",
+    src: "/feature-create-lists.png",
+    alt: "Yalp modal for creating a new list from the main todo view.",
+    width: 1024,
+    height: 664,
+  },
+  {
+    id: "sub-todos",
+    label: "Subtasks",
+    src: "/feature-subtasks.png",
+    alt: "Yalp task detail page with a subtasks checklist.",
+    width: 1024,
+    height: 664,
+  },
+  {
+    id: "mcp-connections",
+    label: "MCP Connections",
+    src: "/feature-mcp-connections.png",
+    alt: "Yalp MCP Connections page for connecting AI clients.",
+    width: 1024,
+    height: 664,
+  },
+] as const;
 
 const Circle = forwardRef<
   HTMLDivElement,
@@ -35,6 +71,8 @@ const Circle = forwardRef<
 Circle.displayName = "Circle";
 
 export function LandingIntegrationBeam() {
+  const [activeTab, setActiveTab] = useState(0);
+  const [tabProgress, setTabProgress] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
   const claudeRef = useRef<HTMLDivElement>(null);
@@ -53,6 +91,28 @@ export function LandingIntegrationBeam() {
     gradientStartColor: beamBright,
     gradientStopColor: beamEdge,
   } as const;
+
+  useEffect(() => {
+    setTabProgress(0);
+    const start = performance.now();
+    let frameId = 0;
+
+    const tick = (now: number) => {
+      const nextProgress = Math.min((now - start) / HERO_TAB_ROTATE_MS, 1);
+      setTabProgress(nextProgress);
+
+      if (nextProgress >= 1) {
+        setActiveTab((prev) => (prev + 1) % heroTabs.length);
+        return;
+      }
+
+      frameId = window.requestAnimationFrame(tick);
+    };
+
+    frameId = window.requestAnimationFrame(tick);
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [activeTab]);
 
   return (
     <section
@@ -195,16 +255,65 @@ export function LandingIntegrationBeam() {
       </div>
 
       <div className="mt-14 w-full px-2 sm:mt-24 sm:px-6">
+        <div
+          className="mx-auto mb-4 flex w-fit max-w-full shrink-0 flex-wrap items-center rounded-[99px] border border-[#F7F7F7] bg-white p-1 sm:mb-5"
+          role="tablist"
+          aria-label="Product feature previews"
+        >
+          {heroTabs.map((tab, idx) => {
+            const isActive = idx === activeTab;
+
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`feature-tab-panel-${tab.id}`}
+                id={`feature-tab-${tab.id}`}
+                onClick={() => setActiveTab(idx)}
+                className={cn(
+                  "relative overflow-hidden rounded-[99px] px-4 py-2 font-title text-[14px] font-medium leading-5 transition-colors",
+                  isActive
+                    ? "bg-transparent text-[#181925]"
+                    : "text-[#666666] hover:text-[#181925]",
+                )}
+              >
+                {isActive ? (
+                  <span
+                    aria-hidden
+                    className="absolute inset-y-0 left-0 rounded-[99px] bg-[#F7F7F7]"
+                    style={{ width: `${tabProgress * 100}%` }}
+                  />
+                ) : null}
+                <span className="relative z-10">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
         <div className="overflow-hidden rounded-lg border border-[#eee] bg-white sm:rounded-xl md:rounded-2xl">
-          <Image
-            src="/hero.png"
-            alt="Yalp web app: list tabs, new todo field, and tasks synced from integrations."
-            width={3810}
-            height={2475}
-            className="h-auto w-full"
-            sizes="(max-width: 1024px) 100vw, 1024px"
-            quality={95}
-          />
+          <div
+            role="tabpanel"
+            id={`feature-tab-panel-${heroTabs[activeTab].id}`}
+            aria-labelledby={`feature-tab-${heroTabs[activeTab].id}`}
+            className="relative aspect-[3810/2475] w-full"
+          >
+            {heroTabs.map((tab, idx) => (
+              <img
+                key={tab.id}
+                src={tab.src}
+                alt={tab.alt}
+                width={tab.width}
+                height={tab.height}
+                loading={idx === activeTab ? "eager" : "lazy"}
+                decoding="async"
+                className={cn(
+                  "absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ease-out",
+                  idx === activeTab ? "opacity-100" : "opacity-0",
+                )}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </section>
