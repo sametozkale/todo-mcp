@@ -12,6 +12,7 @@ export default defineConfig({
     globals: true,
     clearMocks: true,
     css: false,
+    include: ["tests/**/*.test.ts"],
   },
   resolve: {
     alias: {

@@ -1,6 +1,7 @@
 import { PRODUCT_HOME } from "@/lib/routes";
 import { SubscriptionProvider, type SubscriptionSnapshot, type UsageSnapshot } from "@/hooks/useSubscription";
-import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
+import { enqueueDebugIngest, isServerDebugIngestEnabled } from "@/lib/debug-ingest";
+import { isLayoutCountsFallbackRpcDisabled } from "@/lib/perf-flags";
 import { SessionKeepAliveMount } from "@/components/session-keepalive-mount";
 import { getCachedAuth } from "@/lib/supabase/cached-auth";
 import type { Metadata } from "next";
@@ -22,7 +23,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!user) {
     // #region debug auth redirect next
     if (isServerDebugIngestEnabled()) {
-      await sendDebugIngest({
+      enqueueDebugIngest({
         sessionId: "f7ebea",
         runId: "pre-fix",
         hypothesisId: "H1-layout-redirect-next",
@@ -53,13 +54,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   const lists = listRows ?? [];
   const { data: countsRowRaw, error: countsRpcError } = await supabase.rpc("get_todo_counts_snapshot").single();
-  const countsRow = countsRowRaw as {
+  type TodoCountsRow = {
     usage_total_active: number;
     all_list_todos_count: number;
     display_all_top_level: number;
     list_usage_by_list: Record<string, number>;
     list_display_by_list: Record<string, number>;
-  } | null;
+  };
+  const countsRow = countsRowRaw as TodoCountsRow | null;
   let usageTotalActive = countsRow?.usage_total_active ?? 0;
   let allCount = countsRow?.display_all_top_level ?? 0;
   let allListTodosCount = countsRow?.all_list_todos_count ?? 0;
@@ -67,59 +69,74 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   let activeTodosByListIdForLimits = (countsRow?.list_usage_by_list ?? {}) as Record<string, number>;
 
   if (countsRpcError || !countsRow) {
-    const [
-      { count: usageTotalActiveRaw },
-      { count: allListTodosCountRaw },
-      listUsageByList,
-      { count: displayAllTopLevel },
-      listDisplayByList,
-    ] = await Promise.all([
-      supabase
-        .from("todos")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .not("is_completed", "is", true),
-      supabase
-        .from("todos")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .is("list_id", null)
-        .not("is_completed", "is", true),
-      Promise.all(
-        lists.map(async (list) => {
-          const { count } = await supabase
-            .from("todos")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", user.id)
-            .eq("list_id", list.id)
-            .not("is_completed", "is", true);
-          return [list.id, count ?? 0] as const;
-        }),
-      ),
-      supabase
-        .from("todos")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .is("parent_id", null)
-        .not("is_completed", "is", true),
-      Promise.all(
-        lists.map(async (list) => {
-          const { count } = await supabase
-            .from("todos")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", user.id)
-            .eq("list_id", list.id)
-            .is("parent_id", null)
-            .not("is_completed", "is", true);
-          return [list.id, count ?? 0] as const;
-        }),
-      ),
-    ]);
-    usageTotalActive = usageTotalActiveRaw ?? 0;
-    allCount = displayAllTopLevel ?? 0;
-    allListTodosCount = allListTodosCountRaw ?? 0;
-    byListId = Object.fromEntries(listDisplayByList);
-    activeTodosByListIdForLimits = Object.fromEntries(listUsageByList);
+    let recovered: TodoCountsRow | null = null;
+    if (!isLayoutCountsFallbackRpcDisabled()) {
+      const fb = await supabase.rpc("get_todo_counts_layout_fallback").single();
+      if (!fb.error && fb.data) {
+        recovered = fb.data as TodoCountsRow;
+      }
+    }
+    if (recovered) {
+      usageTotalActive = recovered.usage_total_active;
+      allCount = recovered.display_all_top_level;
+      allListTodosCount = recovered.all_list_todos_count;
+      byListId = (recovered.list_display_by_list ?? {}) as Record<string, number>;
+      activeTodosByListIdForLimits = (recovered.list_usage_by_list ?? {}) as Record<string, number>;
+    } else {
+      const [
+        { count: usageTotalActiveRaw },
+        { count: allListTodosCountRaw },
+        listUsageByList,
+        { count: displayAllTopLevel },
+        listDisplayByList,
+      ] = await Promise.all([
+        supabase
+          .from("todos")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .not("is_completed", "is", true),
+        supabase
+          .from("todos")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .is("list_id", null)
+          .not("is_completed", "is", true),
+        Promise.all(
+          lists.map(async (list) => {
+            const { count } = await supabase
+              .from("todos")
+              .select("id", { count: "exact", head: true })
+              .eq("user_id", user.id)
+              .eq("list_id", list.id)
+              .not("is_completed", "is", true);
+            return [list.id, count ?? 0] as const;
+          }),
+        ),
+        supabase
+          .from("todos")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .is("parent_id", null)
+          .not("is_completed", "is", true),
+        Promise.all(
+          lists.map(async (list) => {
+            const { count } = await supabase
+              .from("todos")
+              .select("id", { count: "exact", head: true })
+              .eq("user_id", user.id)
+              .eq("list_id", list.id)
+              .is("parent_id", null)
+              .not("is_completed", "is", true);
+            return [list.id, count ?? 0] as const;
+          }),
+        ),
+      ]);
+      usageTotalActive = usageTotalActiveRaw ?? 0;
+      allCount = displayAllTopLevel ?? 0;
+      allListTodosCount = allListTodosCountRaw ?? 0;
+      byListId = Object.fromEntries(listDisplayByList);
+      activeTodosByListIdForLimits = Object.fromEntries(listUsageByList);
+    }
   }
 
   const extraListsCount = lists.length;

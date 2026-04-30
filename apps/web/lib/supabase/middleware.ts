@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
-import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
+import { enqueueDebugIngest, isServerDebugIngestEnabled } from "@/lib/debug-ingest";
 
 export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -62,7 +62,7 @@ export async function updateSession(request: NextRequest) {
   } catch (err) {
     // #region debug middleware getUser error
     if (isServerDebugIngestEnabled()) {
-      await sendDebugIngest({
+      enqueueDebugIngest({
         sessionId: "f7ebea",
         runId: "login-error",
         hypothesisId: "H5-middleware-getUser-error",
@@ -83,7 +83,7 @@ export async function updateSession(request: NextRequest) {
   // #region debug middleware user state
   if (path === "/today" || path === "/login") {
     if (isServerDebugIngestEnabled()) {
-      await sendDebugIngest({
+      enqueueDebugIngest({
         sessionId: "f7ebea",
         runId: "login-debug-user-state",
         hypothesisId: "H6-middleware-user-state",
@@ -99,7 +99,7 @@ export async function updateSession(request: NextRequest) {
   if (!user && !isPublicRoute) {
     // #region debug middleware redirect next
     if (isServerDebugIngestEnabled()) {
-      await sendDebugIngest({
+      enqueueDebugIngest({
         sessionId: "f7ebea",
         runId: "pre-fix",
         hypothesisId: "H2-middleware-redirect-next",

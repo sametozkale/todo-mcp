@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { PRODUCT_HOME } from "@/lib/routes";
-import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
+import { enqueueDebugIngest, isServerDebugIngestEnabled } from "@/lib/debug-ingest";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
@@ -20,7 +20,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
     } catch (err) {
       // #region debug auth layout getUser error
       if (isServerDebugIngestEnabled()) {
-        await sendDebugIngest({
+        enqueueDebugIngest({
           sessionId: "f7ebea",
           runId: "login-error",
           hypothesisId: "H8-auth-layout-getUser-error",
@@ -39,7 +39,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
   } catch (err) {
     // #region debug auth layout createClient error
     if (isServerDebugIngestEnabled()) {
-      await sendDebugIngest({
+      enqueueDebugIngest({
         sessionId: "f7ebea",
         runId: "login-error",
         hypothesisId: "H9-auth-layout-createClient-error",

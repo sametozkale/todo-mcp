@@ -18,6 +18,9 @@ type CacheEntry = {
   fetchedAt: number;
 };
 
+/** Skip redundant prefetch while cache is warm (reduces SSR + client double-fetch). */
+const PREFETCH_TTL_MS = 45_000;
+
 const todosCache = new Map<string, CacheEntry>();
 
 export function getCachedTodos(pathname: string): TodoStoreRow[] | null {
@@ -52,7 +55,8 @@ async function fetchTodosForPath(pathname: string): Promise<TodoStoreRow[] | nul
 }
 
 export async function prefetchTodosForPath(pathname: string): Promise<void> {
-  if (todosCache.has(pathname)) return;
+  const hit = todosCache.get(pathname);
+  if (hit && Date.now() - hit.fetchedAt < PREFETCH_TTL_MS) return;
   try {
     const todos = await fetchTodosForPath(pathname);
     if (todos) setCachedTodos(pathname, todos);

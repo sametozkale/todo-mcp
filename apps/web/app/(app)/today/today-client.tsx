@@ -70,7 +70,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSubscription } from "@/hooks/useSubscription";
 import { getCachedTodos, prefetchTodosForPath, setCachedTodos } from "@/hooks/useTodosStore";
-import { isClientDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
 import {
   YALP_OPEN_KEYBOARD_SHORTCUTS,
   YALP_OPEN_PROFILE,
@@ -661,27 +660,6 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
 
   async function persistReorderIfPossible(orderedIds: string[], rollbackOrder: string[]) {
     if (orderedIds.length === 0) return;
-    // #region debug-log:persistReorderIfPossible
-    if (isClientDebugIngestEnabled()) {
-      void sendDebugIngest(
-        {
-          sessionId: "e410d4",
-          runId: "pre-fix-reorder-1",
-          hypothesisId: "H3-persist-reorder",
-          location: "today-client.tsx:persistReorderIfPossible",
-          message: "Persisting reorder to server action",
-          data: {
-            composerListId,
-            orderedIdsLength: orderedIds.length,
-            orderedIdsFirst: orderedIds[0] ?? null,
-            orderedIdsLast: orderedIds[orderedIds.length - 1] ?? null,
-          },
-          timestamp: Date.now(),
-        },
-        { headerSessionId: "e410d4" },
-      );
-    }
-    // #endregion
     // Merge: if completed are hidden, only the visible subset was reordered.
     // Preserve the relative placement of hidden items by reusing the subset slots.
     const fullIds = optimisticTodos.map((t) => t.id);
@@ -1118,21 +1096,6 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
-      // #region agent log
-      fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "fd174b" },
-        body: JSON.stringify({
-          sessionId: "fd174b",
-          runId: "shortcuts-audit-1",
-          hypothesisId: "H1-keydown-not-reaching-handler",
-          location: "today-client.tsx:onKeyDown",
-          message: "Global keydown received",
-          data: { key: e.key, code: e.code, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       if (e.defaultPrevented) return;
 
       const typing = isTextTypingTarget(e.target);
@@ -1152,21 +1115,6 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
       }
 
       if (typing) {
-        // #region agent log
-        fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "fd174b" },
-          body: JSON.stringify({
-            sessionId: "fd174b",
-            runId: "shortcuts-audit-1",
-            hypothesisId: "H2-shortcuts-blocked-by-typing-guard",
-            location: "today-client.tsx:onKeyDown",
-            message: "Shortcut ignored because typing target detected",
-            data: { key: e.key, code: e.code },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
         return;
       }
 
@@ -1194,21 +1142,6 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
 
       if (e.key === "?") {
         e.preventDefault();
-        // #region agent log
-        fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "fd174b" },
-          body: JSON.stringify({
-            sessionId: "fd174b",
-            runId: "shortcuts-audit-1",
-            hypothesisId: "H3-event-dispatch-happens-but-modal-not-opening",
-            location: "today-client.tsx:onKeyDown",
-            message: "Dispatching keyboard shortcuts modal event",
-            data: { eventName: YALP_OPEN_KEYBOARD_SHORTCUTS },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
         window.dispatchEvent(new CustomEvent(YALP_OPEN_KEYBOARD_SHORTCUTS));
         return;
       }
@@ -1240,21 +1173,6 @@ export function TodayClient({ initialTodos, composerListId, view, initialShowCom
         if (kn === "a" || kn === "i" || kn === "u" || kn === "p") {
           disarmGo();
           e.preventDefault();
-          // #region agent log
-          fetch("http://127.0.0.1:7553/ingest/d34f2416-bf5f-42a3-84ba-50ccb0574dd2", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "fd174b" },
-            body: JSON.stringify({
-              sessionId: "fd174b",
-              runId: "shortcuts-audit-1",
-              hypothesisId: "H4-go-sequence-second-key-mapping-issue",
-              location: "today-client.tsx:onKeyDown",
-              message: "Go-sequence second key accepted",
-              data: { key: kn },
-              timestamp: Date.now(),
-            }),
-          }).catch(() => {});
-          // #endregion
           if (kn === "a") k.routerPush("/all");
           else if (kn === "i") k.routerPush("/mcp");
           else if (kn === "u") window.dispatchEvent(new CustomEvent(YALP_OPEN_PROFILE));

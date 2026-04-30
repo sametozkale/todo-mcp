@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LoginForm } from "@/components/auth/login-form";
-import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
+import { enqueueDebugIngest, isServerDebugIngestEnabled } from "@/lib/debug-ingest";
 import { withSocialImage } from "@/lib/seo-metadata";
 
 const title = "Log in to Yalp";
@@ -33,7 +33,7 @@ export default async function LoginPage({
 
   // #region debug login page searchParams
   if (isServerDebugIngestEnabled()) {
-    await sendDebugIngest({
+    enqueueDebugIngest({
       sessionId: "f7ebea",
       runId: "login-searchparams-debug",
       hypothesisId: "H7-login-page-next-param",

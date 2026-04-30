@@ -5,6 +5,7 @@ import { slugifyListTitle, validateListSlugForCreate } from "@/lib/list-slug";
 import { revalidateAppShell, revalidateTodoListPaths } from "@/lib/revalidate-todo-pages";
 import { isProPlan, type PlanType } from "@/lib/subscription";
 import { getPostHogClient } from "@/lib/posthog";
+import { isBulkReorderRpcDisabled } from "@/lib/perf-flags";
 
 export type CreateListResult =
   | { ok: true; slug: string }
@@ -122,6 +123,22 @@ export async function reorderListsAction(orderedListIds: string[]): Promise<Reor
   for (const id of orderedListIds) {
     if (!serverIds.has(id)) {
       return { ok: false, error: "Invalid list order." };
+    }
+  }
+
+  if (!isBulkReorderRpcDisabled()) {
+    const { error: rpcErr } = await supabase.rpc("reorder_lists_positions", {
+      p_ordered_ids: orderedListIds,
+    });
+    if (!rpcErr) {
+      revalidateAppShell();
+      return { ok: true };
+    }
+    const msg = rpcErr.message?.toLowerCase() ?? "";
+    const missing =
+      msg.includes("schema cache") && msg.includes("reorder_lists_positions".toLowerCase());
+    if (!missing) {
+      return { ok: false, error: rpcErr.message };
     }
   }
 

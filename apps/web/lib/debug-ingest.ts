@@ -38,3 +38,11 @@ export async function sendDebugIngest(
     body: JSON.stringify({ ...payload, timestamp }),
   }).catch(() => {});
 }
+
+/** Do not await on request-critical paths (middleware, redirects). */
+export function enqueueDebugIngest(
+  payload: DebugIngestPayload,
+  options?: { headerSessionId?: string },
+): void {
+  void sendDebugIngest(payload, options);
+}

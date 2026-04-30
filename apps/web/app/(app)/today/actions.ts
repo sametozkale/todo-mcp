@@ -8,6 +8,7 @@ import {
 } from "@/lib/revalidate-todo-pages";
 import { FREE_LIMITS, isProPlan, type PlanType } from "@/lib/subscription";
 import { getPostHogClient } from "@/lib/posthog";
+import { isBulkReorderRpcDisabled } from "@/lib/perf-flags";
 
 export type AddTodoState = { error?: string; success?: boolean } | null;
 
@@ -277,6 +278,25 @@ export async function duplicateTodoAction(id: string) {
     return { error: "Not signed in." };
   }
 
+  const { data: srcMeta } = await supabase
+    .from("todos")
+    .select("parent_id")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!isBulkReorderRpcDisabled()) {
+    const { error: rpcErr } = await supabase.rpc("duplicate_todo_fast", { p_source_id: id });
+    if (!rpcErr) {
+      revalidateAppShell();
+      revalidateTodoDetailPaths(id, srcMeta?.parent_id ?? null);
+      return { success: true as const };
+    }
+    if (!isMissingRpc(rpcErr.message, "duplicate_todo_fast")) {
+      return { error: rpcErr.message };
+    }
+  }
+
   const { data: source, error: sourceErr } = await supabase
     .from("todos")
     .select(
@@ -487,6 +507,24 @@ export async function reorderTodosAction(listId: string, orderedTodoIds: string[
     return { success: true as const };
   }
 
+  if (!isBulkReorderRpcDisabled()) {
+    const { error: rpcErr } = await supabase.rpc("reorder_todos_in_list_positions", {
+      p_list_id: listId,
+      p_ordered_ids: ids,
+    });
+    if (!rpcErr) {
+      if (listRow?.slug) {
+        revalidateTodoListPaths([listRow.slug]);
+      } else {
+        revalidateAppShell();
+      }
+      return { success: true as const };
+    }
+    if (!isMissingRpc(rpcErr.message, "reorder_todos_in_list_positions")) {
+      return { error: rpcErr.message };
+    }
+  }
+
   const updates = await Promise.all(
     ids.map((id, idx) =>
       supabase
@@ -524,6 +562,19 @@ export async function reorderAllTodosAction(orderedTodoIds: string[]) {
   const ids = orderedTodoIds.filter(Boolean);
   if (ids.length === 0) {
     return { success: true as const };
+  }
+
+  if (!isBulkReorderRpcDisabled()) {
+    const { error: rpcErr } = await supabase.rpc("reorder_todos_all_positions", {
+      p_ordered_ids: ids,
+    });
+    if (!rpcErr) {
+      revalidateAppShell();
+      return { success: true as const };
+    }
+    if (!isMissingRpc(rpcErr.message, "reorder_todos_all_positions")) {
+      return { error: rpcErr.message };
+    }
   }
 
   const updates = await Promise.all(
@@ -572,6 +623,21 @@ export async function reorderSubTodosAction(parentId: string, orderedTodoIds: st
   const ids = orderedTodoIds.filter(Boolean);
   if (ids.length === 0) {
     return { success: true as const };
+  }
+
+  if (!isBulkReorderRpcDisabled()) {
+    const { error: rpcErr } = await supabase.rpc("reorder_sub_todos_positions", {
+      p_parent_id: parentId,
+      p_ordered_ids: ids,
+    });
+    if (!rpcErr) {
+      revalidateAppShell();
+      revalidateTodoDetailPaths(parentId);
+      return { success: true as const };
+    }
+    if (!isMissingRpc(rpcErr.message, "reorder_sub_todos_positions")) {
+      return { error: rpcErr.message };
+    }
   }
 
   const updates = await Promise.all(

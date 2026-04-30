@@ -5,7 +5,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { PRODUCT_HOME } from "@/lib/routes";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
+import { enqueueDebugIngest, isServerDebugIngestEnabled } from "@/lib/debug-ingest";
 import { getSiteUrl } from "@/lib/site-url";
 import { sanitizeInternalNextPath } from "@/lib/auth/redirect";
 import { getPostHogClient } from "@/lib/posthog";
@@ -88,7 +88,7 @@ export async function loginAction(
   const next = sanitizeInternalNextPath(nextRaw, PRODUCT_HOME);
   // #region debug login action next
   if (isServerDebugIngestEnabled()) {
-    await sendDebugIngest({
+    enqueueDebugIngest({
       sessionId: "f7ebea",
       runId: "pre-fix",
       hypothesisId: "H3-loginAction-next",
@@ -171,25 +171,27 @@ export async function signupAction(
       // and sign in immediately so users are not blocked by email throughput limits.
       const admin = getServiceRoleClient();
       if (admin) {
-        const { data: existingUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-        const existing = existingUsers?.users?.find(
-          (u) => (u.email ?? "").toLowerCase() === email.toLowerCase(),
-        );
+        const { error: createErr } = await admin.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: { full_name: name },
+        });
 
-        if (!existing) {
-          const { error: createErr } = await admin.auth.admin.createUser({
-            email,
-            password,
-            email_confirm: true,
-            user_metadata: { full_name: name },
-          });
-          if (createErr) {
-            return {
-              error:
-                "Email signup is temporarily limited. Please retry in a few minutes or use Continue with Google.",
-              fields: { name, email },
-            };
-          }
+        const createMsg = (createErr?.message ?? "").toLowerCase();
+        const userLikelyExists =
+          createErr &&
+          (createMsg.includes("already") ||
+            createMsg.includes("registered") ||
+            createMsg.includes("exists") ||
+            createMsg.includes("duplicate"));
+
+        if (createErr && !userLikelyExists) {
+          return {
+            error:
+              "Email signup is temporarily limited. Please retry in a few minutes or use Continue with Google.",
+            fields: { name, email },
+          };
         }
 
         const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
