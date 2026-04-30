@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { GraduationCap } from "lucide-react";
 
 type ChangelogEntry = {
   id: string;
@@ -8,11 +9,24 @@ type ChangelogEntry = {
   summary: string;
   bullets: readonly string[];
   isLatest?: boolean;
-  marker: "apple" | "yalp";
+  marker: "apple" | "yalp" | "student";
   metadataImageSrc?: string;
 };
 
 const ENTRIES: readonly ChangelogEntry[] = [
+  {
+    id: "students-free",
+    dateLabel: "April 2026",
+    dateTime: "2026-04-30",
+    title: "Yalp is free for students",
+    summary: "Students can now use Yalp completely free.",
+    isLatest: true,
+    marker: "student",
+    bullets: [
+      "Student access is now fully free.",
+      "All core planning features stay included.",
+    ],
+  },
   {
     id: "macos-app",
     dateLabel: "April 2026",
@@ -20,7 +34,7 @@ const ENTRIES: readonly ChangelogEntry[] = [
     title: "Yalp AI for macOS",
     summary:
       "Shipped a native desktop app so you can keep Yalp in its own window—same account, same lists, fewer tabs.",
-    isLatest: true,
+    isLatest: false,
     marker: "apple",
     metadataImageSrc: "/yalp-ai-macos-update.png",
     bullets: [
@@ -61,6 +75,8 @@ export function ChangelogTimeline() {
                 >
                   {entry.marker === "apple" ? (
                     <span className="text-[17px] leading-none text-[#181925]"></span>
+                  ) : entry.marker === "student" ? (
+                    <GraduationCap className="h-[17px] w-[17px] text-[#181925]" strokeWidth={1.9} />
                   ) : (
                     <Image
                       src="/to-do-mcp-logo-black-48.svg"
