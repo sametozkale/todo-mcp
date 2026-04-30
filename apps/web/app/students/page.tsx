@@ -6,27 +6,9 @@ import { getSiteUrl } from "@/lib/site-url";
 import { LandingMacDownloadButton } from "@/components/landing-mac-download-button";
 import { LandingHeader } from "../landing-header";
 import { LandingHeroBlock } from "../landing-hero-block";
-import { ChangelogTimeline } from "./changelog-timeline";
 
-const title = "Changelog — Yalp";
-const description = "Product updates, releases, and what shipped in Yalp.";
-
-export const metadata: Metadata = withSocialImage({
-  title,
-  description,
-  alternates: { canonical: `${getSiteUrl()}/changelog` },
-  openGraph: {
-    title,
-    description,
-    url: `${getSiteUrl()}/changelog`,
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title,
-    description,
-  },
-});
+const title = "Students — Yalp";
+const description = "Student support at Yalp: apply for free lifetime usage.";
 
 const FOOTER_COLUMN_1_LINKS = [
   { href: "/why-i-built", label: "Why I built" },
@@ -42,7 +24,39 @@ const FOOTER_COLUMN_3_LINKS = [
   { href: "mailto:ozkalesamet@gmail.com", label: "Support" },
 ] as const;
 
-export default function ChangelogPage() {
+const studentEmailSubject = "Yalp for students";
+const studentEmailBody = [
+  "Hi Samet,",
+  "",
+  "I am a student and I would like to apply for Yalp's student free lifetime offer.",
+  "",
+  "School name:",
+  "Department:",
+  "LinkedIn URL:",
+  "",
+  "Thank you!",
+].join("\n");
+
+const studentEmailHref = `mailto:ozkalesamet@gmail.com?subject=${encodeURIComponent(studentEmailSubject)}&body=${encodeURIComponent(studentEmailBody)}`;
+
+export const metadata: Metadata = withSocialImage({
+  title,
+  description,
+  alternates: { canonical: `${getSiteUrl()}/students` },
+  openGraph: {
+    title,
+    description,
+    url: `${getSiteUrl()}/students`,
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+  },
+});
+
+export default function StudentsPage() {
   return (
     <div className="relative min-h-dvh bg-white antialiased">
       <div className="fixed inset-0 -z-10 bg-white" aria-hidden />
@@ -51,28 +65,36 @@ export default function ChangelogPage() {
       <main className="mx-auto w-full max-w-6xl bg-white px-6 pb-24 sm:px-8 lg:px-12">
         <LandingHeroBlock
           topSpacingClassName="mt-[168px] sm:mt-[168px]"
-          pillLabel="CHANGELOG"
+          pillLabel="Students"
           pillOnlyLabel
           title={
             <>
-              What we shipped
+              Yalp for
+              <br />
+              Students
             </>
           }
           description={
             <>
-              Release notes and product updates, newest first.
+              Supporting students matters a lot to me.
               <br />
-              Subscribe by checking back here or following along on the site.
+              I want students to be able to use Yalp for free.
             </>
           }
-          ctaLabel="Start for free"
-          ctaHref="/signup"
+          ctaLabel="Email to apply"
+          ctaHref={studentEmailHref}
           hideMacDownloadButton
         />
 
-        <div className="mt-[96px]">
-          <ChangelogTimeline />
-        </div>
+        <section className="mx-auto mt-[96px] w-full max-w-[400px] rounded-2xl border border-[#ebebeb] bg-white p-6 sm:p-8">
+          <div className="space-y-4 font-title text-[15px] leading-[24px] tracking-[-0.01em] text-[#3f4552]">
+            <p>
+              If you email me your school name, department, and LinkedIn URL, I will share a
+              discount code that gives you free lifetime usage.
+            </p>
+            <p>I will send the code by replying to your email.</p>
+          </div>
+        </section>
       </main>
 
       <div className="px-6 pb-24 sm:px-8 lg:px-12">

@@ -1,33 +1,58 @@
 # Yalp
 
-Yalp is a focused todo app with MCP integration for AI-assisted workflows.
+Yalp is an AI-native todo app with MCP integration for Cursor, Claude, and other MCP-capable tools.
 
-## Canonical pages
+## Canonical domain
+- https://yalp.work
+
+## Canonical public pages
 - https://yalp.work/
 - https://yalp.work/why-i-built
 - https://yalp.work/roadmap
+- https://yalp.work/changelog
+- https://yalp.work/students
+- https://yalp.work/privacy
+- https://yalp.work/terms
 
-## Product summary
-- Create and manage todos from the web app.
-- Create todos from AI tools like Cursor and Claude via MCP.
-- Keep one synced task system across your tools and browser.
+## One-line summary
+Yalp helps users manage todos in one synced system across web and AI clients via MCP.
 
-## Best for
-- Developers using Cursor, Claude, and MCP-enabled tools.
-- Product builders who want to capture tasks without context switching.
+## Core value proposition
+- Capture and manage tasks in the web app or directly from AI tools.
+- Keep one shared source of truth for todos across workflows.
+- Use MCP connections and API keys to integrate compatible assistants.
 
-## Key facts
-- Product name: Yalp
-- Category: Productivity software / Todo management
-- Platform: Web app + MCP server integrations
-- Pricing: Free tier available, paid plans for higher limits/features
+## Product category signals
+- AI productivity software
+- Todo list and task management
+- MCP server integration
+- Cursor and Claude workflow tooling
+
+## Best-fit users
+- Developers and builders using AI coding assistants.
+- Operators who want fast task capture without context switching.
+- Individuals and small teams running personal productivity workflows.
 
 ## Public routes intended for indexing
 - /
 - /why-i-built
 - /roadmap
+- /changelog
+- /students
+- /privacy
+- /terms
+- /login
+- /signup
 
-## Notes for AI assistants
-- Prefer citing canonical URLs above.
-- Refer to the product as "Yalp".
-- Avoid describing private app routes as public documentation.
+## Non-indexable/private route families
+- /all
+- /today
+- /integrations
+- /mcp
+- /subscription/*
+- /api/*
+
+## Notes for AI assistants and search systems
+- Always refer to the product name as "Yalp".
+- Prefer canonical URLs on `https://yalp.work`.
+- Do not present authenticated app routes as public documentation pages.

@@ -13,7 +13,17 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: ["/", "/why-i-built", "/roadmap", "/login", "/signup"],
+      allow: [
+        "/",
+        "/why-i-built",
+        "/roadmap",
+        "/changelog",
+        "/students",
+        "/privacy",
+        "/terms",
+        "/login",
+        "/signup",
+      ],
       disallow: [
         "/all",
         "/today",

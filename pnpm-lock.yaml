@@ -135,6 +135,9 @@ importers:
       react-dom:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
+      slider-nav-button:
+        specifier: ^1.0.0
+        version: 1.0.0(@hugeicons/core-free-icons@4.0.0)(@hugeicons/react@1.1.6(react@19.1.0))(framer-motion@12.38.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -4362,6 +4365,17 @@ packages:
   slice-ansi@3.0.0:
     resolution: {integrity: sha512-pSyv7bSTC7ig9Dcgbw9AuRNUb5k5V6oDudjZoMBSr13qpLBG7tB+zgCkARjq7xIUgdz5P1Qe8u+rSGdouOOIyQ==}
     engines: {node: '>=8'}
+
+  slider-nav-button@1.0.0:
+    resolution: {integrity: sha512-nh+oK5fRt21W+MnrIzpb/JuK9aNLRfJ3TsqaB76H5kuRmbk8jjsSnbV47UQUyUfijvv4phxLpI/kBvyXTltKMw==}
+    peerDependencies:
+      '@hugeicons/core-free-icons': ^3.1.1
+      '@hugeicons/react': ^1.1.5
+      framer-motion: '>=11'
+      react: '>=17'
+    peerDependenciesMeta:
+      react:
+        optional: true
 
   smart-buffer@4.2.0:
     resolution: {integrity: sha512-94hK0Hh8rPqQl2xXc3HsaBoOXKV20MToPkcXvwbISWLEs+64sBq5kFgn2kJDHb1Pry9yrP0dxrCI9RRci7RXKg==}
@@ -9924,6 +9938,14 @@ snapshots:
       astral-regex: 2.0.0
       is-fullwidth-code-point: 3.0.0
     optional: true
+
+  slider-nav-button@1.0.0(@hugeicons/core-free-icons@4.0.0)(@hugeicons/react@1.1.6(react@19.1.0))(framer-motion@12.38.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0):
+    dependencies:
+      '@hugeicons/core-free-icons': 4.0.0
+      '@hugeicons/react': 1.1.6(react@19.1.0)
+      framer-motion: 12.38.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+    optionalDependencies:
+      react: 19.1.0
 
   smart-buffer@4.2.0: {}
 

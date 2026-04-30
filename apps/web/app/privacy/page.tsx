@@ -20,6 +20,7 @@ const FOOTER_COLUMN_1_LINKS = [
 const FOOTER_COLUMN_3_LINKS = [
   { href: "/privacy", label: "Privacy policy" },
   { href: "/terms", label: "Terms of use" },
+  { href: "/students", label: "Students" },
   { href: "mailto:ozkalesamet@gmail.com", label: "Support" },
 ] as const;
 
@@ -201,7 +202,7 @@ export default function PrivacyPolicyPage() {
                   />
                 </div>
                 <span className="font-title text-[14px] font-medium tracking-[-0.32px] text-[#181925]">
-                  Yalp
+                  Yalp AI
                 </span>
                 <p className="font-title text-[12px] leading-4 tracking-[-0.24px] text-[#5c5c66]">
                   Manage todos from Cursor, Claude, and more.

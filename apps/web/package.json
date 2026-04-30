@@ -31,6 +31,7 @@
     "posthog-node": "^5.31.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "slider-nav-button": "^1.0.0",
     "sonner": "^2.0.7",
     "stripe": "^21.0.1",
     "tailwind-merge": "^3.5.0"

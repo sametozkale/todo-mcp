@@ -9,6 +9,7 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/why-i-built") ||
     path.startsWith("/roadmap") ||
     path.startsWith("/changelog") ||
+    path.startsWith("/students") ||
     path.startsWith("/privacy") ||
     path.startsWith("/terms") ||
     path.startsWith("/login") ||

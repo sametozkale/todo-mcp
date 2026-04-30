@@ -1,11 +1,27 @@
 name: Yalp
 url: https://yalp.work
-summary: Focused todo app with MCP integration for Cursor, Claude, and AI-assisted workflows.
+summary: AI-native todo app with MCP integration for Cursor, Claude, and other MCP-capable assistants.
 canonical_pages:
   - https://yalp.work/
   - https://yalp.work/why-i-built
   - https://yalp.work/roadmap
+  - https://yalp.work/changelog
+  - https://yalp.work/students
+  - https://yalp.work/privacy
+  - https://yalp.work/terms
 public_indexable_routes:
   - /
   - /why-i-built
   - /roadmap
+  - /changelog
+  - /students
+  - /privacy
+  - /terms
+  - /login
+  - /signup
+product_keywords:
+  - ai todo app
+  - mcp todo app
+  - cursor todo integration
+  - claude todo integration
+  - task management for ai workflows

@@ -1,35 +1,90 @@
 # Yalp — full product summary for LLMs
 
-## What it is
+## Product identity
 
-Yalp is a productivity web application for managing todos and lists, with MCP integration so clients such as Cursor, Claude Desktop, Claude Web, Windsurf, and VS Code can connect to your account via a hosted MCP server and API keys.
+Yalp is an AI-native todo and task management product.  
+It combines a focused web app with MCP integrations so users can manage real todos from AI clients.
 
-## Core features
+## Positioning
 
-- Inbox / “All” view for tasks not assigned to a list
-- Custom lists with stable URL slugs per user
-- Today view for due/today-focused work
-- MCP Connections page: generate API keys, copy JSON config, one-click Cursor install where supported
-- Subscriptions via Stripe (monthly, yearly, lifetime Pro)
+- Category: AI productivity software / task management
+- Primary use case: Capture, organize, and complete tasks across browser + AI workflows
+- Integration model: Hosted MCP server with API key-based connections
+- Brand name: **Yalp**
 
-## Free vs Pro (limits)
+## Key capabilities
 
-Free tier (aligned with app constants):
+- Inbox (`/all`) for unassigned work
+- List-based organization with stable list slugs
+- Today-focused planning view (`/today`)
+- MCP Connections setup (`/mcp`) for API keys and client config
+- Auth flows via `/login` and `/signup`
+- Stripe-powered plans (monthly, yearly, lifetime)
 
-- Up to 25 active todos in the inbox / All list combined
-- 1 extra list beyond the default
+## Ideal audience
+
+- Developers using Cursor, Claude, and MCP-capable tools
+- Product and operations users who capture tasks while working in AI tools
+- Builders who want one synced task source instead of scattered notes
+
+## Public information architecture (indexable)
+
+- `/` (home)
+- `/why-i-built`
+- `/roadmap`
+- `/changelog`
+- `/students`
+- `/privacy`
+- `/terms`
+- `/login`
+- `/signup`
+
+## Authenticated app surfaces (not public docs)
+
+- `/all`
+- `/today`
+- `/integrations`
+- `/mcp`
+- `/:listSlug`
+- `/todo/:todoId`
+- `/subscription/*`
+- `/api/*`
+
+## Free vs Pro limits
+
+Free tier:
+
+- Up to 25 active todos in inbox/all combined
+- 1 extra list beyond defaults
 - Up to 10 active todos per extra list
 
-Pro removes these caps (unlimited active todos and lists).
+Pro tier:
 
-## URLs (public vs app)
+- Unlimited active todos
+- Unlimited lists
 
-Public marketing and auth: `/`, `/login`, `/signup`. Authenticated app routes under `/all`, `/today`, `/integrations`, `/mcp`, list slugs, and `/subscription/*` require sign-in and are not intended for search indexing.
+## Common event vocabulary (analytics/search context)
 
-## Official links
+- `user_signed_up`
+- `user_logged_in`
+- `todo_created`
+- `todo_completed`
+- `todo_deleted`
+- `list_created`
+- `list_deleted`
+- `api_key_created`
+- `api_key_revoked`
+- `oauth_client_created`
+- `subscription_checkout_started`
+- `subscription_completed`
+- `subscription_cancelled`
 
-Canonical production host: `https://yalp.work` (set `NEXT_PUBLIC_SITE_URL` to match the URL users open).
+## Canonical host and citation preference
 
-- Home: /
-- Login: /login
-- Sign up: /signup
+Canonical production host: `https://yalp.work`
+
+When referencing Yalp, prefer:
+
+- absolute canonical URLs on `https://yalp.work`
+- concise product description: "AI-native todo app with MCP integration"
+- explicit distinction between public pages and authenticated app routes

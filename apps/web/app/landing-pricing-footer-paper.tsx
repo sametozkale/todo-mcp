@@ -3,6 +3,7 @@ import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 
 import { LandingMacDownloadButton } from "@/components/landing-mac-download-button";
+import { TestimonialsCarousel } from "@/components/testimonials-carousel";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { LandingPlansPaperSection } from "./landing-plans-paper-section";
 
@@ -16,6 +17,7 @@ const FOOTER_COLUMN_1_LINKS = [
 const FOOTER_COLUMN_3_LINKS = [
   { href: "/privacy", label: "Privacy policy" },
   { href: "/terms", label: "Terms of use" },
+  { href: "/students", label: "Students" },
   { href: "mailto:ozkalesamet@gmail.com", label: "Support" },
 ] as const;
 
@@ -55,10 +57,55 @@ const FAQ_ITEMS: readonly { q: string; a: string }[] = [
   },
 ];
 
+const TESTIMONIALS: readonly { quote: string; name: string; role: string }[] = [
+  {
+    quote:
+      "Yalp is the first todo app that actually fits how I work with AI. I can brainstorm in Cursor, and my real tasks are already there without copy-pasting anything.",
+    name: "Merve Cankiz Coruh",
+    role: "Product Manager",
+  },
+  {
+    quote:
+      "I expected another simple list app, but the MCP flow changed everything. It feels like my assistant and my planning system are finally in the same place.",
+    name: "Daniel Brooks",
+    role: "Indie Developer",
+  },
+  {
+    quote:
+      "The biggest value for me is focus. Yalp keeps the UI clean, but still gives me powerful automation through integrations when I need it.",
+    name: "Aisha Khan",
+    role: "Operations Lead",
+  },
+];
+
 export function LandingPricingFooterPaper() {
   return (
     <div className="mt-24 flex w-full max-w-[640px] flex-col items-stretch px-1">
       <LandingPlansPaperSection />
+
+      <section
+        className="mt-24 flex flex-col items-center gap-6"
+        aria-labelledby="landing-testimonials-heading"
+      >
+        <div className="flex items-center gap-2 rounded-xl bg-[#F7F7F7] px-3 py-[6.5px]">
+          <span className="font-title text-[12px] font-medium leading-[1.5] text-[#777777]">
+            TESTIMONIALS
+          </span>
+        </div>
+        <h2
+          id="landing-testimonials-heading"
+          className="mx-auto w-full max-w-[400px] text-center font-title text-[36px] font-medium leading-[44px] tracking-[-0.64px] text-[#181925]"
+        >
+          What our users say
+        </h2>
+        <p className="-mt-2 w-full max-w-[440px] text-center font-title text-[16px] font-normal leading-6 tracking-[-0.32px] text-[#777777]">
+          What early users say after moving
+          <br />
+          their daily workflow to Yalp.
+        </p>
+
+        <TestimonialsCarousel items={TESTIMONIALS} />
+      </section>
 
       <section
         className="mt-24 flex flex-col items-center gap-6"
@@ -116,7 +163,7 @@ export function LandingPricingFooterPaper() {
                 />
               </div>
               <span className="font-title text-[14px] font-medium tracking-[-0.32px] text-[#181925]">
-                Yalp
+                Yalp AI
               </span>
               <p className="font-title text-[12px] leading-4 tracking-[-0.24px] text-[#5c5c66]">
                 Manage todos from Cursor, Claude, and more.
