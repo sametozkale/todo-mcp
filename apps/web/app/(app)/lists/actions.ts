@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { slugifyListTitle, validateListSlugForCreate } from "@/lib/list-slug";
 import { revalidateAppShell, revalidateTodoListPaths } from "@/lib/revalidate-todo-pages";
 import { isProPlan, type PlanType } from "@/lib/subscription";
+import { getPostHogClient } from "@/lib/posthog";
 
 export type CreateListResult =
   | { ok: true; slug: string }
@@ -81,6 +82,11 @@ export async function createListAction(title: string): Promise<CreateListResult>
     }
     return { ok: false, error: error.message };
   }
+
+  getPostHogClient().capture({
+    distinctId: user.id,
+    event: "list_created",
+  });
 
   revalidateTodoListPaths([slug]);
   return { ok: true, slug };
@@ -267,6 +273,12 @@ export async function deleteListAction(
   if (delListErr) {
     return { ok: false, error: delListErr.message };
   }
+
+  getPostHogClient().capture({
+    distinctId: user.id,
+    event: "list_deleted",
+    properties: { delete_mode: mode },
+  });
 
   revalidateTodoListPaths([slug]);
   return { ok: true };

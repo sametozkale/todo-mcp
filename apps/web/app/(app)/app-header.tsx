@@ -25,7 +25,7 @@ import {
   TextField,
   useOverlayState,
 } from "@heroui/react";
-import { Zap } from "lucide-react";
+import { Check, Copy, Zap } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -95,8 +95,11 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
   const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [showMacDownloadOptions, setShowMacDownloadOptions] = useState(false);
+  const [macHelpCopied, setMacHelpCopied] = useState(false);
   /** HeroUI / React Aria ids must not run until after hydration (avoids Next RSC + useId drift). */
   const [overlaysReady, setOverlaysReady] = useState(false);
+  const macDownloadHelpModal = useOverlayState();
+  const quarantineCommand = 'xattr -dr com.apple.quarantine "/Applications/Yalp.app"';
 
   useEffect(() => {
     setOverlaysReady(true);
@@ -106,6 +109,12 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
     if (typeof navigator === "undefined") return;
     setModSymbol(/Mac|iPhone|iPod|iPad/i.test(navigator.platform) ? "⌘" : "Ctrl");
   }, []);
+
+  useEffect(() => {
+    if (!macHelpCopied) return;
+    const timer = window.setTimeout(() => setMacHelpCopied(false), 1600);
+    return () => window.clearTimeout(timer);
+  }, [macHelpCopied]);
 
   const openShortcutsRef = useRef(() => {});
   const openProfileRef = useRef(() => {});
@@ -213,6 +222,16 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
   function handleMacArchDownload(href: string) {
     setShowMacDownloadOptions(false);
     window.open(href, "_blank", "noopener,noreferrer");
+    macDownloadHelpModal.open();
+  }
+
+  async function handleCopyMacHelpCommand() {
+    try {
+      await navigator.clipboard.writeText(quarantineCommand);
+      setMacHelpCopied(true);
+    } catch {
+      setMacHelpCopied(false);
+    }
   }
 
   function handleProfileSubmit(e: FormEvent<HTMLFormElement>) {
@@ -614,6 +633,50 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                     />
                   </div>
                 </Modal.Body>
+              </Modal.Dialog>
+            </Modal.Container>
+          </Modal.Backdrop>
+        </Modal.Root>
+      ) : null}
+
+      {overlaysReady ? (
+        <Modal.Root state={macDownloadHelpModal}>
+          <Modal.Trigger className="sr-only absolute h-px w-px overflow-hidden border-0 p-0 opacity-0">
+            <span aria-hidden="true" />
+          </Modal.Trigger>
+          <Modal.Backdrop>
+            <Modal.Container size="md" placement="center">
+              <Modal.Dialog aria-describedby="mac-download-help-description">
+                <Modal.CloseTrigger />
+                <Modal.Header className="mb-[18px]">
+                  <Modal.Heading>If the app doesn&apos;t open</Modal.Heading>
+                </Modal.Header>
+                <Modal.Body className="space-y-3 pt-0">
+                  <p id="mac-download-help-description" className="text-sm leading-relaxed text-muted">
+                    After moving the app to the Applications folder, follow these steps:
+                  </p>
+                  <ol className="space-y-1.5 text-sm leading-relaxed text-foreground">
+                    <li>1) Move the app into the Applications folder.</li>
+                    <li>2) Right-click <code>Yalp.app</code> and choose <code>Open</code>.</li>
+                    <li>3) If macOS still blocks the app, run this command in Terminal:</li>
+                  </ol>
+                  <div className="rounded-lg border border-[#e8ebf4] bg-[#fafbff] px-3 py-2">
+                    <code className="block overflow-x-auto whitespace-nowrap font-mono text-[12px] text-[#364156]">
+                      {quarantineCommand}
+                    </code>
+                  </div>
+                </Modal.Body>
+                <Modal.Footer className="flex items-center justify-end gap-2">
+                  <Button
+                    variant="primary"
+                    onPress={() => void handleCopyMacHelpCommand()}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      {macHelpCopied ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+                      <span>{macHelpCopied ? "Copied" : "Copy command"}</span>
+                    </span>
+                  </Button>
+                </Modal.Footer>
               </Modal.Dialog>
             </Modal.Container>
           </Modal.Backdrop>

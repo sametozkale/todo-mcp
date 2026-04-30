@@ -10,6 +10,7 @@ import {
 } from "@/lib/server/oauth-internal";
 import type { OAuthClientRow } from "@/lib/server/oauth-clients";
 import { listOAuthClientsForCurrentUser } from "@/lib/server/oauth-clients";
+import { getPostHogClient } from "@/lib/posthog";
 
 export type { OAuthClientRow } from "@/lib/server/oauth-clients";
 
@@ -82,6 +83,12 @@ export async function createApiKeyAction(label?: string): Promise<CreateApiKeyRe
     return { ok: false, error: error?.message ?? "Could not create API key." };
   }
 
+  getPostHogClient().capture({
+    distinctId: user.id,
+    event: "api_key_created",
+    properties: { label: trimmedLabel },
+  });
+
   return { ok: true, apiKey, row: data as ApiKeyRow };
 }
 
@@ -136,6 +143,12 @@ export async function revokeApiKeyAction(id: string): Promise<RevokeApiKeyResult
     .eq("user_id", user.id);
 
   if (error) return { ok: false, error: error.message };
+
+  getPostHogClient().capture({
+    distinctId: user.id,
+    event: "api_key_revoked",
+  });
+
   return { ok: true };
 }
 
@@ -179,6 +192,12 @@ export async function createClaudeWebOAuthClientAction(name?: string): Promise<C
   if (error || !data) {
     return { ok: false, error: error?.message ?? "Could not create OAuth client." };
   }
+
+  getPostHogClient().capture({
+    distinctId: user.id,
+    event: "oauth_client_created",
+    properties: { name: trimmedName },
+  });
 
   return {
     ok: true,

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getPostHogClient } from "@/lib/posthog";
 
 export const runtime = "nodejs";
 
@@ -122,6 +123,12 @@ export async function POST(req: Request) {
             );
         }
 
+        getPostHogClient().capture({
+          distinctId: userId,
+          event: "subscription_completed",
+          properties: { mode },
+        });
+
         break;
       }
 
@@ -169,6 +176,12 @@ export async function POST(req: Request) {
         const customerId = (sub.customer as string | null) ?? null;
         if (!customerId) break;
 
+        const { data: cancelledSubRow } = await supabaseAdmin
+          .from("user_subscriptions")
+          .select("user_id")
+          .eq("stripe_customer_id", customerId)
+          .maybeSingle();
+
         await supabaseAdmin
           .from("user_subscriptions")
           .update(({
@@ -182,6 +195,13 @@ export async function POST(req: Request) {
             updated_at: new Date().toISOString(),
           }) as unknown as Record<string, unknown>)
           .eq("stripe_customer_id", customerId);
+
+        if (cancelledSubRow?.user_id) {
+          getPostHogClient().capture({
+            distinctId: cancelledSubRow.user_id as string,
+            event: "subscription_cancelled",
+          });
+        }
 
         break;
       }

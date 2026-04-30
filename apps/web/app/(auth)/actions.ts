@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { isServerDebugIngestEnabled, sendDebugIngest } from "@/lib/debug-ingest";
 import { getSiteUrl } from "@/lib/site-url";
 import { sanitizeInternalNextPath } from "@/lib/auth/redirect";
+import { getPostHogClient } from "@/lib/posthog";
 
 function getServiceRoleClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -65,6 +66,22 @@ export async function loginAction(
       };
     }
     return { error: error.message, fields: { email } };
+  }
+
+  const { data: { user: loggedInUser } } = await supabase.auth.getUser();
+  if (loggedInUser) {
+    const posthog = getPostHogClient();
+    posthog.identify({
+      distinctId: loggedInUser.id,
+      properties: {
+        $set: { email: loggedInUser.email },
+      },
+    });
+    posthog.capture({
+      distinctId: loggedInUser.id,
+      event: "user_logged_in",
+      properties: { method: "email" },
+    });
   }
 
   const nextRaw = String(formData.get("next") ?? "").trim();
@@ -198,7 +215,38 @@ export async function signupAction(
   }
 
   if (data.session) {
+    if (data.user) {
+      const posthog = getPostHogClient();
+      posthog.identify({
+        distinctId: data.user.id,
+        properties: {
+          $set: { email: data.user.email, name },
+          $set_once: { first_seen_at: new Date().toISOString() },
+        },
+      });
+      posthog.capture({
+        distinctId: data.user.id,
+        event: "user_signed_up",
+        properties: { method: "email" },
+      });
+    }
     redirect(PRODUCT_HOME);
+  }
+
+  if (data.user) {
+    const posthog = getPostHogClient();
+    posthog.identify({
+      distinctId: data.user.id,
+      properties: {
+        $set: { email: data.user.email, name },
+        $set_once: { first_seen_at: new Date().toISOString() },
+      },
+    });
+    posthog.capture({
+      distinctId: data.user.id,
+      event: "user_signed_up",
+      properties: { method: "email", email_confirmation_required: true },
+    });
   }
 
   return {

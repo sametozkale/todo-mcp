@@ -7,6 +7,7 @@ import {
   revalidateTodoListPaths,
 } from "@/lib/revalidate-todo-pages";
 import { FREE_LIMITS, isProPlan, type PlanType } from "@/lib/subscription";
+import { getPostHogClient } from "@/lib/posthog";
 
 export type AddTodoState = { error?: string; success?: boolean } | null;
 
@@ -135,6 +136,19 @@ export async function addTodoAction(_prevState: AddTodoState, formData: FormData
     if (insertErr) return { error: insertErr.message };
   }
 
+  const posthog = getPostHogClient();
+  const { data: { user: todoUser } } = await supabase.auth.getUser();
+  if (todoUser) {
+    posthog.capture({
+      distinctId: todoUser.id,
+      event: "todo_created",
+      properties: {
+        has_list: !!listId,
+        is_sub_todo: !!parentId,
+      },
+    });
+  }
+
   revalidateAppShell();
   if (parentId) {
     revalidateTodoDetailPaths(parentId);
@@ -207,6 +221,14 @@ export async function toggleTodoAction(id: string, completed: boolean) {
     return { error: error.message };
   }
 
+  if (completed) {
+    getPostHogClient().capture({
+      distinctId: user.id,
+      event: "todo_completed",
+      properties: { is_sub_todo: !!before?.parent_id },
+    });
+  }
+
   revalidateAppShell();
   revalidateTodoDetailPaths(id, before?.parent_id ?? null);
   return { success: true as const };
@@ -231,6 +253,14 @@ export async function deleteTodoAction(id: string) {
     const { error: delErr } = await supabase.from("todos").delete().eq("id", id).eq("user_id", user.id);
     if (delErr) return { error: delErr.message };
     deleted = { parent_id: before?.parent_id ?? null };
+  }
+
+  const { data: { user: deleteUser } } = await supabase.auth.getUser();
+  if (deleteUser) {
+    getPostHogClient().capture({
+      distinctId: deleteUser.id,
+      event: "todo_deleted",
+    });
   }
 
   revalidateAppShell();

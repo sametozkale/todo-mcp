@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe";
 import { resolvePublicSiteUrl } from "@/lib/public-site-url";
+import { getPostHogClient } from "@/lib/posthog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -182,6 +183,15 @@ export async function POST(req: Request) {
       metadata: {
         supabase_user_id: user.id,
         selected_price_id: priceId,
+      },
+    });
+
+    getPostHogClient().capture({
+      distinctId: user.id,
+      event: "subscription_checkout_started",
+      properties: {
+        plan_key: planKeyFromBody(body) ?? "unknown",
+        mode: isLifetime ? "payment" : "subscription",
       },
     });
 
