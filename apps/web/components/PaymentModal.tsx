@@ -23,29 +23,29 @@ const PLANS: PlanDef[] = [
   {
     key: "monthly",
     title: "Monthly",
-    priceLabel: "$5",
+    priceLabel: "$1",
     cadence: "/ month",
     subLabel: "Flexible — cancel anytime",
-    bullets: ["Unlimited todos", "Unlimited lists", "Billed monthly"],
+    bullets: ["Unlimited todos", "Unlimited lists", "macOS app + MCP + web access", "Billed monthly"],
     icon: CalendarDays,
   },
   {
     key: "yearly",
     title: "Yearly",
-    priceLabel: "$49",
+    priceLabel: "$10",
     cadence: "/ year",
     subLabel: "Best value — save vs monthly",
-    bullets: ["Everything in Monthly", "Lowest effective price", "Billed once a year"],
+    bullets: ["Everything in Monthly", "macOS app included", "Lowest effective price", "Billed once a year"],
     bestValue: true,
     icon: Sparkles,
   },
   {
     key: "lifetime",
     title: "Lifetime",
-    priceLabel: "$99",
+    priceLabel: "$29",
     cadence: "once",
     subLabel: "Pay once, keep Pro forever",
-    bullets: ["All Pro features", "No renewals", "One-time payment"],
+    bullets: ["All Pro features", "macOS app included", "No renewals", "One-time payment"],
     icon: InfinityIcon,
   },
 ];
@@ -57,7 +57,7 @@ const LIFETIME_PLAN = PLANS.find((p) => p.key === "lifetime")!;
 const PRO_ENTITLEMENT_FEATURES = [
   "Unlimited active todos across every list",
   "Unlimited custom lists (no 10-task cap per list)",
-  "Same fast inbox, drag-and-drop, and keyboard workflow — without free-tier limits",
+  "macOS app + MCP + web: same fast inbox, drag-and-drop, and keyboard workflow without free-tier limits",
   "Priority access to new product updates while you stay subscribed",
 ] as const;
 

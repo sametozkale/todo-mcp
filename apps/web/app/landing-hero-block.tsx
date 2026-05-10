@@ -27,7 +27,7 @@ export function LandingHeroBlock({
   pillOnlyLabel = false,
   title,
   description,
-  ctaLabel = "Get started for free",
+  ctaLabel = "Get started",
   ctaHref = "/signup",
   hideCta = false,
   hideMacDownloadButton = false,

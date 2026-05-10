@@ -10,16 +10,16 @@ import { cn } from "@/lib/utils";
  * from Paper — https://app.paper.design/file/01KMXM6SWKF9CNKZ6GZJ3G8JBQ?node=2C-0 (Mar 30, 2026)
  * Layout + type scale; amounts aligned with `PaymentModal` / Stripe.
  */
-const MONTHLY_USD = 5;
-const YEARLY_USD = 39;
-const LIFETIME_USD = 69;
+const MONTHLY_USD = 1;
+const YEARLY_USD = 10;
+const LIFETIME_USD = 29;
 
 const YEARLY_SAVE_PCT = Math.round((1 - YEARLY_USD / (MONTHLY_USD * 12)) * 100);
 
 const PRO_FEATURES = [
   "Unlimited active todos across every list",
   "Unlimited custom lists (no per-list caps)",
-  "MCP + web app: same list in Cursor, Claude, or the browser",
+  "macOS app + MCP + web app: same list in Cursor, Claude, the browser, and native macOS",
   "Priority updates while subscribed",
 ] as const;
 
@@ -153,7 +153,7 @@ export function LandingPlansPaperSection() {
             href="/signup"
             className="flex w-full items-center justify-center rounded-[999px] bg-[#00b5e9] px-4 py-[11px] font-title text-[14px] font-medium leading-5 text-white shadow-[0px_1px_1px_rgba(0,0,0,0.08),0px_0px_0px_1px_rgba(0,0,0,0.05)] transition hover:bg-[#09abda]"
           >
-            Get started for free
+            Get started
           </Link>
         </div>
       </div>

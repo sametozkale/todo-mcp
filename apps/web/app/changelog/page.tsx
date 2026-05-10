@@ -65,7 +65,7 @@ export default function ChangelogPage() {
               Subscribe by checking back here or following along on the site.
             </>
           }
-          ctaLabel="Start for free"
+          ctaLabel="Create your account"
           ctaHref="/signup"
           hideMacDownloadButton
         />

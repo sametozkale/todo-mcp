@@ -88,7 +88,7 @@ export function LandingMacDownloadButton({
         >
           
         </span>
-        <span>Download macOS app</span>
+        <span>Download</span>
         <span
           className={cn(
             "inline-flex shrink-0 items-center justify-center overflow-hidden transition-opacity duration-200 ease-out",
