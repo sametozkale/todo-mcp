@@ -18,6 +18,13 @@ export type UsageSnapshot = {
   extraListsCount: number;
   maxExtraListTodosCount: number;
   activeTodosByListId: Record<string, number>;
+  /** All active notes (inbox + every note list). */
+  totalActiveNotesCount: number;
+  /** Active notes with no note list (inbox / new notes from All). */
+  allListNotesCount: number;
+  extraNoteListsCount: number;
+  maxExtraListNotesCount: number;
+  activeNotesByListId: Record<string, number>;
 };
 
 export type PaymentModalState = {
@@ -104,6 +111,24 @@ export function useSubscription() {
     [isPro, usage.totalActiveTodosCount, usage.allListTodosCount, usage.activeTodosByListId],
   );
 
+  const canCreateNoteList = useCallback(() => {
+    if (isPro) return true;
+    return usage.extraNoteListsCount < FREE_LIMITS.extraNoteLists;
+  }, [isPro, usage.extraNoteListsCount]);
+
+  const canAddNote = useCallback(
+    (noteListId: string | null) => {
+      if (isPro) return true;
+      if (usage.totalActiveNotesCount >= FREE_LIMITS.allListNotes) return false;
+      if (!noteListId) {
+        return usage.allListNotesCount < FREE_LIMITS.allListNotes;
+      }
+      const activeInThisList = usage.activeNotesByListId[noteListId] ?? 0;
+      return activeInThisList < FREE_LIMITS.extraListNotes;
+    },
+    [isPro, usage.totalActiveNotesCount, usage.allListNotesCount, usage.activeNotesByListId],
+  );
+
   return {
     plan,
     isActive,
@@ -112,10 +137,15 @@ export function useSubscription() {
       allListTodos: limits.allListTodos,
       extraLists: limits.extraLists,
       extraListTodos: limits.extraListTodos,
+      allListNotes: limits.allListNotes,
+      extraNoteLists: limits.extraNoteLists,
+      extraListNotes: limits.extraListNotes,
     },
     usage,
     canAddTodo,
     canCreateList,
+    canAddNote,
+    canCreateNoteList,
     openPaymentModal: ctx.openPaymentModal,
     paymentModal: ctx.paymentModal,
     closePaymentModal: ctx.closePaymentModal,

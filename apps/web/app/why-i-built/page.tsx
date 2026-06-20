@@ -96,8 +96,10 @@ export default function WhyIBuiltPage() {
                 <span className="font-title text-[14px] font-medium tracking-[-0.32px] text-[#181925]">
                   Yalp AI
                 </span>
-                <p className="font-title text-[12px] leading-4 tracking-[-0.24px] text-[#5c5c66]">
-                  Manage todos from Cursor, Claude, and more.
+                <p className="max-w-[14rem] font-title text-[12px] leading-4 tracking-[-0.24px] text-[#5c5c66]">
+                  Manage todos and notes in the browser,
+                  <br />
+                  with MCP for Cursor, Claude, and more.
                 </p>
                 <LandingMacDownloadButton variant="footer" />
               </div>

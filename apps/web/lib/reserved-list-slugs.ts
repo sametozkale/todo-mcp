@@ -7,6 +7,8 @@ const RESERVED_LIST_SLUGS = [
   "all",
   "today",
   "todo",
+  "notes",
+  "note",
   // Auth
   "login",
   "signup",

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button, Modal, useOverlayState } from "@heroui/react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { FREE_LIMITS } from "@/lib/subscription";
+import type { UsageSnapshot } from "@/hooks/useSubscriptionImpl";
 import { Check, InfinityIcon, Sparkles, CalendarDays } from "lucide-react";
 
 type PlanKey = "monthly" | "yearly" | "lifetime";
@@ -26,7 +27,12 @@ const PLANS: PlanDef[] = [
     priceLabel: "$1",
     cadence: "/ month",
     subLabel: "Flexible — cancel anytime",
-    bullets: ["Unlimited todos", "Unlimited lists", "macOS app + MCP + web access", "Billed monthly"],
+    bullets: [
+      "Unlimited todos & notes",
+      "Unlimited lists & folders",
+      "macOS app + MCP + web access",
+      "Billed monthly",
+    ],
     icon: CalendarDays,
   },
   {
@@ -57,19 +63,13 @@ const LIFETIME_PLAN = PLANS.find((p) => p.key === "lifetime")!;
 const PRO_ENTITLEMENT_FEATURES = [
   "Unlimited active todos across every list",
   "Unlimited custom lists (no 10-task cap per list)",
-  "macOS app + MCP + web: same fast inbox, drag-and-drop, and keyboard workflow without free-tier limits",
+  "Unlimited active notes across every folder",
+  "Unlimited custom folders (no 10-note cap per folder)",
+  "macOS app + MCP + web: todos, notes, drag-and-drop, and keyboard workflow without free-tier limits",
   "Priority access to new product updates while you stay subscribed",
 ] as const;
 
-function FreePlanUsageSection({
-  usage,
-}: {
-  usage: {
-    totalActiveTodosCount: number;
-    extraListsCount: number;
-    maxExtraListTodosCount: number;
-  };
-}) {
+function FreePlanUsageSection({ usage }: { usage: UsageSnapshot }) {
   return (
     <div
       className="rounded-2xl border border-[#ebebeb] bg-[#f7f7f7] p-4 sm:p-5"
@@ -79,22 +79,43 @@ function FreePlanUsageSection({
       <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">
         Free plan usage
       </p>
-      <div className="flex flex-col gap-4">
-        <LimitRow
-          label="Active todos (all lists)"
-          current={usage.totalActiveTodosCount}
-          max={FREE_LIMITS.allListTodos}
-        />
-        <LimitRow
-          label="Extra lists"
-          current={usage.extraListsCount}
-          max={FREE_LIMITS.extraLists}
-        />
-        <LimitRow
-          label="Extra list todos (max in one list)"
-          current={usage.maxExtraListTodosCount}
-          max={FREE_LIMITS.extraListTodos}
-        />
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
+          <p className="text-[12px] font-semibold text-foreground">Todos</p>
+          <LimitRow
+            label="Active todos (all lists)"
+            current={usage.totalActiveTodosCount}
+            max={FREE_LIMITS.allListTodos}
+          />
+          <LimitRow
+            label="Extra lists"
+            current={usage.extraListsCount}
+            max={FREE_LIMITS.extraLists}
+          />
+          <LimitRow
+            label="Extra list todos (max in one list)"
+            current={usage.maxExtraListTodosCount}
+            max={FREE_LIMITS.extraListTodos}
+          />
+        </div>
+        <div className="flex flex-col gap-4 border-t border-[#e8e8e8] pt-5">
+          <p className="text-[12px] font-semibold text-foreground">Notes</p>
+          <LimitRow
+            label="Active notes (all folders)"
+            current={usage.totalActiveNotesCount}
+            max={FREE_LIMITS.allListNotes}
+          />
+          <LimitRow
+            label="Extra folders"
+            current={usage.extraNoteListsCount}
+            max={FREE_LIMITS.extraNoteLists}
+          />
+          <LimitRow
+            label="Extra folder notes (max in one folder)"
+            current={usage.maxExtraListNotesCount}
+            max={FREE_LIMITS.extraListNotes}
+          />
+        </div>
       </div>
     </div>
   );
@@ -380,7 +401,7 @@ export function PaymentModal() {
                   ? currentPlan === "lifetime"
                     ? "Lifetime includes every Pro capability with a single payment — no renewals or subscription management."
                     : `Your Pro subscription (${planLabel.toLowerCase()}) includes full access below. Update the card on file or cancel renewal from Stripe whenever you need.`
-                  : "Pro unlocks unlimited todos and lists. Compare monthly, yearly, or lifetime below, then continue to checkout when you’re ready."}
+                  : "Pro unlocks unlimited todos, lists, notes, and folders. Compare monthly, yearly, or lifetime below, then continue to checkout when you’re ready."}
               </p>
               {!paymentModal.dismissible && !isPro ? (
                 <p

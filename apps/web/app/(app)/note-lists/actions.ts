@@ -1,0 +1,302 @@
+"use server";
+
+import { createClient } from "@/lib/supabase/server";
+import { slugifyListTitle, validateListSlugForCreate } from "@/lib/list-slug";
+import { revalidateNoteAppShell, revalidateNoteListPaths } from "@/lib/revalidate-note-pages";
+import { isProPlan, type PlanType } from "@/lib/subscription";
+import { getPostHogClient } from "@/lib/posthog";
+import { isBulkReorderRpcDisabled } from "@/lib/perf-flags";
+
+export type CreateNoteListResult =
+  | { ok: true; slug: string }
+  | { ok: false; error: string };
+
+export async function createNoteListAction(title: string): Promise<CreateNoteListResult> {
+  const trimmed = title.trim();
+  if (!trimmed) {
+    return { ok: false, error: "Enter a folder name." };
+  }
+  const slug = slugifyListTitle(trimmed);
+  const err = validateListSlugForCreate(slug);
+  if (err) {
+    return { ok: false, error: err };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "Not signed in." };
+  }
+
+  const { data: subRow } = await supabase
+    .from("user_subscriptions")
+    .select("plan_type, subscription_status")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const plan = (subRow?.plan_type ?? "free") as PlanType;
+  const isPro = isProPlan(plan, subRow?.subscription_status ?? "inactive");
+
+  if (!isPro) {
+    const { count, error: countErr } = await supabase
+      .from("note_lists")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    if (countErr) {
+      return { ok: false, error: countErr.message };
+    }
+
+    if ((count ?? 0) >= 1) {
+      return {
+        ok: false,
+        error: "Free plan allows 1 folder. Upgrade for unlimited folders.",
+      };
+    }
+  }
+
+  const { data: maxRow } = await supabase
+    .from("note_lists")
+    .select("position")
+    .eq("user_id", user.id)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const nextPosition = (maxRow?.position ?? -1) + 1;
+
+  const { error } = await supabase.from("note_lists").insert({
+    user_id: user.id,
+    title: trimmed || slug,
+    slug,
+    position: nextPosition,
+  });
+
+  if (error) {
+    if (error.code === "23505") {
+      return {
+        ok: false,
+        error: "A folder with this name already exists.",
+      };
+    }
+    return { ok: false, error: error.message };
+  }
+
+  getPostHogClient().capture({
+    distinctId: user.id,
+    event: "list_created",
+  });
+
+  revalidateNoteListPaths([slug]);
+  return { ok: true, slug };
+}
+
+export type ReorderListsResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Persists left-to-right tab order. `orderedListIds` must be a permutation of the user's list ids.
+ */
+export async function reorderNoteListsAction(orderedListIds: string[]): Promise<ReorderListsResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "Not signed in." };
+  }
+
+  const { data: rows, error: fetchErr } = await supabase
+    .from("note_lists")
+    .select("id")
+    .eq("user_id", user.id);
+
+  if (fetchErr) {
+    return { ok: false, error: fetchErr.message };
+  }
+
+  const serverIds = new Set((rows ?? []).map((r) => r.id));
+  if (orderedListIds.length !== serverIds.size) {
+    return { ok: false, error: "Invalid folder order." };
+  }
+  for (const id of orderedListIds) {
+    if (!serverIds.has(id)) {
+      return { ok: false, error: "Invalid folder order." };
+    }
+  }
+
+  if (!isBulkReorderRpcDisabled()) {
+    const { error: rpcErr } = await supabase.rpc("reorder_note_lists_positions", {
+      p_ordered_ids: orderedListIds,
+    });
+    if (!rpcErr) {
+      revalidateNoteAppShell();
+      return { ok: true };
+    }
+    const msg = rpcErr.message?.toLowerCase() ?? "";
+    const missing =
+      msg.includes("schema cache") && msg.includes("reorder_note_lists_positions".toLowerCase());
+    if (!missing) {
+      return { ok: false, error: rpcErr.message };
+    }
+  }
+
+  const updates = orderedListIds.map((id, index) =>
+    supabase.from("note_lists").update({ position: index }).eq("id", id).eq("user_id", user.id),
+  );
+  const results = await Promise.all(updates);
+  for (const { error } of results) {
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+  }
+
+  revalidateNoteAppShell();
+  return { ok: true };
+}
+
+export type DeleteNoteListMode = "move_notes_to_unassigned" | "delete_notes";
+
+export type DeleteListResult = { ok: true } | { ok: false; error: string };
+
+export type RenameListResult =
+  | { ok: true; slug: string }
+  | { ok: false; error: string };
+
+export async function renameNoteListAction(
+  listId: string,
+  nextTitle: string,
+): Promise<RenameListResult> {
+  const trimmed = nextTitle.trim();
+  if (!trimmed) {
+    return { ok: false, error: "Enter a folder name." };
+  }
+
+  const nextSlug = slugifyListTitle(trimmed);
+  const slugErr = validateListSlugForCreate(nextSlug);
+  if (slugErr) {
+    return { ok: false, error: slugErr };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "Not signed in." };
+  }
+
+  const { data: list, error: listErr } = await supabase
+    .from("note_lists")
+    .select("id, slug, title")
+    .eq("id", listId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (listErr || !list) {
+    return { ok: false, error: "Folder not found." };
+  }
+
+  // No-op rename: keep UX smooth and avoid unnecessary writes.
+  if (list.title.trim() === trimmed && list.slug === nextSlug) {
+    return { ok: true, slug: list.slug };
+  }
+
+  const { error: updateErr } = await supabase
+    .from("note_lists")
+    .update({ title: trimmed, slug: nextSlug })
+    .eq("id", listId)
+    .eq("user_id", user.id);
+
+  if (updateErr) {
+    if (updateErr.code === "23505") {
+      return { ok: false, error: "A folder with this name already exists." };
+    }
+    return { ok: false, error: updateErr.message };
+  }
+
+  revalidateNoteListPaths([list.slug, nextSlug]);
+  return { ok: true, slug: nextSlug };
+}
+
+export async function deleteNoteListAction(
+  listId: string,
+  mode: DeleteNoteListMode,
+): Promise<DeleteListResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "Not signed in." };
+  }
+
+  const { data: list, error: listErr } = await supabase
+    .from("note_lists")
+    .select("id, slug")
+    .eq("id", listId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (listErr || !list) {
+    return { ok: false, error: "Folder not found." };
+  }
+
+  const slug = list.slug;
+
+  const { count, error: countErr } = await supabase
+    .from("notes")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("note_list_id", listId);
+
+  if (countErr) {
+    return { ok: false, error: countErr.message };
+  }
+
+  const n = count ?? 0;
+
+  if (n > 0) {
+    if (mode === "move_notes_to_unassigned") {
+      const { error: moveErr } = await supabase
+        .from("notes")
+        .update({ note_list_id: null })
+        .eq("user_id", user.id)
+        .eq("note_list_id", listId);
+
+      if (moveErr) {
+        return { ok: false, error: moveErr.message };
+      }
+    } else {
+      const { error: delTodoErr } = await supabase
+        .from("notes")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("note_list_id", listId);
+
+      if (delTodoErr) {
+        return { ok: false, error: delTodoErr.message };
+      }
+    }
+  }
+
+  const { error: delListErr } = await supabase
+    .from("note_lists")
+    .delete()
+    .eq("id", listId)
+    .eq("user_id", user.id);
+
+  if (delListErr) {
+    return { ok: false, error: delListErr.message };
+  }
+
+  getPostHogClient().capture({
+    distinctId: user.id,
+    event: "list_deleted",
+    properties: { delete_mode: mode },
+  });
+
+  revalidateNoteListPaths([slug]);
+  return { ok: true };
+}

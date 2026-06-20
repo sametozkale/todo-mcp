@@ -6,6 +6,8 @@ import { ClaudeBrandIcon } from "@/components/claude-brand-icon";
 
 const ROTATE_EVERY_MS = 3000;
 
+const PRODUCT_NOUNS = ["todos", "notes"] as const;
+
 type Tool = {
   name: string;
   icon: "cursor" | "claude" | "windsurf" | "whatsapp" | "telegram";
@@ -68,6 +70,21 @@ function ToolIcon({ icon }: { icon: Tool["icon"] }) {
       height={38}
       className="h-[38px] w-[38px]"
     />
+  );
+}
+
+export function LandingRotatingProductNoun() {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setIndex((current) => (current + 1) % PRODUCT_NOUNS.length);
+    }, ROTATE_EVERY_MS);
+    return () => window.clearInterval(id);
+  }, []);
+
+  return (
+    <span aria-live="polite">{PRODUCT_NOUNS[index]}</span>
   );
 }
 

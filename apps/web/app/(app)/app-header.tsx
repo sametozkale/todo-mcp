@@ -27,7 +27,7 @@ import {
 } from "@heroui/react";
 import { Check, Copy, Zap } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   useEffect,
   useRef,
@@ -42,12 +42,17 @@ import {
   YALP_OPEN_PLANS,
 } from "@/lib/yalp-shortcut-events";
 import { getMacDownloadOptions } from "@/lib/mac-desktop-download";
+import { NOTES_HOME, PRODUCT_HOME } from "@/lib/routes";
 
 const DEFAULT_AVATAR_SRC =
   "https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/blue.jpg";
 
 const ACCOUNT_TRIGGER_CLASS =
   "inline-flex shrink-0 items-center justify-center rounded-full border-0 bg-transparent p-0 outline-none ring-offset-2 data-[focus-visible]:ring-2 data-[focus-visible]:ring-[#00b5e9]";
+
+/** Avatar size in header; tab switcher is slightly taller for tap/readability. */
+const HEADER_CONTROL_SIZE_CLASS = "size-6";
+const HEADER_TAB_NAV_HEIGHT_CLASS = "h-8";
 
 const KBD_BASE =
   "inline-flex h-7 min-h-7 min-w-7 shrink-0 items-center justify-center rounded-[10px] border border-[#e6e6e6] bg-white px-2 font-sans text-[12px] font-semibold text-foreground shadow-[0_1px_0_rgba(0,0,0,0.06)]";
@@ -86,6 +91,7 @@ export type AppHeaderProps = {
 
 export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const subscription = useSubscription();
   const profileModal = useOverlayState();
   const shortcutsModal = useOverlayState();
@@ -260,13 +266,51 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
   const isDesktopApp =
     typeof window !== "undefined" && Boolean((window as { yalp?: { isDesktop?: boolean } }).yalp?.isDesktop);
 
+  const isNotesMode = pathname.startsWith("/notes") || pathname.startsWith("/note/");
+  const logoHref = isNotesMode ? NOTES_HOME : PRODUCT_HOME;
+
+  const productTabClass = (active: boolean) =>
+    [
+      "inline-flex h-full min-h-0 items-center rounded-[99px] px-3.5 text-[13px] font-medium leading-none transition-colors",
+      active ? "bg-[#F7F7F7] text-[#181925]" : "text-[#666666] hover:text-[#181925]",
+    ].join(" ");
+
+  const productTabNavClass = [
+    "absolute left-1/2 top-1/2 inline-flex max-w-[calc(100%-7rem)] -translate-x-1/2 -translate-y-1/2 items-stretch",
+    HEADER_TAB_NAV_HEIGHT_CLASS,
+    "rounded-[99px] border border-[#F7F7F7] bg-white p-0.5",
+  ].join(" ");
+
   return (
     <>
       <header className="sticky top-0 z-10">
-        <div className="flex h-14 w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-12">
-          <Link href="/all" className="inline-flex shrink-0 items-center no-underline">
+        <div className="relative flex h-14 w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-12">
+          <Link href={logoHref} className="inline-flex shrink-0 items-center no-underline">
             <ToDoMcpLogo className="block h-6 w-6 max-w-none" />
           </Link>
+
+          <nav
+            className={productTabNavClass}
+            role="tablist"
+            aria-label="Product mode"
+          >
+            <Link
+              href={PRODUCT_HOME}
+              role="tab"
+              aria-selected={!isNotesMode}
+              className={productTabClass(!isNotesMode)}
+            >
+              Todos
+            </Link>
+            <Link
+              href={NOTES_HOME}
+              role="tab"
+              aria-selected={isNotesMode}
+              className={productTabClass(isNotesMode)}
+            >
+              Notes
+            </Link>
+          </nav>
 
           {overlaysReady ? (
             <Dropdown.Root
@@ -280,7 +324,7 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                 className={ACCOUNT_TRIGGER_CLASS}
                 aria-label="Account menu"
               >
-                <Avatar className="size-6 ring-0">
+                <Avatar className={`${HEADER_CONTROL_SIZE_CLASS} ring-0`}>
                   <Avatar.Image alt={displayName} src={avatarSrc} />
                   <Avatar.Fallback>{initials}</Avatar.Fallback>
                 </Avatar>
@@ -445,7 +489,7 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
               aria-label="Account menu"
               aria-busy="true"
             >
-              <Avatar className="size-6 ring-0">
+              <Avatar className={`${HEADER_CONTROL_SIZE_CLASS} ring-0`}>
                 <Avatar.Image alt={displayName} src={avatarSrc} />
                 <Avatar.Fallback>{initials}</Avatar.Fallback>
               </Avatar>
@@ -543,94 +587,191 @@ export function AppHeader({ initialProfile, userEmail }: AppHeaderProps) {
                 </Modal.Header>
                 <Modal.Body className="max-h-[min(70vh,560px)] overflow-y-auto pt-0">
                   <div className="space-y-2 text-[13px] leading-snug text-foreground">
-                    <ShortcutRow keys={<kbd className={KBD_BASE}>N</kbd>} label="Focus the new todo input" />
-                    <ShortcutRow keys={<kbd className={KBD_BASE}>H</kbd>} label="Hide / show completed tasks" />
-                    <ShortcutRow keys={<kbd className={KBD_BASE}>?</kbd>} label="Open this shortcuts panel" />
+                    {isNotesMode ? (
+                      <>
+                        <ShortcutRow keys={<kbd className={KBD_BASE}>N</kbd>} label="Focus the new note input" />
+                        <ShortcutRow keys={<kbd className={KBD_BASE}>?</kbd>} label="Open this shortcuts panel" />
 
-                    <ShortcutRow
-                      keys={
-                        <>
-                          <kbd className={KBD_BASE}>G</kbd>
-                          <span className="px-0.5 text-[11px] text-muted">then</span>
-                          <kbd className={KBD_BASE}>A</kbd>
-                        </>
-                      }
-                      label="Go to All"
-                    />
-                    <ShortcutRow
-                      keys={
-                        <>
-                          <kbd className={KBD_BASE}>G</kbd>
-                          <span className="px-0.5 text-[11px] text-muted">then</span>
-                          <kbd className={KBD_BASE}>I</kbd>
-                        </>
-                      }
-                      label="Open MCP Connections"
-                    />
-                    <ShortcutRow
-                      keys={
-                        <>
-                          <kbd className={KBD_BASE}>G</kbd>
-                          <span className="px-0.5 text-[11px] text-muted">then</span>
-                          <kbd className={KBD_BASE}>U</kbd>
-                        </>
-                      }
-                      label="Open Profile"
-                    />
-                    <ShortcutRow
-                      keys={
-                        <>
-                          <kbd className={KBD_BASE}>G</kbd>
-                          <span className="px-0.5 text-[11px] text-muted">then</span>
-                          <kbd className={KBD_BASE}>P</kbd>
-                        </>
-                      }
-                      label="Open Plans"
-                    />
-                    <p className="px-1 text-[11px] leading-snug text-muted">
-                      Tip: After <kbd className={KBD_BASE}>G</kbd>, press <kbd className={KBD_BASE}>G</kbd> again to cancel
-                      the sequence.
-                    </p>
+                        <ShortcutRow
+                          keys={
+                            <>
+                              <kbd className={KBD_BASE}>G</kbd>
+                              <span className="px-0.5 text-[11px] text-muted">then</span>
+                              <kbd className={KBD_BASE}>A</kbd>
+                            </>
+                          }
+                          label="Go to All notes"
+                        />
+                        <ShortcutRow
+                          keys={
+                            <>
+                              <kbd className={KBD_BASE}>G</kbd>
+                              <span className="px-0.5 text-[11px] text-muted">then</span>
+                              <kbd className={KBD_BASE}>I</kbd>
+                            </>
+                          }
+                          label="Open MCP Connections"
+                        />
+                        <ShortcutRow
+                          keys={
+                            <>
+                              <kbd className={KBD_BASE}>G</kbd>
+                              <span className="px-0.5 text-[11px] text-muted">then</span>
+                              <kbd className={KBD_BASE}>U</kbd>
+                            </>
+                          }
+                          label="Open Profile"
+                        />
+                        <ShortcutRow
+                          keys={
+                            <>
+                              <kbd className={KBD_BASE}>G</kbd>
+                              <span className="px-0.5 text-[11px] text-muted">then</span>
+                              <kbd className={KBD_BASE}>P</kbd>
+                            </>
+                          }
+                          label="Open Plans"
+                        />
+                        <p className="px-1 text-[11px] leading-snug text-muted">
+                          Tip: After <kbd className={KBD_BASE}>G</kbd>, press <kbd className={KBD_BASE}>G</kbd> again to cancel
+                          the sequence.
+                        </p>
 
-                    <ShortcutRow keys={<kbd className={KBD_BASE}>[</kbd>} label="Previous list (All, then your lists in tab order)" />
-                    <ShortcutRow keys={<kbd className={KBD_BASE}>]</kbd>} label="Next list (All, then your lists in tab order)" />
+                        <ShortcutRow
+                          keys={<kbd className={KBD_BASE}>[</kbd>}
+                          label="Previous folder (All, then your folders in tab order)"
+                        />
+                        <ShortcutRow
+                          keys={<kbd className={KBD_BASE}>]</kbd>}
+                          label="Next folder (All, then your folders in tab order)"
+                        />
 
-                    <ShortcutRow keys={<kbd className={KBD_BASE}>L</kbd>} label="Create new list" />
-                    <ShortcutRow keys={<kbd className={KBD_BASE}>M</kbd>} label="Mark all tasks incomplete" />
-                    <ShortcutRow keys={<kbd className={KBD_BASE}>B</kbd>} label="Move completed tasks to bottom" />
+                        <ShortcutRow keys={<kbd className={KBD_BASE}>L</kbd>} label="Create new folder" />
 
-                    <ShortcutRow
-                      keys={<kbd className={KBD_BASE}>J</kbd>}
-                      label="Focus the next task’s checkbox (list order)"
-                    />
-                    <ShortcutRow
-                      keys={<kbd className={KBD_BASE}>K</kbd>}
-                      label="Focus the previous task’s checkbox (list order)"
-                    />
-                    <ShortcutRow
-                      keys={<kbd className={KBD_BASE}>Space</kbd>}
-                      label="When a checkbox is focused: toggle done. Or click the row beside the title to highlight a task, then Space toggles that task."
-                    />
-                    <ShortcutRow
-                      keys={
-                        <>
-                          <kbd className={KBD_BASE}>Shift</kbd>
-                          <kbd className={KBD_BASE}>Delete</kbd>
-                        </>
-                      }
-                      label="Delete the highlighted task (same highlight as J / K, or click the row beside the title)"
-                    />
-                    <ShortcutRow keys={<kbd className={KBD_BASE}>Esc</kbd>} label="Clear task highlight, or blur the new-todo field" />
+                        <ShortcutRow
+                          keys={<kbd className={KBD_BASE}>J</kbd>}
+                          label="Focus the next note (list order)"
+                        />
+                        <ShortcutRow
+                          keys={<kbd className={KBD_BASE}>K</kbd>}
+                          label="Focus the previous note (list order)"
+                        />
+                        <ShortcutRow
+                          keys={
+                            <>
+                              <kbd className={KBD_BASE}>Shift</kbd>
+                              <kbd className={KBD_BASE}>Delete</kbd>
+                            </>
+                          }
+                          label="Delete the highlighted note (same highlight as J / K, or click the row beside the title)"
+                        />
+                        <ShortcutRow
+                          keys={<kbd className={KBD_BASE}>Esc</kbd>}
+                          label="Clear note highlight, or blur the new-note field"
+                        />
 
-                    <ShortcutRow
-                      keys={
-                        <>
-                          <kbd className={KBD_BASE}>{modSymbol}</kbd>
-                          <kbd className={KBD_BASE}>Enter</kbd>
-                        </>
-                      }
-                      label="Submit new todo (while the new-todo field is focused)"
-                    />
+                        <ShortcutRow
+                          keys={
+                            <>
+                              <kbd className={KBD_BASE}>{modSymbol}</kbd>
+                              <kbd className={KBD_BASE}>Enter</kbd>
+                            </>
+                          }
+                          label="Submit new note (while the new-note field is focused)"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <ShortcutRow keys={<kbd className={KBD_BASE}>N</kbd>} label="Focus the new todo input" />
+                        <ShortcutRow keys={<kbd className={KBD_BASE}>H</kbd>} label="Hide / show completed tasks" />
+                        <ShortcutRow keys={<kbd className={KBD_BASE}>?</kbd>} label="Open this shortcuts panel" />
+
+                        <ShortcutRow
+                          keys={
+                            <>
+                              <kbd className={KBD_BASE}>G</kbd>
+                              <span className="px-0.5 text-[11px] text-muted">then</span>
+                              <kbd className={KBD_BASE}>A</kbd>
+                            </>
+                          }
+                          label="Go to All"
+                        />
+                        <ShortcutRow
+                          keys={
+                            <>
+                              <kbd className={KBD_BASE}>G</kbd>
+                              <span className="px-0.5 text-[11px] text-muted">then</span>
+                              <kbd className={KBD_BASE}>I</kbd>
+                            </>
+                          }
+                          label="Open MCP Connections"
+                        />
+                        <ShortcutRow
+                          keys={
+                            <>
+                              <kbd className={KBD_BASE}>G</kbd>
+                              <span className="px-0.5 text-[11px] text-muted">then</span>
+                              <kbd className={KBD_BASE}>U</kbd>
+                            </>
+                          }
+                          label="Open Profile"
+                        />
+                        <ShortcutRow
+                          keys={
+                            <>
+                              <kbd className={KBD_BASE}>G</kbd>
+                              <span className="px-0.5 text-[11px] text-muted">then</span>
+                              <kbd className={KBD_BASE}>P</kbd>
+                            </>
+                          }
+                          label="Open Plans"
+                        />
+                        <p className="px-1 text-[11px] leading-snug text-muted">
+                          Tip: After <kbd className={KBD_BASE}>G</kbd>, press <kbd className={KBD_BASE}>G</kbd> again to cancel
+                          the sequence.
+                        </p>
+
+                        <ShortcutRow keys={<kbd className={KBD_BASE}>[</kbd>} label="Previous list (All, then your lists in tab order)" />
+                        <ShortcutRow keys={<kbd className={KBD_BASE}>]</kbd>} label="Next list (All, then your lists in tab order)" />
+
+                        <ShortcutRow keys={<kbd className={KBD_BASE}>L</kbd>} label="Create new list" />
+                        <ShortcutRow keys={<kbd className={KBD_BASE}>M</kbd>} label="Mark all tasks incomplete" />
+                        <ShortcutRow keys={<kbd className={KBD_BASE}>B</kbd>} label="Move completed tasks to bottom" />
+
+                        <ShortcutRow
+                          keys={<kbd className={KBD_BASE}>J</kbd>}
+                          label="Focus the next task’s checkbox (list order)"
+                        />
+                        <ShortcutRow
+                          keys={<kbd className={KBD_BASE}>K</kbd>}
+                          label="Focus the previous task’s checkbox (list order)"
+                        />
+                        <ShortcutRow
+                          keys={<kbd className={KBD_BASE}>Space</kbd>}
+                          label="When a checkbox is focused: toggle done. Or click the row beside the title to highlight a task, then Space toggles that task."
+                        />
+                        <ShortcutRow
+                          keys={
+                            <>
+                              <kbd className={KBD_BASE}>Shift</kbd>
+                              <kbd className={KBD_BASE}>Delete</kbd>
+                            </>
+                          }
+                          label="Delete the highlighted task (same highlight as J / K, or click the row beside the title)"
+                        />
+                        <ShortcutRow keys={<kbd className={KBD_BASE}>Esc</kbd>} label="Clear task highlight, or blur the new-todo field" />
+
+                        <ShortcutRow
+                          keys={
+                            <>
+                              <kbd className={KBD_BASE}>{modSymbol}</kbd>
+                              <kbd className={KBD_BASE}>Enter</kbd>
+                            </>
+                          }
+                          label="Submit new todo (while the new-todo field is focused)"
+                        />
+                      </>
+                    )}
                   </div>
                 </Modal.Body>
               </Modal.Dialog>

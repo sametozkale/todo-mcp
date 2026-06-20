@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { LandingMacDownloadButton } from "@/components/landing-mac-download-button";
-import { LandingRotatingTool } from "@/components/landing-rotating-tool";
+import { LandingRotatingProductNoun, LandingRotatingTool } from "@/components/landing-rotating-tool";
 
 type LandingHeroBlockProps = {
   className?: string;
@@ -61,7 +61,9 @@ export function LandingHeroBlock({
         <h1 className="w-full text-balance font-title text-[40px] leading-[46px] font-medium tracking-[-1.2px] text-[rgba(24,25,37,1)] sm:text-5xl sm:leading-[56px] sm:tracking-[-1.6px]">
           {title ?? (
             <>
-              Manage your todos
+              <span className="whitespace-nowrap">
+                Manage your <LandingRotatingProductNoun />
+              </span>
               <br />
               <LandingRotatingTool />
             </>

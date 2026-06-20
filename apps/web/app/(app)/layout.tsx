@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { McpCtaRotator } from "@/components/mcp-cta-rotator";
 import { AppHeader } from "./app-header";
 import { ListsProvider } from "./lists-shell";
+import { NoteListsProvider } from "./note-lists-shell";
 import { WeatherClockWidget } from "./weather-clock-widget";
 
 /** Authenticated app shell: not intended for search indexing (see app/robots.ts). */
@@ -38,12 +39,18 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     redirect(`/login?next=${encodeURIComponent(PRODUCT_HOME)}`);
   }
 
-  const [{ data: profile }, { data: listRows }, { data: subRow }] = await Promise.all([
+  const [{ data: profile }, { data: listRows }, { data: noteListRows }, { data: subRow }] = await Promise.all([
     supabase.from("profiles").select("full_name, avatar_url").eq("id", user.id).maybeSingle(),
     supabase
       .from("lists")
       .select("id, title, slug, position")
       .eq("user_id", user.id)
+      .order("position", { ascending: true }),
+    supabase
+      .from("note_lists")
+      .select("id, title, slug, position")
+      .eq("user_id", user.id)
+      .neq("slug", "today")
       .order("position", { ascending: true }),
     supabase
       .from("user_subscriptions")
@@ -53,6 +60,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   ]);
 
   const lists = listRows ?? [];
+  const noteLists = noteListRows ?? [];
   const { data: countsRowRaw, error: countsRpcError } = await supabase.rpc("get_todo_counts_snapshot").single();
   type TodoCountsRow = {
     usage_total_active: number;
@@ -145,6 +153,85 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       ? 0
       : Math.max(...lists.map((l) => activeTodosByListIdForLimits[l.id] ?? 0));
 
+  type NoteCountsRow = {
+    usage_total_active: number;
+    all_list_notes_count: number;
+    display_all_top_level: number;
+    list_usage_by_list: Record<string, number>;
+    list_display_by_list: Record<string, number>;
+  };
+  const { data: noteCountsRowRaw, error: noteCountsRpcError } = await supabase
+    .rpc("get_note_counts_snapshot")
+    .single();
+  const noteCountsRow = noteCountsRowRaw as NoteCountsRow | null;
+  let usageTotalActiveNotes = noteCountsRow?.usage_total_active ?? 0;
+  let allNotesCount = noteCountsRow?.display_all_top_level ?? 0;
+  let allListNotesCount = noteCountsRow?.all_list_notes_count ?? 0;
+  let notesByListId = (noteCountsRow?.list_display_by_list ?? {}) as Record<string, number>;
+  let activeNotesByListIdForLimits = (noteCountsRow?.list_usage_by_list ?? {}) as Record<string, number>;
+
+  if (noteCountsRpcError || !noteCountsRow) {
+    const [
+      { count: usageTotalActiveNotesRaw },
+      { count: allListNotesCountRaw },
+      noteListUsageByList,
+      { count: displayAllNotesTopLevel },
+      noteListDisplayByList,
+    ] = await Promise.all([
+      supabase
+        .from("notes")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .not("is_completed", "is", true),
+      supabase
+        .from("notes")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .is("note_list_id", null)
+        .not("is_completed", "is", true),
+      Promise.all(
+        noteLists.map(async (list) => {
+          const { count } = await supabase
+            .from("notes")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .eq("note_list_id", list.id)
+            .not("is_completed", "is", true);
+          return [list.id, count ?? 0] as const;
+        }),
+      ),
+      supabase
+        .from("notes")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .is("parent_id", null)
+        .not("is_completed", "is", true),
+      Promise.all(
+        noteLists.map(async (list) => {
+          const { count } = await supabase
+            .from("notes")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .eq("note_list_id", list.id)
+            .is("parent_id", null)
+            .not("is_completed", "is", true);
+          return [list.id, count ?? 0] as const;
+        }),
+      ),
+    ]);
+    usageTotalActiveNotes = usageTotalActiveNotesRaw ?? 0;
+    allNotesCount = displayAllNotesTopLevel ?? 0;
+    allListNotesCount = allListNotesCountRaw ?? 0;
+    notesByListId = Object.fromEntries(noteListDisplayByList);
+    activeNotesByListIdForLimits = Object.fromEntries(noteListUsageByList);
+  }
+
+  const extraNoteListsCount = noteLists.length;
+  const maxExtraListNotesCount =
+    noteLists.length === 0
+      ? 0
+      : Math.max(...noteLists.map((l) => activeNotesByListIdForLimits[l.id] ?? 0));
+
   const initialSubscription: SubscriptionSnapshot = {
     plan: (subRow?.plan_type ?? "free") as SubscriptionSnapshot["plan"],
     subscription_status: subRow?.subscription_status ?? "inactive",
@@ -158,6 +245,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     extraListsCount,
     maxExtraListTodosCount,
     activeTodosByListId: activeTodosByListIdForLimits,
+    totalActiveNotesCount: usageTotalActiveNotes,
+    allListNotesCount,
+    extraNoteListsCount,
+    maxExtraListNotesCount,
+    activeNotesByListId: activeNotesByListIdForLimits,
   };
 
   return (
@@ -172,7 +264,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           userEmail={user.email ?? null}
         />
         <ListsProvider lists={listRows ?? []} counts={{ all: allCount, byListId }}>
-          <div className="flex flex-1 flex-col px-4 pb-8 pt-2 sm:px-6 sm:pb-24">{children}</div>
+          <NoteListsProvider lists={noteListRows ?? []} counts={{ all: allNotesCount, byListId: notesByListId }}>
+            <div className="flex flex-1 flex-col px-4 pb-8 pt-5 sm:px-6 sm:pb-24 sm:pt-6">{children}</div>
+          </NoteListsProvider>
         </ListsProvider>
         {/* Mobile: MCP CTA + weather share one inset footer band below todos; sm+: both stay fixed/floating */}
         <div className="mt-auto flex shrink-0 flex-col items-end gap-2 px-4 pb-6 pt-4 sm:contents sm:m-0 sm:p-0">

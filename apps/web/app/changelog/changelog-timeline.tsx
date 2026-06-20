@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, NotebookText } from "lucide-react";
 
 type ChangelogEntry = {
   id: string;
@@ -9,18 +9,34 @@ type ChangelogEntry = {
   summary: string;
   bullets: readonly string[];
   isLatest?: boolean;
-  marker: "apple" | "yalp" | "student";
+  marker: "apple" | "yalp" | "student" | "notes";
   metadataImageSrc?: string;
 };
 
 const ENTRIES: readonly ChangelogEntry[] = [
+  {
+    id: "notes-module",
+    dateLabel: "June 2026",
+    dateTime: "2026-06-20",
+    title: "Introducing Notes",
+    summary:
+      "Not everything belongs on a todo list. Notes is a dedicated space for ideas, drafts, and reference, organized in folders, separate from your tasks, with the same fast Yalp workflow.",
+    isLatest: true,
+    marker: "notes",
+    bullets: [
+      "Switch between Todos and Notes from the header: one account, two modes.",
+      "Keep notes in folders you create, rename, and reorder alongside All.",
+      "Open any note for a focused detail view with room for a full description.",
+      "Move, duplicate, and delete with the same menus and keyboard shortcuts as Todos.",
+    ],
+  },
   {
     id: "students-free",
     dateLabel: "April 2026",
     dateTime: "2026-04-30",
     title: "Yalp is free for students",
     summary: "Students can now use Yalp completely free.",
-    isLatest: true,
+    isLatest: false,
     marker: "student",
     bullets: [
       "Student access is now fully free.",
@@ -77,6 +93,8 @@ export function ChangelogTimeline() {
                     <span className="text-[17px] leading-none text-[#181925]"></span>
                   ) : entry.marker === "student" ? (
                     <GraduationCap className="h-[17px] w-[17px] text-[#181925]" strokeWidth={1.9} />
+                  ) : entry.marker === "notes" ? (
+                    <NotebookText className="h-[17px] w-[17px] text-[#181925]" strokeWidth={1.9} />
                   ) : (
                     <Image
                       src="/to-do-mcp-logo-black-48.svg"

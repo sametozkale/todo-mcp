@@ -25,11 +25,11 @@ const FOOTER_COLUMN_3_LINKS = [
 const FAQ_ITEMS: readonly { q: string; a: string }[] = [
   {
     q: "What is Yalp?",
-    a: "Yalp is a focused todo app with a full web UI and an MCP server so tools like Cursor and Claude Desktop can list, add, and complete tasks in your real account, without copy-pasting between chat and a separate app.",
+    a: "Yalp is a focused workspace for todos and notes, with a full web UI and an MCP server so tools like Cursor and Claude Desktop can list, add, and complete tasks in your real account, without copy-pasting between chat and a separate app.",
   },
   {
     q: "What is MCP, and why would I use it?",
-    a: "MCP (Model Context Protocol) is a standard way for AI apps to connect to data and tools. With Yalp’s MCP integration, your assistant can work with the same lists you see in the browser, using your permissions, instead of juggling snippets or fake demo lists.",
+    a: "MCP (Model Context Protocol) is a standard way for AI apps to connect to data and tools. With Yalp’s MCP integration, your assistant can work with the same todo lists you see in the browser, using your permissions, instead of juggling snippets or fake demo lists. Notes live in the web app today; MCP covers todos.",
   },
   {
     q: "Do I need a credit card for the free plan?",
@@ -37,15 +37,15 @@ const FAQ_ITEMS: readonly { q: string; a: string }[] = [
   },
   {
     q: "What are the free limits, and what happens if I reach them?",
-    a: `Free accounts can have up to ${FREE_LIMITS.allListTodos} active todos across all lists, plus ${FREE_LIMITS.extraLists} custom list beyond Today with up to ${FREE_LIMITS.extraListTodos} active todos in that list. If you need more, you can upgrade to Pro for unlimited lists and todos, or archive or complete work to stay within the free caps.`,
+    a: `Free accounts can have up to ${FREE_LIMITS.allListTodos} active todos across all lists, plus ${FREE_LIMITS.extraLists} custom list beyond Today with up to ${FREE_LIMITS.extraListTodos} active todos in that list. Notes follow the same shape on the free tier: up to ${FREE_LIMITS.allListNotes} active notes across all folders, plus ${FREE_LIMITS.extraNoteLists} custom folder with up to ${FREE_LIMITS.extraListNotes} active notes in that folder. If you need more, upgrade to Pro for unlimited todos, lists, notes, and folders, or complete work to stay within the free caps.`,
   },
   {
     q: "Can I use Yalp without Cursor or Claude?",
-    a: "Yes. The web app is a full client on its own. You can manage todos, lists, and due dates in the browser. MCP is optional and for when you want your AI tools wired into the same account.",
+    a: "Yes. The web app is a full client on its own. You can manage todos, lists, notes, and folders in the browser. MCP is optional and for when you want your AI tools wired into your todo lists.",
   },
   {
-    q: "Will my todos be used to train public AI models?",
-    a: "Your tasks are tied to your account and are there to help you work, not to be sold to advertisers or mixed into public model training. Use Yalp for your own productivity; we don’t monetize your task content that way.",
+    q: "Will my todos and notes be used to train public AI models?",
+    a: "Your todos and notes are tied to your account and are there to help you work, not to be sold to advertisers or mixed into public model training. Use Yalp for your own productivity; we don’t monetize your content that way.",
   },
   {
     q: "How does billing and cancellation work for Pro?",
@@ -165,8 +165,10 @@ export function LandingPricingFooterPaper() {
               <span className="font-title text-[14px] font-medium tracking-[-0.32px] text-[#181925]">
                 Yalp AI
               </span>
-              <p className="font-title text-[12px] leading-4 tracking-[-0.24px] text-[#5c5c66]">
-                Manage todos from Cursor, Claude, and more.
+              <p className="max-w-[14rem] font-title text-[12px] leading-4 tracking-[-0.24px] text-[#5c5c66]">
+                Manage todos and notes in the browser,
+                <br />
+                with MCP for Cursor, Claude, and more.
               </p>
               <LandingMacDownloadButton variant="footer" />
             </div>

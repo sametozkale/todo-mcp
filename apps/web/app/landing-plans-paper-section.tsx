@@ -10,42 +10,31 @@ import { cn } from "@/lib/utils";
  * from Paper — https://app.paper.design/file/01KMXM6SWKF9CNKZ6GZJ3G8JBQ?node=2C-0 (Mar 30, 2026)
  * Layout + type scale; amounts aligned with `PaymentModal` / Stripe.
  */
-const MONTHLY_USD = 1;
 const YEARLY_USD = 10;
 const LIFETIME_USD = 29;
-
-const YEARLY_SAVE_PCT = Math.round((1 - YEARLY_USD / (MONTHLY_USD * 12)) * 100);
 
 const PRO_FEATURES = [
   "Unlimited active todos across every list",
   "Unlimited custom lists (no per-list caps)",
-  "macOS app + MCP + web app: same list in Cursor, Claude, the browser, and native macOS",
+  "Unlimited active notes across every folder",
+  "Unlimited custom folders (no per-folder caps)",
+  "macOS app + MCP + web: todos, notes, drag-and-drop, and keyboard workflow without free-tier limits",
   "Priority updates while subscribed",
 ] as const;
 
-type Billing = "monthly" | "annually" | "lifetime";
+type Billing = "annually" | "lifetime";
 
 export function LandingPlansPaperSection() {
-  const [billing, setBilling] = useState<Billing>("monthly");
+  const [billing, setBilling] = useState<Billing>("annually");
 
-  const priceLabel =
-    billing === "monthly"
-      ? "Per month"
-      : billing === "annually"
-        ? "Per year"
-        : "One-time";
+  const priceLabel = billing === "annually" ? "Per year" : "One-time";
 
-  const priceMain =
-    billing === "monthly"
-      ? `$${MONTHLY_USD}`
-      : billing === "annually"
-        ? `$${YEARLY_USD}`
-        : `$${LIFETIME_USD}`;
+  const priceMain = billing === "annually" ? `$${YEARLY_USD}` : `$${LIFETIME_USD}`;
 
   const priceSub =
     billing === "annually"
       ? `About $${(YEARLY_USD / 12).toFixed(2)}/mo when billed yearly`
-      : null;
+      : "Pay once, keep Pro forever";
 
   return (
     <section
@@ -74,33 +63,16 @@ export function LandingPlansPaperSection() {
         <button
           type="button"
           role="tab"
-          aria-selected={billing === "monthly"}
-          onClick={() => setBilling("monthly")}
-          className={cn(
-            "rounded-[99px] px-4 py-2 font-title text-[14px] font-medium leading-5 transition-colors",
-            billing === "monthly"
-              ? "bg-[#F7F7F7] text-[#181925]"
-              : "text-[#666666] hover:text-[#181925]",
-          )}
-        >
-          Monthly
-        </button>
-        <button
-          type="button"
-          role="tab"
           aria-selected={billing === "annually"}
           onClick={() => setBilling("annually")}
           className={cn(
-            "flex items-center gap-1 rounded-[99px] px-4 py-2 font-title text-[14px] font-medium leading-5 transition-colors",
+            "rounded-[99px] px-4 py-2 font-title text-[14px] font-medium leading-5 transition-colors",
             billing === "annually"
               ? "bg-[#F7F7F7] text-[#181925]"
               : "text-[#666666] hover:text-[#181925]",
           )}
         >
-          Annually
-          <span className="rounded border border-transparent bg-[#00B5E9]/8 px-1 py-0.5 font-title text-[12px] font-medium leading-4 text-[#00b5e9]">
-            -{YEARLY_SAVE_PCT}%
-          </span>
+          Yearly
         </button>
         <button
           type="button"
@@ -153,14 +125,14 @@ export function LandingPlansPaperSection() {
             href="/signup"
             className="flex w-full items-center justify-center rounded-[999px] bg-[#00b5e9] px-4 py-[11px] font-title text-[14px] font-medium leading-5 text-white shadow-[0px_1px_1px_rgba(0,0,0,0.08),0px_0px_0px_1px_rgba(0,0,0,0.05)] transition hover:bg-[#09abda]"
           >
-            Get started
+            Create your workspace
           </Link>
         </div>
       </div>
 
       <p className="mt-1 w-full max-w-[400px] text-center font-title text-[12px] leading-[18px] text-[#8a8a94]">
-        Billing is handled securely via Stripe. You can manage or cancel recurring plans from your
-        account anytime.
+        Billing is handled securely via Stripe. Yearly plans can be managed or cancelled from your
+        account anytime; Lifetime is a one-time payment with no renewals.
       </p>
     </section>
   );

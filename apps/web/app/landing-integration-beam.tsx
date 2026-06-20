@@ -38,6 +38,14 @@ const heroTabs = [
     height: 664,
   },
   {
+    id: "notes",
+    label: "Notes",
+    src: "/hero.png",
+    alt: "Yalp Notes workspace in the browser.",
+    width: 3810,
+    height: 2475,
+  },
+  {
     id: "mcp-connections",
     label: "MCP Connections",
     src: "/feature-mcp-connections.png",
