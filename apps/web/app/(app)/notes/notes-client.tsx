@@ -3,8 +3,6 @@
 import {
   addNoteAction,
   deleteNoteAction,
-  reorderAllNotesAction,
-  reorderNotesAction,
 } from "@/app/(app)/notes/actions";
 import {
   createNoteListAction,
@@ -25,22 +23,18 @@ import {
   closestCenter,
   DndContext,
   DragEndEvent,
-  DragOverlay,
-  DragStartEvent,
   KeyboardSensor,
   PointerSensor,
-  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { restrictToHorizontalAxis, restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import {
   arrayMove,
   horizontalListSortingStrategy,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
-  verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -80,7 +74,6 @@ import {
   type NoteRow,
   type NoteRowHandlers,
   PresenceNoteRow,
-  SortableNoteItem,
 } from "./note-row";
 
 /** Çok satırda toplam cascade süresini ~0,5s içinde tut; sıra değişince aynı id’ye aynı gecikme (ref ile). */
@@ -198,44 +191,6 @@ type ContextMenuState = {
   y: number;
 };
 
-function reorderNotesByIds(state: NoteRow[], orderedIds: string[]): NoteRow[] {
-  const byId = new Map(state.map((t) => [t.id, t] as const));
-  const ordered: NoteRow[] = [];
-  const seen = new Set<string>();
-
-  for (const id of orderedIds) {
-    const t = byId.get(id);
-    if (!t) continue;
-    ordered.push(t);
-    seen.add(id);
-  }
-
-  for (const t of state) {
-    if (!seen.has(t.id)) ordered.push(t);
-  }
-
-  return ordered;
-}
-
-/** Merge a visible-only order into the full id list (same rules as drag-end persistence). */
-function mergeVisibleOrderIntoFull(
-  fullIds: string[],
-  visibleOrderedIds: string[],
-  visibleSet: Set<string>,
-): string[] {
-  const mergedIds: string[] = [];
-  let i = 0;
-  for (const id of fullIds) {
-    if (visibleSet.has(id)) {
-      mergedIds.push(visibleOrderedIds[i] ?? id);
-      i += 1;
-    } else {
-      mergedIds.push(id);
-    }
-  }
-  return mergedIds;
-}
-
 function applyNoteOptimistic(state: NoteRow[], action: NoteOptimisticAction): NoteRow[] {
   switch (action.type) {
     case "delete":
@@ -249,8 +204,6 @@ function applyNoteOptimistic(state: NoteRow[], action: NoteOptimisticAction): No
     }
     case "moveList":
       return state.map((t) => (t.id === action.id ? { ...t, note_list_id: action.note_list_id } : t));
-    case "reorder":
-      return reorderNotesByIds(state, action.orderedIds);
     case "updateTitle":
       return state.map((t) => (t.id === action.id ? { ...t, title: action.title } : t));
   }
@@ -347,14 +300,11 @@ export function NotesClient({ initialNotes, composerNoteListId, view }: NotesCli
     setIsComposerListMenuOpen(false);
     setComposerListQuery("");
   }, [composerNoteListId, pathname]);
-  const [uiOrderIds, setUiOrderIds] = useState<string[] | null>(null);
-  const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
   const [optimisticNotes, addOptimistic] = useOptimistic(baseNotes, applyNoteOptimistic);
   const [isAddPending, startAddTransition] = useTransition();
   const [isNotePending, startNoteTransition] = useTransition();
   const [, startListTabReorderTransition] = useTransition();
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
-  const latestOrderRef = useRef<string[] | null>(null);
   const goSequenceRef = useRef<{ armed: boolean; timer: number | null }>({
     armed: false,
     timer: null,
@@ -365,7 +315,6 @@ export function NotesClient({ initialNotes, composerNoteListId, view }: NotesCli
     orderedVisibleNotes: [] as NoteRow[],
     optimisticNotes: [] as NoteRow[],
     selectedNoteId: null as string | null,
-    canReorder: false,
     openCreateListModal: () => {},
     setSelectedNoteId: (() => {}) as Dispatch<SetStateAction<string | null>>,
     startNoteTransition: (() => {}) as typeof startNoteTransition,
@@ -396,13 +345,6 @@ export function NotesClient({ initialNotes, composerNoteListId, view }: NotesCli
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [listDeleteInlineError, setListDeleteInlineError] = useState<string | null>(null);
-  const [reorderError, setReorderError] = useState<string | null>(null);
-  const preDragOrderRef = useRef<string[] | null>(null);
-  const reorderPersistInFlightRef = useRef(false);
-  const reorderPersistQueuedRef = useRef<{
-    orderedIds: string[];
-    rollbackOrder: string[];
-  } | null>(null);
 
   const refreshTimerRef = useRef<number | null>(null);
   const scheduleRefresh = useCallback(() => {
@@ -419,12 +361,6 @@ export function NotesClient({ initialNotes, composerNoteListId, view }: NotesCli
     },
     [],
   );
-
-  useEffect(() => {
-    if (!reorderError) return;
-    toast.danger(reorderError, { timeout: 4000 });
-    setReorderError(null);
-  }, [reorderError]);
 
   const noteChipActive = (href: string) => pathname === href;
   const prefetchRoute = useCallback(
@@ -473,15 +409,6 @@ export function NotesClient({ initialNotes, composerNoteListId, view }: NotesCli
     ].join(" ");
 
   const visibleNotes = optimisticNotes;
-
-  const canReorder = Boolean(composerNoteListId) || pathname === "/notes/all";
-
-  const visibleIds = useMemo(() => visibleNotes.map((t) => t.id), [visibleNotes]);
-  const visibleIdSet = useMemo(() => new Set(visibleIds), [visibleIds]);
-  const orderedVisibleNotes =
-    uiOrderIds && uiOrderIds.length === visibleIds.length
-      ? reorderNotesByIds(visibleNotes, uiOrderIds)
-      : visibleNotes;
   const [renderLimit, setRenderLimit] = useState(FAST_RENDER_LIMIT);
 
   useEffect(() => {
@@ -489,31 +416,24 @@ export function NotesClient({ initialNotes, composerNoteListId, view }: NotesCli
   }, [pathname]);
 
   useEffect(() => {
-    if (orderedVisibleNotes.length <= renderLimit) return;
+    if (visibleNotes.length <= renderLimit) return;
     const id = window.setTimeout(() => {
-      setRenderLimit((n) => Math.min(n + FAST_RENDER_STEP, orderedVisibleNotes.length));
+      setRenderLimit((n) => Math.min(n + FAST_RENDER_STEP, visibleNotes.length));
     }, 80);
     return () => window.clearTimeout(id);
-  }, [orderedVisibleNotes.length, renderLimit]);
+  }, [visibleNotes.length, renderLimit]);
 
-  const renderedOrderedNotes = useMemo(
-    () => orderedVisibleNotes.slice(0, renderLimit),
-    [orderedVisibleNotes, renderLimit],
-  );
   const renderedVisibleNotes = useMemo(
     () => visibleNotes.slice(0, renderLimit),
     [visibleNotes, renderLimit],
   );
-  const hasMoreRendered = orderedVisibleNotes.length > renderLimit;
-  const renderedVisibleIds = useMemo(() => renderedOrderedNotes.map((t) => t.id), [renderedOrderedNotes]);
+  const hasMoreRendered = visibleNotes.length > renderLimit;
 
   useEffect(() => {
     if (!selectedNoteId) return;
-    const idx = orderedVisibleNotes.findIndex((t) => t.id === selectedNoteId);
+    const idx = visibleNotes.findIndex((t) => t.id === selectedNoteId);
     if (idx >= renderLimit) {
-      setRenderLimit((prev) =>
-        Math.min(Math.max(prev, idx + 1), orderedVisibleNotes.length),
-      );
+      setRenderLimit((prev) => Math.min(Math.max(prev, idx + 1), visibleNotes.length));
     }
     const raf = window.requestAnimationFrame(() => {
       const idSel =
@@ -523,63 +443,7 @@ export function NotesClient({ initialNotes, composerNoteListId, view }: NotesCli
       document.querySelector(`[data-note-id="${idSel}"]`)?.scrollIntoView({ block: "nearest" });
     });
     return () => window.cancelAnimationFrame(raf);
-  }, [selectedNoteId, orderedVisibleNotes, renderLimit]);
-
-  useEffect(() => {
-    if (!uiOrderIds) return;
-    if (uiOrderIds.length !== visibleIds.length) {
-      setUiOrderIds(null);
-      return;
-    }
-    // If visible set changes (add/delete/filter), reset to server order.
-    for (const id of uiOrderIds) {
-      if (!visibleIdSet.has(id)) {
-        setUiOrderIds(null);
-        return;
-      }
-    }
-  }, [uiOrderIds, visibleIds.length, visibleIdSet]);
-
-  async function persistReorderIfPossible(orderedIds: string[], rollbackOrder: string[]) {
-    if (orderedIds.length === 0) return;
-    // Merge: if completed are hidden, only the visible subset was reordered.
-    // Preserve the relative placement of hidden items by reusing the subset slots.
-    const fullIds = optimisticNotes.map((t) => t.id);
-    const mergedIds = mergeVisibleOrderIntoFull(fullIds, orderedIds, visibleIdSet);
-
-    try {
-      if (composerNoteListId) {
-        await reorderNotesAction(composerNoteListId, mergedIds);
-      } else if (pathname === "/notes/all") {
-        await reorderAllNotesAction(mergedIds);
-      }
-      scheduleRefresh();
-    } catch {
-      // If another drag happened while this request was in-flight, keep the UI at the latest
-      // queued order instead of reverting to a stale rollback.
-      const latestQueuedOrdered = reorderPersistQueuedRef.current?.orderedIds;
-      const latestDesired = latestQueuedOrdered ?? rollbackOrder;
-      setUiOrderIds(latestDesired);
-      latestOrderRef.current = latestDesired;
-      setReorderError("Could not save the new order. Restored previous order.");
-    }
-  }
-
-  async function reorderPersistWorker() {
-    if (reorderPersistInFlightRef.current) return;
-    reorderPersistInFlightRef.current = true;
-    try {
-      // Keep consuming the latest queued job until no more drag events happen.
-      while (reorderPersistQueuedRef.current) {
-        const job = reorderPersistQueuedRef.current;
-        reorderPersistQueuedRef.current = null;
-        if (!job) continue;
-        await persistReorderIfPossible(job.orderedIds, job.rollbackOrder);
-      }
-    } finally {
-      reorderPersistInFlightRef.current = false;
-    }
-  }
+  }, [selectedNoteId, visibleNotes, renderLimit]);
 
   function noteListHref(slug: string) {
     return `/notes/${slug}`;
@@ -770,18 +634,6 @@ export function NotesClient({ initialNotes, composerNoteListId, view }: NotesCli
     });
   }
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 150, tolerance: 8 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
   const listTabSensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -809,46 +661,6 @@ export function NotesClient({ initialNotes, composerNoteListId, view }: NotesCli
         return;
       }
     });
-  }
-
-  const draggedNote = draggingNoteId
-    ? orderedVisibleNotes.find((note) => note.id === draggingNoteId) ?? null
-    : null;
-
-  function handleDragStart(event: DragStartEvent) {
-    const currentOrder = uiOrderIds ?? visibleIds;
-    preDragOrderRef.current = currentOrder;
-    setReorderError(null);
-    setDraggingNoteId(String(event.active.id));
-  }
-
-  function handleDragEnd(event: DragEndEvent) {
-    setDraggingNoteId(null);
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const previousOrder = preDragOrderRef.current ?? (uiOrderIds ?? visibleIds);
-    const currentOrder = uiOrderIds ?? visibleIds;
-    const oldIndex = currentOrder.indexOf(String(active.id));
-    const newIndex = currentOrder.indexOf(String(over.id));
-    if (oldIndex < 0 || newIndex < 0) return;
-
-    const nextOrder = arrayMove(currentOrder, oldIndex, newIndex);
-    latestOrderRef.current = nextOrder;
-    setUiOrderIds(nextOrder);
-    // Serialize reorder persistence so the DB always ends up with the latest drop order.
-    reorderPersistQueuedRef.current = { orderedIds: nextOrder, rollbackOrder: previousOrder };
-    if (!reorderPersistInFlightRef.current) {
-      void reorderPersistWorker();
-    }
-  }
-
-  function handleDragCancel() {
-    setDraggingNoteId(null);
-    if (preDragOrderRef.current) {
-      setUiOrderIds(preDragOrderRef.current);
-      latestOrderRef.current = preDragOrderRef.current;
-    }
   }
 
   const noteRowHandlers = useMemo<NoteRowHandlers>(
@@ -908,10 +720,9 @@ export function NotesClient({ initialNotes, composerNoteListId, view }: NotesCli
   keyboardRef.current = {
     pathname,
     listsSorted,
-    orderedVisibleNotes,
+    orderedVisibleNotes: visibleNotes,
     optimisticNotes,
     selectedNoteId,
-    canReorder,
     openCreateListModal: () => {
       setCreateListError(null);
       setNewListTitle("");
@@ -1499,67 +1310,9 @@ export function NotesClient({ initialNotes, composerNoteListId, view }: NotesCli
         aria-label="Inbox"
       >
         {visibleNotes.length === 0 ? (
-          <ul className="flex flex-col">
-            <li className="py-8 pl-6 text-center text-[13px] text-muted">No notes yet.</li>
-          </ul>
-        ) : canReorder ? (
-          <DndContext
-            id="yalp-dnd-notes"
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            modifiers={[restrictToVerticalAxis]}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragCancel={handleDragCancel}
-            accessibility={{
-              screenReaderInstructions: {
-                draggable:
-                  "Use the drag handle. Press space to pick up, arrow keys to move, and space again to drop.",
-              },
-              announcements: {
-                onDragStart({ active }) {
-                  return `Picked up note ${String(active.id)}.`;
-                },
-                onDragOver({ active, over }) {
-                  if (!over) return `Note ${String(active.id)} is over a drop zone.`;
-                  return `Note ${String(active.id)} is over ${String(over.id)}.`;
-                },
-                onDragEnd({ active, over }) {
-                  if (!over) return `Note ${String(active.id)} was dropped.`;
-                  return `Note ${String(active.id)} moved before ${String(over.id)}.`;
-                },
-                onDragCancel({ active }) {
-                  return `Drag cancelled for ${String(active.id)}.`;
-                },
-              },
-            }}
-          >
-            <SortableContext items={renderedVisibleIds} strategy={verticalListSortingStrategy}>
-              <ul className="relative flex flex-col overflow-visible">
-                <AnimatePresence initial mode="popLayout">
-                  {renderedOrderedNotes.map((note, index) => (
-                    <SortableNoteItem
-                      key={note.id}
-                      todo={note}
-                      entranceDelay={getEntranceDelay(note.id, index, renderedOrderedNotes.length)}
-                      skipEntranceAnimation={skipListEntranceAnimations}
-                      showDetailAction={!note.parent_id}
-                      {...noteRowHandlers}
-                    />
-                  ))}
-                </AnimatePresence>
-              </ul>
-            </SortableContext>
-            <DragOverlay>
-              {draggedNote ? (
-                <div className="rounded-[12px] border border-[#e4e4e4] bg-white px-3 py-2 text-[13px] text-foreground shadow-[0_12px_30px_rgba(0,0,0,0.15)]">
-                  {draggedNote.title}
-                </div>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
+          <p className="py-8 text-center text-[13px] text-muted">No notes yet.</p>
         ) : (
-          <ul className="flex flex-col">
+          <ul className="grid grid-cols-1 gap-y-[2px] sm:grid-cols-2 sm:gap-x-3">
             <AnimatePresence initial mode="popLayout">
               {renderedVisibleNotes.map((note, index) => (
                 <PresenceNoteRow

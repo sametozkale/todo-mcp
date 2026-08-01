@@ -8,9 +8,7 @@ import {
 } from "@/app/(app)/notes/actions";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRightBigIcon, Delete02Icon } from "@hugeicons/core-free-icons";
-import { ChevronRight, Copy, Ellipsis, Folder, GripVertical } from "lucide-react";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { ChevronRight, Copy, Ellipsis, Folder } from "lucide-react";
 import { Dropdown } from "@heroui/react";
 import { toast } from "@/lib/app-toast";
 import {
@@ -21,14 +19,13 @@ import {
   useRef,
   useState,
   type ClipboardEvent,
-  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type MutableRefObject,
   type Ref,
 } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 export type NoteRow = {
   id: string;
@@ -45,7 +42,6 @@ export type NoteOptimisticAction =
   | { type: "add"; note: NoteRow }
   | { type: "duplicateAfter"; afterId: string; note: NoteRow }
   | { type: "moveList"; id: string; note_list_id: string | null }
-  | { type: "reorder"; orderedIds: string[] }
   | { type: "updateTitle"; id: string; title: string };
 
 /** Listeden çıkış: hafif sola kayma + küçülme + soldurma (FM’de silme için yaygın pattern). */
@@ -68,14 +64,6 @@ export function insertPlainTextIntoContentEditable(el: HTMLElement, text: string
   sel.addRange(range);
 }
 
-export type NoteRowMeasuredSortable = Pick<
-  ReturnType<typeof useSortable>,
-  "setNodeRef" | "setActivatorNodeRef" | "attributes" | "listeners"
-> & {
-  style: CSSProperties;
-  isDragging?: boolean;
-};
-
 export type NoteRowHandlers = {
   lists: { id: string; title: string }[];
   view?: "all" | "list";
@@ -90,7 +78,6 @@ export type NoteRowHandlers = {
 
 export function NoteRowMeasured({
   todo,
-  sortable,
   rootRef,
   entranceDelay,
   lists,
@@ -107,18 +94,19 @@ export function NoteRowMeasured({
 }: {
   todo: NoteRow;
   rootRef?: Ref<HTMLLIElement | null>;
-  sortable?: NoteRowMeasuredSortable;
   entranceDelay: number;
   skipEntranceAnimation?: boolean;
   /** Ana todo satırında `/note/:id` kısayolu; sub-note’larda kapalı. */
   showDetailAction?: boolean;
 } & NoteRowHandlers) {
   const pathname = usePathname();
+  const reduceMotion = useReducedMotion();
   const titleRef = useRef<HTMLSpanElement>(null);
   const isTitleFocusedRef = useRef(false);
   const discardTitleEditRef = useRef(false);
   const [isMultiline, setIsMultiline] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isRowHovered, setIsRowHovered] = useState(false);
   const [isMoveSubmenuOpen, setIsMoveSubmenuOpen] = useState(false);
   const [detailOpenTooltipVisible, setDetailOpenTooltipVisible] = useState(false);
   const detailOpenTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -198,23 +186,28 @@ export function NoteRowMeasured({
     });
   }, [addOptimistic, scheduleRefresh, startNoteTransition, todo.id, todo.title]);
 
-  const setNodeRefFromSortable = sortable?.setNodeRef;
   const mergedLiRef = useCallback(
     (node: HTMLLIElement | null) => {
-      setNodeRefFromSortable?.(node);
       const r = rootRef;
       if (!r) return;
       if (typeof r === "function") r(node);
       else (r as MutableRefObject<HTMLLIElement | null>).current = node;
     },
-    [setNodeRefFromSortable, rootRef],
+    [rootRef],
   );
 
   const rowInnerClass = [
-    "relative flex min-w-0 flex-1 gap-3 rounded-[16px] px-3 transition-colors duration-150 ease-out",
+    "relative min-w-0 flex-1 rounded-[16px] px-3 transition-colors duration-150 ease-out",
     isMenuOpen ? "bg-[#f4f4f4]" : "group-hover:bg-[#f4f4f4]",
-    isMultiline ? "items-start py-2.5" : "items-center py-1.5",
+    isMultiline ? "py-2.5" : "py-1.5",
   ].join(" ");
+
+  const actionsRevealed = isMenuOpen || isRowHovered;
+  // Two icon slots (28px) + gap ≈ 52px; single menu icon ≈ 28px. Height = 2 × leading-5.
+  const iconSlotWidth = showDetailAction ? 52 : 28;
+  const revealTransition = reduceMotion
+    ? { duration: 0 }
+    : { type: "spring" as const, duration: 0.3, bounce: 0 };
 
   const moveTargets = lists.filter((list) => list.id !== todo.note_list_id);
   const detailHref = pathname ? `/note/${todo.id}?from=${encodeURIComponent(pathname)}` : `/note/${todo.id}`;
@@ -222,12 +215,9 @@ export function NoteRowMeasured({
   return (
     <motion.li
       ref={mergedLiRef}
-      layout={sortable ? !sortable.isDragging : true}
+      layout
       initial={skipEntranceAnimation ? false : { opacity: 0, y: 10 }}
-      animate={{
-        opacity: sortable?.isDragging ? 0.85 : 1,
-        y: 0,
-      }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{
         opacity: { duration: 0.2, delay: skipEntranceAnimation ? 0 : entranceDelay },
         y: {
@@ -239,9 +229,10 @@ export function NoteRowMeasured({
       }}
       exit={NOTE_ROW_EXIT}
       className="group relative mb-[2px] w-full list-none last:mb-0"
-      style={sortable?.style}
       data-todo-row="1"
       data-note-id={todo.id}
+      onMouseEnter={() => setIsRowHovered(true)}
+      onMouseLeave={() => setIsRowHovered(false)}
       onClick={(e) => {
         const el = e.target as HTMLElement;
         if (el.closest("button")) return;
@@ -251,29 +242,16 @@ export function NoteRowMeasured({
       }}
     >
       <div className="relative flex min-w-0 flex-1">
-        {sortable ? (
-          <button
-            type="button"
-            ref={sortable.setActivatorNodeRef}
-            {...sortable.attributes}
-            {...(sortable.listeners ?? {})}
-            aria-describedby={undefined}
-            className={[
-              "absolute z-10 inline-flex min-h-9 min-w-9 cursor-grab items-center justify-center rounded-[8px] p-0 text-muted/70 transition-opacity duration-150 ease-out",
-              "left-0 -translate-x-[calc(100%-2px)]",
-              isMultiline ? "top-[10px] translate-y-0" : "top-1/2 -translate-y-1/2",
-              sortable.isDragging
-                ? "opacity-100"
-                : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:pointer-events-auto focus-visible:opacity-100",
-              "hover:text-foreground/80 active:cursor-grabbing",
-            ].join(" ")}
-            aria-label={`Reorder ${todo.title}`}
-          >
-            <GripVertical size={16} strokeWidth={2} className="text-current" />
-          </button>
-        ) : null}
-
         <div className={rowInnerClass}>
+          {/* Float reserves space for only the first two lines; lines below stay full width. */}
+          <motion.span
+            aria-hidden
+            className="float-right h-10"
+            initial={false}
+            animate={{ width: actionsRevealed ? iconSlotWidth : 0 }}
+            transition={revealTransition}
+          />
+
           <span
             ref={titleRef}
             data-note-title=""
@@ -282,7 +260,7 @@ export function NoteRowMeasured({
             contentEditable={!isNotePending}
             suppressContentEditableWarning
             spellCheck={false}
-            className="min-w-0 flex-1 cursor-text border-0 text-[14px] leading-5 text-foreground shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none focus-visible:outline-none"
+            className="block w-full min-w-0 cursor-text border-0 text-[14px] leading-5 text-foreground shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none focus-visible:outline-none"
             aria-label={`Edit note title: ${todo.title}`}
             aria-multiline="false"
             suppressHydrationWarning
@@ -320,12 +298,16 @@ export function NoteRowMeasured({
             }}
           />
 
-          <span
+          <motion.span
             className={[
-              "flex shrink-0 items-center gap-0.5 -mr-[6px] transition-opacity",
-              isMultiline ? "self-start -mt-1" : "",
-              isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-            ].join(" ").trim()}
+              // Todos: px-3 + -mr-[6px] → 6px from the row edge. Absolute uses right-1.5.
+              "absolute right-1.5 z-[2] flex shrink-0 items-center gap-0.5",
+              isMultiline ? "top-2.5 -mt-1" : "top-1/2 -translate-y-1/2",
+            ].join(" ")}
+            initial={false}
+            animate={{ opacity: actionsRevealed ? 1 : 0 }}
+            transition={revealTransition}
+            style={{ pointerEvents: actionsRevealed ? "auto" : "none" }}
           >
             {showDetailAction ? (
               <span className="relative inline-flex shrink-0">
@@ -495,7 +477,7 @@ export function NoteRowMeasured({
                 </Dropdown.Menu>
               </Dropdown.Popover>
             </Dropdown.Root>
-          </span>
+          </motion.span>
         </div>
       </div>
     </motion.li>
@@ -522,45 +504,6 @@ export const PresenceNoteRow = forwardRef<
       skipEntranceAnimation={skipEntranceAnimation}
       showDetailAction={showDetailAction}
       {...handlers}
-    />
-  );
-});
-
-export const SortableNoteItem = forwardRef<
-  HTMLLIElement,
-  {
-    todo: NoteRow;
-    entranceDelay: number;
-    skipEntranceAnimation?: boolean;
-    showDetailAction?: boolean;
-  } & NoteRowHandlers
->(function SortableNoteItem(
-  { todo, entranceDelay, skipEntranceAnimation, showDetailAction, ...handlers },
-  ref,
-) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
-    useSortable({ id: todo.id });
-
-  return (
-    <NoteRowMeasured
-      todo={todo}
-      rootRef={ref}
-      entranceDelay={entranceDelay}
-      skipEntranceAnimation={skipEntranceAnimation}
-      showDetailAction={showDetailAction}
-      {...handlers}
-      sortable={{
-        setNodeRef,
-        setActivatorNodeRef,
-        attributes,
-        listeners,
-        isDragging,
-        style: {
-          transform: CSS.Transform.toString(transform),
-          transition,
-          zIndex: isDragging ? 20 : undefined,
-        },
-      }}
     />
   );
 });
